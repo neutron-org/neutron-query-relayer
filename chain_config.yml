@@ -1,0 +1,14 @@
+local:
+  key: "default"
+  chain-id: ""
+  rpc-addr: ""
+  grpc-addr: ""
+  account-prefix: "?"
+  keyring-backend: "test"
+  gas-adjustment: 1.2
+  gas-prices: "0.01uatom"
+  key-directory: "/todo"
+  debug: false
+  timeout: ""
+  output-format: ""
+  sign-mode: ""
