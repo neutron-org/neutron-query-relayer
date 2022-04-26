@@ -16,17 +16,11 @@ import (
 
 type ProofQueries struct {
 	client *lens.ChainClient
-	//rpcClient rpcclient.Client
 }
 
-//ccc := lens.GetCosmosHubConfig("TODO: keydirectory", false)
-
 func NewProofQueries(log *zap.Logger, homepath string, ccc *lens.ChainClientConfig) (*ProofQueries, error) {
-	//pc := nil
 	client, err := lens.NewChainClient(
 		log.With(zap.String("sys", "chain_client")),
-		//lens.ChainClientConfig(&pc),
-		//TODO: config
 		ccc,
 		homepath,
 		os.Stdin,
@@ -93,59 +87,3 @@ func (cc *ProofQueries) QueryTendermintProof(ctx context.Context, chainID string
 	revision := clienttypes.ParseChainID(chainID)
 	return res.Value, proofBz, clienttypes.NewHeight(revision, uint64(res.Height)+1), nil
 }
-
-//func (cc *ProofQueries) QueryABCI(ctx context.Context, req abci.RequestQuery) (abci.ResponseQuery, error) {
-//	opts := rpcclient.ABCIQueryOptions{
-//		Height: req.Height,
-//		Prove:  req.Prove,
-//	}
-//	result, err := cc.rpcClient.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
-//	if err != nil {
-//		return abci.ResponseQuery{}, err
-//	}
-//
-//	if !result.Response.IsOK() {
-//		return abci.ResponseQuery{}, sdkErrorToGRPCError(result.Response)
-//	}
-//
-//	// data from trusted node or subspace query doesn't need verification
-//	if !opts.Prove || !isQueryStoreWithProof(req.Path) {
-//		return result.Response, nil
-//	}
-//
-//	return result.Response, nil
-//}
-//
-//func sdkErrorToGRPCError(resp abci.ResponseQuery) error {
-//	switch resp.Code {
-//	case sdkerrors.ErrInvalidRequest.ABCICode():
-//		return status.Error(codes.InvalidArgument, resp.Log)
-//	case sdkerrors.ErrUnauthorized.ABCICode():
-//		return status.Error(codes.Unauthenticated, resp.Log)
-//	case sdkerrors.ErrKeyNotFound.ABCICode():
-//		return status.Error(codes.NotFound, resp.Log)
-//	default:
-//		return status.Error(codes.Unknown, resp.Log)
-//	}
-//}
-//
-//// isQueryStoreWithProof expects a format like /<queryType>/<storeName>/<subpath>
-//// queryType must be "store" and subpath must be "key" to require a proof.
-//func isQueryStoreWithProof(path string) bool {
-//	if !strings.HasPrefix(path, "/") {
-//		return false
-//	}
-//
-//	paths := strings.SplitN(path[1:], "/", 3)
-//
-//	switch {
-//	case len(paths) != 3:
-//		return false
-//	case paths[0] != "store":
-//		return false
-//	case rootmulti.RequireProof("/" + paths[2]):
-//		return true
-//	}
-//
-//	return false
-//}
