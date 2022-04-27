@@ -5,7 +5,9 @@ import (
 	"fmt"
 	lens "github.com/strangelove-ventures/lens/client"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 	"go.uber.org/zap"
+	"log"
 	"os"
 )
 
@@ -15,7 +17,7 @@ func main() {
 	fmt.Println("cosmos-query-relayer starts...")
 	ctx := context.Background()
 	// config, err := config.NewCosmosQueryRelayerConfig()
-	SubscribeToTargetChainEvents(ctx)
+	SubscribeToTargetChainEventsNative(ctx)
 }
 
 //ccc := lens.ChainClientConfig{
@@ -33,6 +35,38 @@ func main() {
 //OutputFormat:   "json",
 //SignModeStr:    "direct",
 //}
+//remote := "tcp://0.0.0.0:26657"
+func SubscribeToTargetChainEventsNative(ctx context.Context) error {
+	remote := "http://public-node.terra.dev:26657"
+	httpclient, err := rpcclienthttp.New(remote, "/websocket")
+	if err != nil {
+		//	TODO
+		log.Fatalln(err)
+	}
+	err = httpclient.Start()
+	if err != nil {
+		//	TODO
+		log.Fatalln(err)
+	}
+
+	//defer httpclient.Stop()
+	//TODO: what does it mean?
+	//ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	//defer cancel()
+
+	query := "tm.event='NewBlock'"
+	response, err := httpclient.Subscribe(ctx, "test-client", query)
+	if err != nil {
+		// handle error
+		log.Fatalln(err)
+	}
+
+	for e := range response {
+		fmt.Printf("got %+v", e.Data)
+	}
+
+	return nil
+}
 
 func SubscribeToTargetChainEvents(ctx context.Context) error {
 	//wg := &sync.WaitGroup{}
