@@ -7,18 +7,18 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v3/modules/core/23-commitment/types"
-	host "github.com/cosmos/ibc-go/v3/modules/core/24-host"
 	lens "github.com/strangelove-ventures/lens/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"go.uber.org/zap"
 	"os"
 )
 
-type ProofQueries struct {
-	client *lens.ChainClient
+type QueryKeyProofer struct {
+	client  *lens.ChainClient
+	ChainID string
 }
 
-func NewProofQueries(log *zap.Logger, homepath string, ccc *lens.ChainClientConfig) (*ProofQueries, error) {
+func NewQueryKeyProofer(log *zap.Logger, homepath string, ccc *lens.ChainClientConfig) (*QueryKeyProofer, error) {
 	client, err := lens.NewChainClient(
 		log.With(zap.String("sys", "chain_client")),
 		ccc,
@@ -31,7 +31,7 @@ func NewProofQueries(log *zap.Logger, homepath string, ccc *lens.ChainClientConf
 		return nil, err
 	}
 
-	return &ProofQueries{client}, nil
+	return &QueryKeyProofer{client: client, ChainID: ccc.ChainID}, nil
 }
 
 // QueryTendermintProof performs an ABCI query with the given key and returns
@@ -43,7 +43,7 @@ func NewProofQueries(log *zap.Logger, homepath string, ccc *lens.ChainClientConf
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
-func (cc *ProofQueries) QueryTendermintProof(ctx context.Context, chainID string, height int64, key []byte) ([]byte, []byte, clienttypes.Height, error) {
+func (cc *QueryKeyProofer) QueryTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) ([]byte, []byte, clienttypes.Height, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
@@ -59,7 +59,7 @@ func (cc *ProofQueries) QueryTendermintProof(ctx context.Context, chainID string
 	}
 
 	req := abci.RequestQuery{
-		Path:   fmt.Sprintf("store/%s/key", host.StoreKey),
+		Path:   fmt.Sprintf("store/%s/key", storeKey),
 		Height: height,
 		Data:   key,
 		Prove:  true,

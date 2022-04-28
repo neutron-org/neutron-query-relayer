@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	"github.com/lidofinance/cosmos-query-relayer/internal/event_subscriber"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"log"
 )
 
@@ -12,40 +15,27 @@ import (
 func main() {
 	fmt.Println("cosmos-query-relayer starts...")
 	ctx := context.Background()
-	SubscribeToTargetChainEventsNative(ctx)
+	//testSubscribe(ctx)
+
+	ccc, logger, homepath := proofer.GetChainConfig()
+	querier, err := proofer.NewQueryKeyProofer(logger, homepath, ccc)
+	if err != nil {
+		err = fmt.Errorf("error creating new query key proofer: %w", err)
+		log.Println(err)
+	}
+	_, _ = proofs.ProofAllBalances(ctx, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", querier)
 }
 
-// query = 'module_name.action.field=X'
-//query_type := "x/staking/GetAllDelegations"
-//query := tmquery.MustParse(fmt.Sprintf("message.module='%s'", "interchainqueries")) // todo: use types.ModuleName
-func SubscribeToTargetChainEventsNative(ctx context.Context) error {
-	remote := "http://public-node.terra.dev:26657"
-	httpclient, err := rpcclienthttp.New(remote, "/websocket")
+func testSubscribe(ctx context.Context) {
+	err := event_subscriber.SubscribeToTargetChainEventsNative(ctx)
+
 	if err != nil {
 		//	TODO
-		log.Fatalln(err)
 	}
-	err = httpclient.Start()
-	if err != nil {
-		//	TODO
-		log.Fatalln(err)
-	}
+}
 
-	//defer httpclient.Stop()
-	//TODO: what does it mean?
-	//ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
-	//defer cancel()
-
-	query := "tm.event='NewBlock'"
-	response, err := httpclient.Subscribe(ctx, "test-client", query)
-	if err != nil {
-		// handle error
-		log.Fatalln(err)
-	}
-
-	for e := range response {
-		fmt.Printf("got %+v", e.Data)
-	}
-
-	return nil
+func Proof(ctx context.Context, event coretypes.ResultEvent) {
+	// TODO
+	queries := proofer.ExpandEvent(event)
+	proofer.ProofQueries(ctx, queries)
 }
