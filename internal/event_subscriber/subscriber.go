@@ -10,9 +10,8 @@ import (
 // query = 'module_name.action.field=X'
 //query_type := "x/staking/GetAllDelegations"
 //query := tmquery.MustParse(fmt.Sprintf("message.module='%s'", "interchainqueries")) // todo: use types.ModuleName
-func SubscribeToTargetChainEventsNative(ctx context.Context) error {
-	remote := "http://public-node.terra.dev:26657"
-	httpclient, err := rpcclienthttp.New(remote, "/websocket")
+func SubscribeToTargetChainEventsNative(ctx context.Context, addr string) error {
+	httpclient, err := rpcclienthttp.New(addr, "/websocket")
 	if err != nil {
 		//	TODO
 		log.Fatalln(err)
