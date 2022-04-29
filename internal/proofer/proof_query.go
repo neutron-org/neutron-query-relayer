@@ -43,10 +43,7 @@ func NewRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
 
 func NewQueryKeyProofer(addr string, chainId string) (*QueryKeyProofer, error) {
 	timeout := time.Second * 10 // TODO: configure
-	//client, err := NewRPCClient(addr, timeout)
-	//client := abcicli.NewSocketClient(addr, true)
 	client, err := NewRPCClient(addr, timeout)
-	fmt.Printf("Got rpc http client: %v", client)
 
 	if err != nil {
 		//TODO: log
@@ -59,7 +56,9 @@ func NewQueryKeyProofer(addr string, chainId string) (*QueryKeyProofer, error) {
 		return nil, err
 	}
 
-	return &QueryKeyProofer{Client: client, ChainID: chainId}, nil
+	proofer := QueryKeyProofer{Client: client, ChainID: chainId}
+	fmt.Printf("Created new query proofer")
+	return &proofer, nil
 }
 
 // QueryTendermintProof performs an ABCI query with the given key and returns
@@ -123,7 +122,7 @@ func (cc *QueryKeyProofer) QueryTendermintProof(ctx context.Context, chainID str
 	return &StorageValue{Value: res.Response.Value, Key: key, Proofs: res.Response.ProofOps.Ops}, clienttypes.NewHeight(revision, uint64(res.Response.Height)+1), nil
 }
 
-// Retrives proofs for iterable keys
+// QueryIterateTendermintProof retrieves proofs for iterable keys
 func (cc *QueryKeyProofer) QueryIterateTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) ([]StorageValue, clienttypes.Height, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
@@ -149,7 +148,6 @@ func (cc *QueryKeyProofer) QueryIterateTendermintProof(ctx context.Context, chai
 		Height: height,
 		Prove:  true,
 	}
-	//TODO: what if malicious relayer deletes some row?
 
 	//res, err := cc.Client.QuerySync(req)
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
@@ -177,16 +175,3 @@ func (cc *QueryKeyProofer) QueryIterateTendermintProof(ctx context.Context, chai
 	revision := clienttypes.ParseChainID(chainID)
 	return result, clienttypes.NewHeight(revision, uint64(res.Response.Height)+1), nil
 }
-
-//func NewRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
-//	httpClient, err := libclient.DefaultHTTPClient(addr)
-//	if err != nil {
-//		return nil, err
-//	}
-//	httpClient.Timeout = timeout
-//	rpcClient, err := rpchttp.NewWithClient(addr, "/websocket", httpClient)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return rpcClient, nil
-//}

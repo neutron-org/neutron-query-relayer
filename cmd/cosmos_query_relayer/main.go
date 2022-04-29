@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/event_subscriber"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"log"
 )
 
@@ -14,13 +16,12 @@ import (
 func main() {
 	fmt.Println("cosmos-query-relayer starts...")
 	ctx := context.Background()
-	addr := "tcp://public-node.terra.dev:26657"
-	//addr = "tcp://0.0.0.0:26657"
-	//testSubscribe(ctx, addr)
-
-	//ccc, logger, homepath := proofer.GetChainConfig()
-	querier, err := proofer.NewQueryKeyProofer(addr, "columbus-5")
-	fmt.Printf("Got new query proofer")
+	cfg, err := config.NewCosmosQueryRelayerConfig()
+	if err != nil {
+		log.Println(err)
+	}
+	subscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
+	querier, err := proofer.NewQueryKeyProofer(cfg.TargetChain.RPCAddress, cfg.TargetChain.ChainID)
 	if err != nil {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)
@@ -34,8 +35,11 @@ func main() {
 	}
 }
 
-func testSubscribe(ctx context.Context, addr string) {
-	err := event_subscriber.SubscribeToTargetChainEventsNative(ctx, addr)
+func subscribeLidoChain(ctx context.Context, addr string) {
+	onEvent := func(event coretypes.ResultEvent) {
+		fmt.Printf("OnEvent(%+v)", event.Data)
+	}
+	err := event_subscriber.SubscribeToTargetChainEventsNative(ctx, addr, onEvent)
 
 	if err != nil {
 		//	TODO

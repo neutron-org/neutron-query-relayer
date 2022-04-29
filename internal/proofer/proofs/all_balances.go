@@ -16,7 +16,7 @@ import (
 //x/bank/types/key.go
 
 // TODO: use real cosmos-sdk all balances struct here?
-type AllBalancesResponse struct {
+type allBalancesResponse struct {
 	Balances []struct {
 		Denom  string `json:"denom"`
 		Amount string `json:"amount"`

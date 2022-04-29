@@ -7,6 +7,13 @@ import (
 
 type CosmosQueryRelayerConfig struct {
 	//	TODO
+	LidoChain struct {
+		RPCAddress string `envconfig:"default='tcp://0.0.0.0:26657'"`
+	}
+	TargetChain struct {
+		RPCAddress string `envconfig:"default='tcp://public-node.terra.dev:26657'"`
+		ChainID    string `envconfig:"default='columbus-5'"`
+	}
 }
 
 func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
