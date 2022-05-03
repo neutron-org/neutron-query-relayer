@@ -3,8 +3,7 @@ package proofer
 import (
 	"context"
 	"fmt"
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 func ProofEvent(ctx context.Context, event coretypes.ResultEvent) {
@@ -15,7 +14,7 @@ func ProofEvent(ctx context.Context, event coretypes.ResultEvent) {
 
 func ProofQueries(ctx context.Context, queries []Query) (map[string]string, error) {
 	for _, query := range queries {
-		value, _, err := ProofQuery(ctx, query)
+		value, err := ProofQuery(ctx, query)
 		if err != nil {
 			return nil, fmt.Errorf("could not get proof for a query with id = %s: %w", query.QueryId, err)
 		}
@@ -27,7 +26,7 @@ func ProofQueries(ctx context.Context, queries []Query) (map[string]string, erro
 	return nil, nil
 }
 
-func ProofQuery(ctx context.Context, query Query) ([]StorageValue, *clienttypes.Height, error) {
+func ProofQuery(ctx context.Context, query Query) ([]StorageValue, error) {
 	// take the query with its data
 	// for this query, query target blockchain with its proofs (QueryTendermintProof)
 	//ccc, logger, homepath := GetChainConfig()
@@ -38,14 +37,12 @@ func ProofQuery(ctx context.Context, query Query) ([]StorageValue, *clienttypes.
 	key := []byte("todo")
 	storeKey := "TODO"
 
-	value, height, err := querier.QueryTendermintProof(ctx, query.ChainId, inputHeight, storeKey, key)
-
-	fmt.Printf("Height: %s", height)
+	value, err := querier.QueryTendermintProof(ctx, query.ChainId, inputHeight, storeKey, key)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create proof querier: %w", err)
+		return nil, fmt.Errorf("could not create proof querier: %w", err)
 	}
 
 	// fixme
-	return []StorageValue{*value}, &height, nil
+	return []StorageValue{*value}, nil
 }

@@ -26,14 +26,14 @@ func ProofAllDelegations(ctx context.Context, validators []string, delegator str
 		key := stakingtypes.GetDelegationKey(delegatorBz, validatorBz)
 		fmt.Println("processing delegation...")
 		//key := append(banktypes.CreateAccountBalancesPrefix(bz), []byte(denom)...)
-		value, height, err := querier.QueryTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, key)
+		value, err := querier.QueryTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, key)
 
 		var delegation stakingtypes.Delegation
 		if err := delegation.Unmarshal(value.Value); err != nil {
 			fmt.Println("err: %s", err)
 			return nil, err
 		}
-		fmt.Printf("\nDelegation:\n %v, Height %v Err %v", delegation, height, err)
+		fmt.Printf("\nDelegation:\n %v, Err %v", delegation, err)
 	}
 
 	return nil, nil
@@ -48,12 +48,12 @@ func ProofAllDelegations2(ctx context.Context, delegator string, querier *proofe
 	}
 
 	delegatorPrefixKey := stakingtypes.GetDelegationsKey(delegatorBz)
-	result, height, err := querier.QueryIterateTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, delegatorPrefixKey)
+	result, err := querier.QueryIterateTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, delegatorPrefixKey)
 	if err != nil {
 		fmt.Printf("\nerr: %s", err)
 		return nil, err
 	}
-	fmt.Printf("\nResult: %+v\nHeight: %+v", result, height)
+	fmt.Printf("\nResult: %+v", result)
 
 	return nil, nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 // TODO: logger configuration
@@ -46,7 +46,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		log.Println(err)
 	}
 	_, _ = proofs.ProofAllBalances(ctx, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna", querier)
-	//_, err = proofs.ProofAllDelegations(ctx, []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", querier)
+	_, err = proofs.ProofAllDelegations(ctx, []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", querier)
 	//_, err = proofs.ProofAllDelegations2(ctx, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", querier)
 
 	if err != nil {

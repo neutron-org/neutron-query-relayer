@@ -35,19 +35,19 @@ func ProofAllBalances(ctx context.Context, address string, denom string, querier
 	}
 
 	key := append(banktypes.CreateAccountBalancesPrefix(bz), []byte(denom)...)
-	fmt.Printf("About to querier.QueryTendermintProof")
-	value, height, err := querier.QueryTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, key)
+	fmt.Println("About to querier.QueryTendermintProof")
+	value, err := querier.QueryTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, key)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("QueryTendermintProof worked")
+	fmt.Println("QueryTendermintProof worked")
 
 	var amount cosmostypes.Coin
 	if err := amount.Unmarshal(value.Value); err != nil {
-		fmt.Println("err: %s", err)
+		fmt.Printf("failed to unmarshal the balances response: %s", err)
 		return nil, err
 	}
-	fmt.Printf("\nCoin: %v, Height %v Err %v", amount, height, err)
+	fmt.Printf("\nCoin: %+v, Err %v", amount, err)
 
 	return nil, nil
 }

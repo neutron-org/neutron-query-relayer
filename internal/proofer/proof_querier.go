@@ -7,7 +7,6 @@ import (
 
 	"time"
 
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -49,13 +48,13 @@ func NewProofQuerier(addr string, chainId string) (*ProofQuerier, error) {
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
-func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) (*StorageValue, clienttypes.Height, error) {
+func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) (*StorageValue, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
 	// A height of 0 will query with the latest state.
 	if height != 0 && height <= 2 {
-		return nil, clienttypes.Height{}, fmt.Errorf("proof queries at height <= 2 are not supported")
+		return nil, fmt.Errorf("proof queries at height <= 2 are not supported")
 	}
 
 	// Use the IAVL height if a valid tendermint height is passed in.
@@ -78,7 +77,7 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, chainID string
 
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 	if err != nil {
-		return nil, clienttypes.Height{}, err
+		return nil, err
 	}
 
 	// TODO: delete if we don't need to convert to proofBz
@@ -96,18 +95,18 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, chainID string
 	//	return nil, nil, clienttypes.Height{}, err
 	//}
 
-	revision := clienttypes.ParseChainID(chainID)
-	return &StorageValue{Value: res.Response.Value, Key: key, Proofs: res.Response.ProofOps.Ops}, clienttypes.NewHeight(revision, uint64(res.Response.Height)+1), nil
+	//revision := clienttypes.ParseChainID(chainID)
+	return &StorageValue{Value: res.Response.Value, Key: key, Proofs: res.Response.ProofOps.Ops}, nil
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys
-func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) ([]StorageValue, clienttypes.Height, error) {
+func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) ([]StorageValue, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
 	// A height of 0 will query with the latest state.
 	if height != 0 && height <= 2 {
-		return nil, clienttypes.Height{}, fmt.Errorf("proof queries at height <= 2 are not supported")
+		return nil, fmt.Errorf("proof queries at height <= 2 are not supported")
 	}
 
 	// Use the IAVL height if a valid tendermint height is passed in.
@@ -131,7 +130,7 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 
 	if err != nil {
-		return nil, clienttypes.Height{}, err
+		return nil, err
 	}
 
 	var resPairs kv.Pairs
@@ -142,16 +141,15 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID
 
 	var result = make([]StorageValue, 0, len(resPairs.Pairs))
 	for _, pair := range resPairs.Pairs {
-		storageValue, _, err := cc.QueryTendermintProof(ctx, cc.ChainID, height, storeKey, pair.Key)
+		storageValue, err := cc.QueryTendermintProof(ctx, cc.ChainID, height, storeKey, pair.Key)
 		if err != nil {
-			return nil, clienttypes.Height{}, err
+			return nil, err
 		}
 
 		result = append(result, *storageValue)
 	}
 
-	revision := clienttypes.ParseChainID(chainID)
-	return result, clienttypes.NewHeight(revision, uint64(res.Response.Height)+1), nil
+	return result, nil
 }
 
 func newRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
@@ -160,7 +158,7 @@ func newRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
 		return nil, err
 	}
 	httpClient.Timeout = timeout
-	rpcClient, err := rpchttp.NewWithClient(addr, "/websocket", httpClient)
+	rpcClient, err := rpchttp.NewWithClient(addr, httpClient)
 	if err != nil {
 		return nil, err
 	}
