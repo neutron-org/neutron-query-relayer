@@ -9,13 +9,12 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	libclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
 type ProofQuerier struct {
-	Client *rpchttp.HTTP
-	//Client  abcicli.Client
+	Client  *rpcclienthttp.HTTP
 	ChainID string
 }
 
@@ -35,7 +34,6 @@ func NewProofQuerier(addr string, chainId string) (*ProofQuerier, error) {
 	}
 
 	proofer := ProofQuerier{Client: client, ChainID: chainId}
-	fmt.Printf("Created new query proofer")
 	return &proofer, nil
 }
 
@@ -48,7 +46,7 @@ func NewProofQuerier(addr string, chainId string) (*ProofQuerier, error) {
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
-func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) (*StorageValue, error) {
+func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
@@ -80,27 +78,12 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, chainID string
 		return nil, err
 	}
 
-	// TODO: delete if we don't need to convert to proofBz
-	//merkleProof, err := commitmenttypes.ConvertProofs(res.ProofOps)
-	//if err != nil {
-	//	return nil, nil, clienttypes.Height{}, err
-	//}
-
-	// TODO: is it correct to create it here?
-	//interfaceRegistry := types.NewInterfaceRegistry()
-	//cdc := codec.NewProtoCodec(interfaceRegistry)
-
-	//proofBz, err := cdc.Marshal(&merkleProof)
-	//if err != nil {
-	//	return nil, nil, clienttypes.Height{}, err
-	//}
-
 	//revision := clienttypes.ParseChainID(chainID)
 	return &StorageValue{Value: res.Response.Value, Key: key, Proofs: res.Response.ProofOps.Ops}, nil
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys
-func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID string, height int64, storeKey string, key []byte) ([]StorageValue, error) {
+func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) ([]StorageValue, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
@@ -126,7 +109,6 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID
 		Prove:  true,
 	}
 
-	//res, err := cc.Client.QuerySync(req)
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 
 	if err != nil {
@@ -141,7 +123,7 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID
 
 	var result = make([]StorageValue, 0, len(resPairs.Pairs))
 	for _, pair := range resPairs.Pairs {
-		storageValue, err := cc.QueryTendermintProof(ctx, cc.ChainID, height, storeKey, pair.Key)
+		storageValue, err := cc.QueryTendermintProof(ctx, height, storeKey, pair.Key)
 		if err != nil {
 			return nil, err
 		}
@@ -152,13 +134,13 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, chainID
 	return result, nil
 }
 
-func newRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
-	httpClient, err := libclient.DefaultHTTPClient(addr)
+func newRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, error) {
+	httpClient, err := jsonrpcclient.DefaultHTTPClient(addr)
 	if err != nil {
 		return nil, err
 	}
 	httpClient.Timeout = timeout
-	rpcClient, err := rpchttp.NewWithClient(addr, httpClient)
+	rpcClient, err := rpcclienthttp.NewWithClient(addr, httpClient)
 	if err != nil {
 		return nil, err
 	}

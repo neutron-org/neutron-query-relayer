@@ -8,7 +8,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
-func ProofAllDelegations(ctx context.Context, validators []string, delegator string, querier *proofer.ProofQuerier) (map[string]string, error) {
+func ProofAllDelegations(ctx context.Context, querier *proofer.ProofQuerier, validators []string, delegator string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
 	delegatorBz, err := cosmostypes.GetFromBech32(delegator, "terra")
@@ -24,14 +24,13 @@ func ProofAllDelegations(ctx context.Context, validators []string, delegator str
 		}
 
 		key := stakingtypes.GetDelegationKey(delegatorBz, validatorBz)
-		fmt.Println("processing delegation...")
 		//key := append(banktypes.CreateAccountBalancesPrefix(bz), []byte(denom)...)
-		value, err := querier.QueryTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, key)
+		value, err := querier.QueryTendermintProof(ctx, inputHeight, storeKey, key)
 
 		var delegation stakingtypes.Delegation
 		if err := delegation.Unmarshal(value.Value); err != nil {
-			fmt.Println("err: %s", err)
-			return nil, err
+			fmt.Printf("failed to unmarshal delegations: %s\n", err)
+			return nil, fmt.Errorf("failed to unmarshal delegations: %w", err)
 		}
 		fmt.Printf("\nDelegation:\n %v, Err %v", delegation, err)
 	}
@@ -39,7 +38,7 @@ func ProofAllDelegations(ctx context.Context, validators []string, delegator str
 	return nil, nil
 }
 
-func ProofAllDelegations2(ctx context.Context, delegator string, querier *proofer.ProofQuerier) (map[string]string, error) {
+func ProofAllDelegations2(ctx context.Context, querier *proofer.ProofQuerier, delegator string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
 	delegatorBz, err := cosmostypes.GetFromBech32(delegator, "terra")
@@ -48,10 +47,10 @@ func ProofAllDelegations2(ctx context.Context, delegator string, querier *proofe
 	}
 
 	delegatorPrefixKey := stakingtypes.GetDelegationsKey(delegatorBz)
-	result, err := querier.QueryIterateTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, delegatorPrefixKey)
+	result, err := querier.QueryIterateTendermintProof(ctx, inputHeight, storeKey, delegatorPrefixKey)
 	if err != nil {
-		fmt.Printf("\nerr: %s", err)
-		return nil, err
+		fmt.Printf("\nfailed to fetch tendermint proof: %s", err)
+		return nil, fmt.Errorf("failed to fetch tendermint proof: %w", err)
 	}
 	fmt.Printf("\nResult: %+v", result)
 

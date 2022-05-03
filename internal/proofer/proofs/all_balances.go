@@ -26,7 +26,7 @@ type allBalancesResponse struct {
 	} `json:"pagination"`
 }
 
-func ProofAllBalances(ctx context.Context, address string, denom string, querier *proofer.ProofQuerier) (map[string]string, error) {
+func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, address string, denom string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := banktypes.StoreKey
 	bz, err := cosmostypes.GetFromBech32(address, "terra")
@@ -35,12 +35,10 @@ func ProofAllBalances(ctx context.Context, address string, denom string, querier
 	}
 
 	key := append(banktypes.CreateAccountBalancesPrefix(bz), []byte(denom)...)
-	fmt.Println("About to querier.QueryTendermintProof")
-	value, err := querier.QueryTendermintProof(ctx, querier.ChainID, inputHeight, storeKey, key)
+	value, err := querier.QueryTendermintProof(ctx, inputHeight, storeKey, key)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("QueryTendermintProof worked")
 
 	var amount cosmostypes.Coin
 	if err := amount.Unmarshal(value.Value); err != nil {

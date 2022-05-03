@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"log"
 
+	sub "github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
-	"github.com/lidofinance/cosmos-query-relayer/internal/event_subscriber"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
-
-	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 // TODO: logger configuration
@@ -22,20 +21,18 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	//subscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
 	testProofs(ctx, cfg)
+	subscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
 }
 
 func subscribeLidoChain(ctx context.Context, addr string) {
-	onEvent := func(event coretypes.ResultEvent) error {
-		// TODO: proof event
+	onEvent := func(event coretypes.ResultEvent) {
 		fmt.Printf("OnEvent(%+v)", event.Data)
-		return nil
+		go proofer.GetProof(event)
 	}
-	err := event_subscriber.SubscribeToTargetChainEventsNative(ctx, addr, onEvent)
-
+	err := sub.Subscribe(ctx, addr, onEvent, sub.Query)
 	if err != nil {
-		//	TODO
+		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}
 }
 
@@ -45,9 +42,9 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)
 	}
-	_, _ = proofs.ProofAllBalances(ctx, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna", querier)
-	_, err = proofs.ProofAllDelegations(ctx, []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", querier)
-	//_, err = proofs.ProofAllDelegations2(ctx, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", querier)
+	_, _ = proofs.ProofAllBalances(ctx, querier, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna")
+	_, err = proofs.ProofAllDelegations(ctx, querier, []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
+	_, err = proofs.ProofAllDelegations2(ctx, querier, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
 
 	if err != nil {
 		log.Println(err)
