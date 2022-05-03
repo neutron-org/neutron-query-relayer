@@ -31,7 +31,7 @@ func ProofQuery(ctx context.Context, query Query) ([]StorageValue, *clienttypes.
 	// take the query with its data
 	// for this query, query target blockchain with its proofs (QueryTendermintProof)
 	//ccc, logger, homepath := GetChainConfig()
-	querier, err := NewQueryKeyProofer("addr-todo", query.ChainId)
+	querier, err := NewProofQuerier("addr-todo", query.ChainId)
 
 	// FIXME: need somehow fixed height at the end
 	var inputHeight int64 = 0

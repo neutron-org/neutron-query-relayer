@@ -8,7 +8,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
-func ProofAllDelegations(ctx context.Context, validators []string, delegator string, querier *proofer.QueryKeyProofer) (map[string]string, error) {
+func ProofAllDelegations(ctx context.Context, validators []string, delegator string, querier *proofer.ProofQuerier) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
 	delegatorBz, err := cosmostypes.GetFromBech32(delegator, "terra")
@@ -39,7 +39,7 @@ func ProofAllDelegations(ctx context.Context, validators []string, delegator str
 	return nil, nil
 }
 
-func ProofAllDelegations2(ctx context.Context, delegator string, querier *proofer.QueryKeyProofer) (map[string]string, error) {
+func ProofAllDelegations2(ctx context.Context, delegator string, querier *proofer.ProofQuerier) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
 	delegatorBz, err := cosmostypes.GetFromBech32(delegator, "terra")

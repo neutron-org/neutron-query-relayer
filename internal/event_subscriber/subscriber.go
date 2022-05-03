@@ -2,16 +2,17 @@ package event_subscriber
 
 import (
 	"context"
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"log"
+
+	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 // query = 'module_name.action.field=X'
 //query_type := "x/staking/GetAllDelegations"
 //query := tmquery.MustParse(fmt.Sprintf("message.module='%s'", "interchainqueries")) // todo: use types.ModuleName
-func SubscribeToTargetChainEventsNative(ctx context.Context, addr string, onEvent func(event coretypes.ResultEvent)) error {
-	httpclient, err := rpcclienthttp.New(addr, "/websocket")
+func SubscribeToTargetChainEventsNative(ctx context.Context, addr string, onEvent func(event coretypes.ResultEvent) error) error {
+	httpclient, err := rpcclient.New(addr, "/websocket")
 	if err != nil {
 		//	TODO
 		log.Fatalln(err)
@@ -35,7 +36,10 @@ func SubscribeToTargetChainEventsNative(ctx context.Context, addr string, onEven
 	}
 
 	for e := range response {
-		onEvent(e)
+		err := onEvent(e)
+		if err != nil {
+			// TODO: handle error
+		}
 	}
 
 	return nil

@@ -6,13 +6,15 @@ import (
 )
 
 type CosmosQueryRelayerConfig struct {
-	//	TODO
+	//	TODO: full configuration
 	LidoChain struct {
-		RPCAddress string `envconfig:"default='tcp://0.0.0.0:26657'"`
+		RPCAddress string `envconfig:"default=tcp://127.0.0.1:26657"`
+		//RPCAddress string `envconfig:"default=tcp://public-node.terra.dev:26657"` // for tests only
 	}
 	TargetChain struct {
-		RPCAddress string `envconfig:"default='tcp://public-node.terra.dev:26657'"`
-		ChainID    string `envconfig:"default='columbus-5'"`
+		//RPCAddress string `envconfig:"default=tcp://public-node.terra.dev:26657"`
+		RPCAddress string `envconfig:"default=tcp://127.0.0.1:26657"`
+		ChainID    string `envconfig:"default=columbus-5"`
 	}
 }
 

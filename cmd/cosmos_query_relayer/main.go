@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/event_subscriber"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
+
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-	"log"
 )
 
 // TODO: logger configuration
@@ -20,8 +22,25 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	subscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
-	querier, err := proofer.NewQueryKeyProofer(cfg.TargetChain.RPCAddress, cfg.TargetChain.ChainID)
+	//subscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
+	testProofs(ctx, cfg)
+}
+
+func subscribeLidoChain(ctx context.Context, addr string) {
+	onEvent := func(event coretypes.ResultEvent) error {
+		// TODO: proof event
+		fmt.Printf("OnEvent(%+v)", event.Data)
+		return nil
+	}
+	err := event_subscriber.SubscribeToTargetChainEventsNative(ctx, addr, onEvent)
+
+	if err != nil {
+		//	TODO
+	}
+}
+
+func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
+	querier, err := proofer.NewProofQuerier(cfg.TargetChain.RPCAddress, cfg.TargetChain.ChainID)
 	if err != nil {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)
@@ -32,16 +51,5 @@ func main() {
 
 	if err != nil {
 		log.Println(err)
-	}
-}
-
-func subscribeLidoChain(ctx context.Context, addr string) {
-	onEvent := func(event coretypes.ResultEvent) {
-		fmt.Printf("OnEvent(%+v)", event.Data)
-	}
-	err := event_subscriber.SubscribeToTargetChainEventsNative(ctx, addr, onEvent)
-
-	if err != nil {
-		//	TODO
 	}
 }

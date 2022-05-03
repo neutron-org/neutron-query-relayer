@@ -26,7 +26,7 @@ type allBalancesResponse struct {
 	} `json:"pagination"`
 }
 
-func ProofAllBalances(ctx context.Context, address string, denom string, querier *proofer.QueryKeyProofer) (map[string]string, error) {
+func ProofAllBalances(ctx context.Context, address string, denom string, querier *proofer.ProofQuerier) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := banktypes.StoreKey
 	bz, err := cosmostypes.GetFromBech32(address, "terra")
