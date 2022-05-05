@@ -26,18 +26,19 @@ type allBalancesResponse struct {
 	} `json:"pagination"`
 }
 
-func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, address string, denom string) (map[string]string, error) {
+func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, address string, denom string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := banktypes.StoreKey
-	bz, err := cosmostypes.GetFromBech32(address, "terra")
+	bytesAddress, err := cosmostypes.GetFromBech32(address, chainPrefix)
 	if err != nil {
 		return nil, err
 	}
 
-	key := append(banktypes.CreateAccountBalancesPrefix(bz), []byte(denom)...)
+	key := append(banktypes.CreateAccountBalancesPrefix(bytesAddress), []byte(denom)...)
 	value, err := querier.QueryTendermintProof(ctx, inputHeight, storeKey, key)
 	if err != nil {
-		return nil, err
+		fmt.Printf("failed to query tendermint proof for balances: %s", err)
+		return nil, fmt.Errorf("failed to query tendermint proof for balances: %w", err)
 	}
 
 	var amount cosmostypes.Coin
@@ -45,10 +46,9 @@ func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, addres
 		fmt.Printf("failed to unmarshal the balances response: %s", err)
 		return nil, err
 	}
-	fmt.Printf("\nCoin: %+v, Err %v", amount, err)
+	fmt.Printf("\nCoin: %+v, Err %v\n", amount, err)
 
 	return nil, nil
 }
 
 // TODO: rewards
-// TODO: transactions

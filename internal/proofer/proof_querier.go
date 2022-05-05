@@ -18,19 +18,16 @@ type ProofQuerier struct {
 	ChainID string
 }
 
-func NewProofQuerier(addr string, chainId string) (*ProofQuerier, error) {
-	timeout := time.Second * 10 // TODO: configure
+func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*ProofQuerier, error) {
 	client, err := newRPCClient(addr, timeout)
 
 	if err != nil {
-		//TODO: log
-		return nil, err
+		return nil, fmt.Errorf("could not initialize http client: %w", err)
 	}
 
 	err = client.Start()
 	if err != nil {
-		fmt.Printf("Could not start http client")
-		return nil, err
+		return nil, fmt.Errorf("could not start http client: %w", err)
 	}
 
 	proofer := ProofQuerier{Client: client, ChainID: chainId}
