@@ -32,7 +32,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//_, err = proofs.ProofAllBalances(ctx, querier, "cosmos", "cosmos1jp6xu6hjqap38wk72wk2lmaxvfqswupjamahpl", "stake")
 	//_, err = proofs.ProofAllDelegations(ctx, querier, []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
 	//_, err = proofs.ProofAllDelegations2(ctx, querier, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
-	err = proofs.ProofRewards(ctx, querier, "terra", "terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse", "terra1qqqz0ddedgke63z8xm8pqrujnxl0f9zdvus7yg", 0)
+	//err = proofs.ProofRewards(ctx, querier, "terra", "terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse", "terra1qqqz0ddedgke63z8xm8pqrujnxl0f9zdvus7yg", 0)
 
 	// {"transfer.recipient": interchain_account}
 	//recipientAddress := "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts"
@@ -44,8 +44,8 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//query := "tm.event = 'Tx'"
 	//query := "tx.height=3469"
 
-	//query := fmt.Sprintf("transfer.recipient='%s'", "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp")
-	//_, err = proofs.ProofTransactions(ctx, querier, query)
+	query := fmt.Sprintf("transfer.recipient='%s'", "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp")
+	_, err = proofs.ProofTransactions(ctx, querier, query)
 
 	//testTxProof(ctx, cfg, querier)
 

@@ -40,7 +40,7 @@ func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query
 			BlockProof:   item.Proof,
 			SuccessProof: *txResultProof,
 		}
-		fmt.Printf("made proof for height=%d index=%d\n", item.Height, item.Index)
+		fmt.Printf("made proof for height=%d index=%d proof=%+v\n", item.Height, item.Index, proof)
 		result = append(result, &proof)
 	}
 

@@ -3,10 +3,12 @@ package proofer
 import (
 	"context"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/kv"
-
+	"strings"
 	"time"
 
+	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -16,6 +18,7 @@ import (
 type ProofQuerier struct {
 	Client  *rpcclienthttp.HTTP
 	ChainID string
+	cdc     codec.LegacyAmino
 }
 
 func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*ProofQuerier, error) {
@@ -30,7 +33,10 @@ func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*Proof
 		return nil, fmt.Errorf("could not start http client: %w", err)
 	}
 
-	proofer := ProofQuerier{Client: client, ChainID: chainId}
+	legacyCdc := codec.NewLegacyAmino()
+	//cdc := codec.NewAminoCodec(legacyCdc)
+
+	proofer := ProofQuerier{Client: client, ChainID: chainId, cdc: *legacyCdc}
 	return &proofer, nil
 }
 
@@ -143,3 +149,41 @@ func newRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, erro
 	}
 	return rpcClient, nil
 }
+
+func (cc *ProofQuerier) Test(ctx context.Context, validatorAddress []byte, startHeight, endingHeight uint64) error {
+	height := int64(0)
+
+	///cosmos.staking.v1beta1.Query/DelegatorDelegations
+	// path := fmt.Sprintf("cosmos.distribution.v1beta1.Query/ValidatorSlashes", validatorAddress)
+	path := strings.Join([]string{"custom", distributiontypes.QuerierRoute, distributiontypes.QueryValidatorSlashes}, "/")
+	params := distributiontypes.NewQueryValidatorSlashesParams(validatorAddress, startHeight, endingHeight)
+	bz := cc.cdc.MustMarshalJSON(&params)
+	//TODO: marshal params
+	var back distributiontypes.QueryValidatorSlashesParams
+	cc.cdc.MustUnmarshalJSON(bz, &back)
+
+	req := abci.RequestQuery{
+		Path:   path,
+		Height: height,
+		Data:   bz,
+		Prove:  true,
+	}
+	res, err := cc.Client.ABCIQuery(ctx, req.Path, req.Data)
+
+	fmt.Printf("Result of Test: %+v\n", res)
+
+	return err
+}
+
+//func (cc *ProofQuerier) Test2(ctx context.Context, validatorAddress string, startHeight, endingHeight uint64) error {
+//	req := &distributiontypes.QueryValidatorSlashesRequest{ValidatorAddress: validatorAddress, StartingHeight: startHeight, EndingHeight: endingHeight}
+//	var conn *grpc.ClientConn
+//	queryClient := distributiontypes.NewQueryClient(conn)
+//	res, err := queryClient.ValidatorSlashes(ctx, req)
+//	fmt.Printf("Result of Test: %+v\n", res)
+//
+//	if err != nil {
+//		return err
+//	}
+//	return nil
+//}

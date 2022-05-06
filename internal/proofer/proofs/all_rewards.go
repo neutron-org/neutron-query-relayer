@@ -10,7 +10,15 @@ import (
 
 // TODO
 func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
+	// Get latest block for latest height
+	block, err := querier.Client.Block(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error fetching latest block: %w", err)
+	}
+
+	// Getting starting info
 	validatorAddressBytes, err := cosmostypes.GetFromBech32(validatorAddressBech32, prefix+cosmostypes.PrefixValidator+cosmostypes.PrefixOperator)
+	err = cosmostypes.VerifyAddressFormat(validatorAddressBytes)
 	if err != nil {
 		return fmt.Errorf("error converting validator address from bech32: %w", err)
 	}
@@ -33,6 +41,16 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 	fmt.Printf("Starting info: %+v\n", startingInfo)
 
 	// TODO: get delegation shares proof? or is it proven in other types?
+
+	startingHeight := startingInfo.Height
+	endingHeight := uint64(block.Block.Height)
+	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, startingHeight) // _fromPrefix
+	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, endingHeight+1) // toPrefix
+
+	p := distributiontypes.GetValidatorSlashEventPrefix(validatorAddressBytes)
+	storageValue, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.StoreKey, p)
+	fmt.Printf("Proof iterate: %+v", storageValue)
+	//err = querier.Test(ctx, validatorAddressBytes, startingHeight, endingHeight)
 
 	return nil
 }
