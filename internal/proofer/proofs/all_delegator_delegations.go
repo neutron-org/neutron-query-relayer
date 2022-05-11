@@ -8,23 +8,21 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
-func ProofAllDelegations(ctx context.Context, querier *proofer.ProofQuerier, validators []string, delegator string) (map[string]string, error) {
+func ProofAllDelegations(ctx context.Context, querier *proofer.ProofQuerier, prefix string, validators []string, delegator string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
-	delegatorBz, err := cosmostypes.GetFromBech32(delegator, "terra")
+	delegatorBz, err := cosmostypes.GetFromBech32(delegator, prefix)
 	if err != nil {
 		return nil, err
 	}
 
-	//delegatorPrefixKey := stakingtypes.GetDelegationsKey(delegatorBz)
 	for _, validator := range validators {
-		validatorBz, err := cosmostypes.GetFromBech32(validator, "terravaloper")
+		validatorBz, err := cosmostypes.GetFromBech32(validator, prefix+cosmostypes.PrefixValidator+cosmostypes.PrefixOperator)
 		if err != nil {
 			return nil, err
 		}
 
 		key := stakingtypes.GetDelegationKey(delegatorBz, validatorBz)
-		//key := append(banktypes.CreateAccountBalancesPrefix(bz), []byte(denom)...)
 		value, err := querier.QueryTendermintProof(ctx, inputHeight, storeKey, key)
 
 		var delegation stakingtypes.Delegation
@@ -38,10 +36,10 @@ func ProofAllDelegations(ctx context.Context, querier *proofer.ProofQuerier, val
 	return nil, nil
 }
 
-func ProofAllDelegations2(ctx context.Context, querier *proofer.ProofQuerier, delegator string) (map[string]string, error) {
+func ProofAllDelegations2(ctx context.Context, querier *proofer.ProofQuerier, prefix string, delegator string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
-	delegatorBz, err := cosmostypes.GetFromBech32(delegator, "terra")
+	delegatorBz, err := cosmostypes.GetFromBech32(delegator, prefix)
 	if err != nil {
 		return nil, err
 	}

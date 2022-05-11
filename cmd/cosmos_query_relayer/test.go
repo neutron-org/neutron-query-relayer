@@ -30,13 +30,14 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	}
 	//_, err = proofs.ProofAllBalances(ctx, querier, "terra", "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna")
 	//_, err = proofs.ProofAllBalances(ctx, querier, "cosmos", "cosmos1jp6xu6hjqap38wk72wk2lmaxvfqswupjamahpl", "stake")
-	//_, err = proofs.ProofAllDelegations(ctx, querier, []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
-	//_, err = proofs.ProofAllDelegations2(ctx, querier, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
+	//_, err = proofs.ProofAllDelegations(ctx, querier, "terra", []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
+	//_, err = proofs.ProofAllDelegations2(ctx, querier, "terra", "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
 	//err = proofs.ProofRewards(ctx, querier, "terra", "terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse", "terra1qqqz0ddedgke63z8xm8pqrujnxl0f9zdvus7yg", 0)
-	addresses := []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse", "terravaloper15zcjduavxc5mkp8qcqs9eyhwlqwdlrzy6jln3m", "terravaloper1v5hrqlv8dqgzvy0pwzqzg0gxy899rm4kdur03x", "terravaloper1kprce6kc08a6l03gzzh99hfpazfjeczfpzkkau", "terravaloper1c9ye54e3pzwm3e0zpdlel6pnavrj9qqvq89r3r", "terravaloper144l7c3uph5a7h62xd8u5et3rqvj3dqtvvka2fu", "terravaloper1542ek7muegmm806akl0lam5vlqlph7spflfcun", "terravaloper1sym8gyehrdsm03vdc44rg9sflg8zeuqwfzavhx", "terravaloper1khfcg09plqw84jxy5e7fj6ag4s2r9wqsgm7k94", "terravaloper15urq2dtp9qce4fyc85m6upwm9xul30496sgk37", "terravaloper1alpf6snw2d76kkwjv3dp4l7pcl6cn9uyt0tcj9", "terravaloper1nwrksgv2vuadma8ygs8rhwffu2ygk4j24w2mku", "terravaloper175hhkyxmkp8hf2zrzka7cnn7lk6mudtv4uuu64", "terravaloper13g7z3qq6f00qww3u4mpcs3xw5jhqwraswraapc", "terravaloper1jkqr2vfg4krfd4zwmsf7elfj07cjuzss30ux8g", "terravaloper15cupwhpnxhgylxa8n4ufyvux05xu864jcv0tsw"}
-	for _, address := range addresses {
-		err = proofs.ProofRewards(ctx, querier, "terra", address, "terra1qqqz0ddedgke63z8xm8pqrujnxl0f9zdvus7yg", 0)
-	}
+
+	//addresses := []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse", "terravaloper15zcjduavxc5mkp8qcqs9eyhwlqwdlrzy6jln3m", "terravaloper1v5hrqlv8dqgzvy0pwzqzg0gxy899rm4kdur03x", "terravaloper1kprce6kc08a6l03gzzh99hfpazfjeczfpzkkau", "terravaloper1c9ye54e3pzwm3e0zpdlel6pnavrj9qqvq89r3r", "terravaloper144l7c3uph5a7h62xd8u5et3rqvj3dqtvvka2fu", "terravaloper1542ek7muegmm806akl0lam5vlqlph7spflfcun", "terravaloper1sym8gyehrdsm03vdc44rg9sflg8zeuqwfzavhx", "terravaloper1khfcg09plqw84jxy5e7fj6ag4s2r9wqsgm7k94", "terravaloper15urq2dtp9qce4fyc85m6upwm9xul30496sgk37", "terravaloper1alpf6snw2d76kkwjv3dp4l7pcl6cn9uyt0tcj9", "terravaloper1nwrksgv2vuadma8ygs8rhwffu2ygk4j24w2mku", "terravaloper175hhkyxmkp8hf2zrzka7cnn7lk6mudtv4uuu64", "terravaloper13g7z3qq6f00qww3u4mpcs3xw5jhqwraswraapc", "terravaloper1jkqr2vfg4krfd4zwmsf7elfj07cjuzss30ux8g", "terravaloper15cupwhpnxhgylxa8n4ufyvux05xu864jcv0tsw"}
+	//for _, address := range addresses {
+	//	err = proofs.ProofRewards(ctx, querier, "terra", address, "terra1qqqz0ddedgke63z8xm8pqrujnxl0f9zdvus7yg", 0)
+	//}
 
 	// {"transfer.recipient": interchain_account}
 	//recipientAddress := "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts"
@@ -52,6 +53,8 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//_, err = proofs.ProofTransactions(ctx, querier, query)
 
 	//testTxProof(ctx, cfg, querier)
+
+	err = proofs.ProofExchangeRate(ctx, querier, "uluna")
 
 	if err != nil {
 		log.Println(err)

@@ -18,16 +18,16 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 	}
 
 	// Getting starting info
-	validatorAddressBytes, err := cosmostypes.GetFromBech32(validatorAddressBech32, prefix+cosmostypes.PrefixValidator+cosmostypes.PrefixOperator)
-	err = cosmostypes.VerifyAddressFormat(validatorAddressBytes)
+	validatorAddressBz, err := cosmostypes.GetFromBech32(validatorAddressBech32, prefix+cosmostypes.PrefixValidator+cosmostypes.PrefixOperator)
+	err = cosmostypes.VerifyAddressFormat(validatorAddressBz)
 	if err != nil {
 		return fmt.Errorf("error converting validator address from bech32: %w", err)
 	}
-	delegatorAddressBytes, err := cosmostypes.GetFromBech32(delegatorAddressBech32, prefix)
+	delegatorAddressBz, err := cosmostypes.GetFromBech32(delegatorAddressBech32, prefix)
 	if err != nil {
 		return fmt.Errorf("error converting delegator address from bech32: %w", err)
 	}
-	startingInfoKey := distributiontypes.GetDelegatorStartingInfoKey(validatorAddressBytes, delegatorAddressBytes)
+	startingInfoKey := distributiontypes.GetDelegatorStartingInfoKey(validatorAddressBz, delegatorAddressBz)
 	height := int64(0) // TODO: height?
 	startingInfoStorageValue, err := querier.QueryTendermintProof(ctx, height, distributiontypes.StoreKey, startingInfoKey)
 	if err != nil {
@@ -45,16 +45,16 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 
 	startingHeight := startingInfo.Height
 	endingHeight := uint64(block.Block.Height)
-	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, startingHeight) // _fromPrefix
-	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, endingHeight+1) // toPrefix
+	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight) // _fromPrefix
+	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, endingHeight+1) // toPrefix
 
-	//p := distributiontypes.GetValidatorSlashEventPrefix(validatorAddressBytes)
+	//p := distributiontypes.GetValidatorSlashEventPrefix(validatorAddressBz)
 	//storageValue, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.S	toreKey, p)
 	//fmt.Printf("Proof iterate: %+v", storageValue)
-	//err = querier.Test(ctx, validatorAddressBytes, startingHeight, endingHeight)
+	//err = querier.Test(ctx, validatorAddressBz, startingHeight, endingHeight)
 
 	// TODO: filter out slashes with height more than needed
-	allSlashes, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, startingHeight))
+	allSlashes, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight))
 	if err != nil {
 		return fmt.Errorf("error querying proofs for slashes: %w", err)
 	}
@@ -77,7 +77,7 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 
 	// For every needed period look for rewards
 	for _, item := range rewardPeriods {
-		value, err := querier.QueryTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorHistoricalRewardsKey(validatorAddressBytes, item))
+		value, err := querier.QueryTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorHistoricalRewardsKey(validatorAddressBz, item))
 		if err != nil {
 			return fmt.Errorf("could not query reward tendermint proof for period=%d: %w", item, err)
 		}

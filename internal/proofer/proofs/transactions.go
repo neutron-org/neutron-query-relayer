@@ -13,7 +13,7 @@ import (
 
 var perPage = 100
 
-// TODO: figure out how to query only required count of transactions
+// TODO: query transactions once
 func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query string) ([]*proofer.CompleteTransactionProof, error) {
 	orderBy := ""
 	page := 1
