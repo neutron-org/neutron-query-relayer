@@ -9,6 +9,7 @@ import (
 )
 
 // TODO
+// See cosmos-sdk x/distribution/keeper/delegation.go #CalculateDelegationRewards
 func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
 	// Get latest block for latest height
 	block, err := querier.Client.Block(ctx, nil)
@@ -47,10 +48,47 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, startingHeight) // _fromPrefix
 	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, endingHeight+1) // toPrefix
 
-	p := distributiontypes.GetValidatorSlashEventPrefix(validatorAddressBytes)
-	storageValue, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.StoreKey, p)
-	fmt.Printf("Proof iterate: %+v", storageValue)
+	//p := distributiontypes.GetValidatorSlashEventPrefix(validatorAddressBytes)
+	//storageValue, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.S	toreKey, p)
+	//fmt.Printf("Proof iterate: %+v", storageValue)
 	//err = querier.Test(ctx, validatorAddressBytes, startingHeight, endingHeight)
+
+	// TODO: filter out slashes with height more than needed
+	allSlashes, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBytes, startingHeight))
+	if err != nil {
+		return fmt.Errorf("error querying proofs for slashes: %w", err)
+	}
+
+	// TODO: check that we're not missing any periods, starting with `startingInfo.PreviousPeriod` and ending with `WHAT`?
+	// TODO: what is a period?
+	// Collect periods to calculate rewards from
+	rewardPeriods := make([]uint64, 0, len(allSlashes)+2)
+	rewardPeriods = append(rewardPeriods, startingInfo.PreviousPeriod)
+	for _, item := range allSlashes {
+		var event distributiontypes.ValidatorSlashEvent
+		err = event.Unmarshal(item.Value)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling ValidatorSlashEvent: %w", err)
+		}
+
+		rewardPeriods = append(rewardPeriods, event.ValidatorPeriod)
+	}
+	fmt.Printf("All slashes: %+v\n", allSlashes)
+
+	// For every needed period look for rewards
+	for _, item := range rewardPeriods {
+		value, err := querier.QueryTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorHistoricalRewardsKey(validatorAddressBytes, item))
+		if err != nil {
+			return fmt.Errorf("could not query reward tendermint proof for period=%d: %w", item, err)
+		}
+
+		var rewards distributiontypes.ValidatorHistoricalRewards
+		err = rewards.Unmarshal(value.Value)
+		if err != nil {
+			return fmt.Errorf("could not unmarshal rewards for period=%d: %w", item, err)
+		}
+		fmt.Printf("Rewards for period=%d: %+v\n", item, rewards)
+	}
 
 	return nil
 }
