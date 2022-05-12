@@ -20,25 +20,27 @@ var height int64 = 0
 var mode = signing.SignMode_SIGN_MODE_DIRECT
 
 type TxSubmitter struct {
-	ctx       context.Context
-	txf       tx.Factory
-	codec     Codec
-	rpcClient rpcclient.Client
-	chainID   string
+	ctx           context.Context
+	txf           tx.Factory
+	codec         Codec
+	rpcClient     rpcclient.Client
+	chainID       string
+	addressPrefix string
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdj float64, gasPrices string) (*TxSubmitter, error) {
+func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdj float64, gasPrices string, addressPrefix string, keyringRootDir string) (*TxSubmitter, error) {
 	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-	keybase, err := keyring.New(chainID, "test", "/Users/nhpd/lido/cosmos-query-relayer/keys", nil, codec.Marshaller)
+	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, codec.Marshaller)
 	if err != nil {
 		return nil, err
 	}
 	return &TxSubmitter{
-		ctx:       ctx,
-		codec:     codec,
-		txf:       TxFactory(chainID, codec, gasAdj, gasPrices, keybase),
-		rpcClient: rpcClient,
-		chainID:   chainID,
+		ctx:           ctx,
+		codec:         codec,
+		txf:           TxFactory(chainID, codec, gasAdj, gasPrices, keybase),
+		rpcClient:     rpcClient,
+		chainID:       chainID,
+		addressPrefix: addressPrefix,
 	}, nil
 }
 
@@ -61,22 +63,23 @@ func (cc *TxSubmitter) Send(address1, address2 string) error {
 		return err
 	}
 	gasNeeded, err := cc.calculateGas(msgs...)
+	fmt.Printf("Gas needed: %+v\n", gasNeeded)
 	if err != nil {
 		return err
 	}
-	_, err = cc.buildTxBz(msgs, gasNeeded)
+	bz, err := cc.buildTxBz(msgs, address1, gasNeeded)
 	if err != nil {
 		return err
 	}
-	//res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
+	res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
 
-	//fmt.Printf("Broadcast result: res=%+v err=%+v", res, err)
+	fmt.Printf("Broadcast result: res=%+v err=%+v", res.Log, err)
 
 	return nil
 }
 
 func (cc *TxSubmitter) buildMsgs(address1, address2 string) ([]types.Msg, error) {
-	amount := types.NewCoins(types.NewInt64Coin("uatom", 1))
+	amount := types.NewCoins(types.NewInt64Coin("uluna", 100))
 	msg := &banktypes.MsgSend{FromAddress: address1, ToAddress: address2, Amount: amount}
 
 	err := msg.ValidateBasic()
@@ -89,7 +92,7 @@ func (cc *TxSubmitter) buildMsgs(address1, address2 string) ([]types.Msg, error)
 	return []types.Msg{msg}, nil
 }
 
-func (cc *TxSubmitter) buildTxBz(msgs []types.Msg, gasAmount uint64) ([]byte, error) {
+func (cc *TxSubmitter) buildTxBz(msgs []types.Msg, feePayerAddress string, gasAmount uint64) ([]byte, error) {
 	txBuilder := cc.codec.TxConfig.NewTxBuilder()
 	//aminoConfig := legacytx.StdTxConfig{Cdc: cc.codec.Amino}
 	//txBuilder := aminoConfig.NewTxBuilder()
@@ -105,6 +108,15 @@ func (cc *TxSubmitter) buildTxBz(msgs []types.Msg, gasAmount uint64) ([]byte, er
 	txBuilder.SetGasLimit(gasAmount) // TODO: correct?
 	//txBuilder.SetFeeAmount(...)
 	txBuilder.SetMemo("bob to alice")
+
+	feePayerBz, err := types.GetFromBech32(feePayerAddress, cc.addressPrefix)
+	if err != nil {
+		return nil, err
+	}
+	txBuilder.SetFeePayer(feePayerBz)
+	txBuilder.SetFeeAmount(types.NewCoins(types.NewInt64Coin("uluna", 2000)))
+	//txBuilder.SetFeeGranter()
+	//txBuilder.SetFeeAmount()
 	//txBuilder.SetTimeoutHeight(...)
 
 	err = tx.Sign(cc.txf, "bob", txBuilder, true)
@@ -135,13 +147,18 @@ func (cc *TxSubmitter) calculateGas(msgs ...types.Msg) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	//fmt.Printf("Simulate res: %+v\n", res) // Prints estimated gas used.
 
 	var simRes txtypes.SimulateResponse
+
 	if err := simRes.Unmarshal(res.Response.Value); err != nil {
 		return 0, err
 	}
+	if simRes.GasInfo == nil {
+		return 0, fmt.Errorf("no result in simulation response")
+	}
 
-	fmt.Printf("Simulate Result: %+v\n", simRes) // Prints estimated gas used.
+	//fmt.Printf("Simulate Result: %+v\n", simRes) // Prints estimated gas used.
 
 	return uint64(cc.txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil
 }

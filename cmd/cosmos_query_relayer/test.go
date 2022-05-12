@@ -65,7 +65,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	if err != nil {
 		log.Println(err)
 	}
-	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, submitter.MakeCodecDefault(), cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices)
+	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, submitter.MakeCodecDefault(), cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, cfg.LidoChain.Keyring.Dir) // TODO: is chain prefix conceptually correct here?
 	if err != nil {
 		log.Println(err)
 	}
