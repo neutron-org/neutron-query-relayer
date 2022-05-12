@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"log"
 
 	sub "github.com/lidofinance/cosmos-query-relayer/internal/chain"
@@ -20,8 +21,20 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
+	setSDKConfig(cfg)
 	testProofs(ctx, cfg)
 	//testSubscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
+}
+
+func setSDKConfig(cfg config.CosmosQueryRelayerConfig) {
+	// TODO: we set global prefix for addresses to the lido chain, is it ok?
+	sdkCfg := sdk.GetConfig()
+	sdkCfg.SetBech32PrefixForAccount(cfg.LidoChain.ChainPrefix, cfg.LidoChain.ChainPrefix+sdk.PrefixPublic)
+	//	config.SetBech32PrefixForValidator(yourBech32PrefixValAddr, yourBech32PrefixValPub)
+	//	config.SetBech32PrefixForConsensusNode(yourBech32PrefixConsAddr, yourBech32PrefixConsPub)
+	//	config.SetPurpose(yourPurpose)
+	//	config.SetCoinType(yourCoinType)
+	sdkCfg.Seal()
 }
 
 func subscribeLidoChain(ctx context.Context, addr string) {

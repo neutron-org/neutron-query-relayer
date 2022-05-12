@@ -61,11 +61,11 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		log.Println(err)
 	}
 
-	rpcClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
 		log.Println(err)
 	}
-	s, err := submitter.NewTxSubmitter(ctx, rpcClient, cfg.TargetChain.ChainID, submitter.MakeCodecConfig(), 1.0, cfg.TargetChain.Keyring.GasPrices)
+	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.TargetChain.ChainID, submitter.MakeCodecDefault(), 1.0, cfg.TargetChain.Keyring.GasPrices)
 	if err != nil {
 		log.Println(err)
 	}

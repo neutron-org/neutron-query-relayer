@@ -6,14 +6,21 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/std"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
+	authz "github.com/cosmos/cosmos-sdk/x/authz/module"
+	"github.com/cosmos/cosmos-sdk/x/bank"
 )
 
 type Codec struct {
 	InterfaceRegistry types.InterfaceRegistry
-	Marshaler         codec.Codec
+	Marshaller        codec.Codec
 	TxConfig          client.TxConfig
 	Amino             *codec.LegacyAmino
+}
+
+func MakeCodecDefault() Codec {
+	return MakeCodec(ModuleBasics)
 }
 
 func MakeCodec(moduleBasics []module.AppModuleBasic) Codec {
@@ -28,11 +35,20 @@ func MakeCodec(moduleBasics []module.AppModuleBasic) Codec {
 
 func MakeCodecConfig() Codec {
 	interfaceRegistry := types.NewInterfaceRegistry()
-	marshaler := codec.NewProtoCodec(interfaceRegistry)
+	marshaller := codec.NewProtoCodec(interfaceRegistry)
 	return Codec{
 		InterfaceRegistry: interfaceRegistry,
-		Marshaler:         marshaler,
-		TxConfig:          tx.NewTxConfig(marshaler, tx.DefaultSignModes),
+		Marshaller:        marshaller,
+		TxConfig:          tx.NewTxConfig(marshaller, tx.DefaultSignModes),
 		Amino:             codec.NewLegacyAmino(),
 	}
 }
+
+var (
+	ModuleBasics = []module.AppModuleBasic{
+		auth.AppModuleBasic{},
+		authz.AppModuleBasic{},
+		bank.AppModuleBasic{},
+		//transfer.AppModuleBasic{},
+	}
+)

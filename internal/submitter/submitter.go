@@ -22,7 +22,7 @@ type TxSubmitter struct {
 
 func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainId string, codec Codec, gasAdj float64, gasPrices string) (*TxSubmitter, error) {
 	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-	keybase, err := keyring.New(chainId, "test", "/Users/nhpd/lido/cosmos-query-relayer/keys", nil, codec.Marshaler)
+	keybase, err := keyring.New(chainId, "test", "/Users/nhpd/lido/cosmos-query-relayer/keys", nil, codec.Marshaller)
 	if err != nil {
 		return nil, err
 	}
@@ -68,33 +68,46 @@ func (cc *TxSubmitter) Send(prefix, address1, address2 string) error {
 var mode = signing.SignMode_SIGN_MODE_DIRECT
 
 func (cc *TxSubmitter) buildTxBz(prefix, address1, address2 string) ([]byte, error) {
-	bz1, err := types.GetFromBech32(address1, prefix)
+	//bz1, err := types.GetFromBech32(address1, prefix)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//bz2, err := types.GetFromBech32(address2, prefix)
+	//if err != nil {
+	//	return nil, err
+	//}
+	// TODO: build needed msgs
+	amount := types.NewCoins(types.NewInt64Coin("uatom", 1))
+	//msg := banktypes.NewMsgSend(bz1, bz2, amount)
+	msg := &banktypes.MsgSend{FromAddress: address1, ToAddress: address2, Amount: amount}
+	err := msg.ValidateBasic()
 	if err != nil {
+		//fmt.Printf("\n\n\nvalidate error\n\n\n")
 		return nil, err
 	}
-	bz2, err := types.GetFromBech32(address2, prefix)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: build msgs
-	msg := banktypes.NewMsgSend(bz1, bz2, types.NewCoins(types.NewInt64Coin("uatom", 1)))
-	err = msg.ValidateBasic()
-	if err != nil {
-		return nil, err
-	}
+	kek := msg.GetSignBytes()
+	fmt.Printf("SIGNED BYTERS: %+v\n\n\n", string(kek))
 	txBuilder := cc.codec.TxConfig.NewTxBuilder()
+
+	//aminoConfig := legacytx.StdTxConfig{Cdc: cc.codec.Amino}
+	//txBuilder := aminoConfig.NewTxBuilder()
 	err = txBuilder.SetMsgs(msg)
+	//signatures :=
+	//txBuilder.SetSignatures(signatures)
 	if err != nil {
+		fmt.Printf("set msgs failure")
 		return nil, err
 	}
 
 	//txBuilder.SetGasLimit(30000)
 	//txBuilder.SetFeeAmount(...)
-	//txBuilder.SetMemo("bob to alice")
+	txBuilder.SetMemo("bob to alice")
 	//txBuilder.SetTimeoutHeight(...)
 
-	//err = tx.Sign(cc.txf, "bob", txBuilder, false)
+	err = tx.Sign(cc.txf, "bob", txBuilder, true)
+
 	if err != nil {
+		fmt.Printf("KEK1")
 		return nil, err
 	}
 
