@@ -7,6 +7,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
+	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 )
@@ -56,6 +57,20 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 
 	err = proofs.ProofExchangeRate(ctx, querier, "uluna")
 
+	if err != nil {
+		log.Println(err)
+	}
+
+	rpcClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+	if err != nil {
+		log.Println(err)
+	}
+	s, err := submitter.NewTxSubmitter(ctx, rpcClient, cfg.TargetChain.ChainID, submitter.MakeCodecConfig(), 1.0, cfg.TargetChain.Keyring.GasPrices)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = s.Send(cfg.LidoChain.ChainPrefix, "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
 	if err != nil {
 		log.Println(err)
 	}

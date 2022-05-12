@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/cosmos/cosmos-sdk v0.46.0-beta2.0.20220503141238-567a6beb8c16
+	github.com/cosmos/cosmos-sdk/api v0.1.0
 	github.com/tendermint/tendermint v0.35.4
 	github.com/vrischmann/envconfig v1.3.0
 )

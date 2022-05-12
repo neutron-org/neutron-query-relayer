@@ -92,3 +92,6 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 
 	return nil
 }
+
+// TODO: сравнить output из функции и результат вызова GetRewards
+// see: lido-terra-integration-tests

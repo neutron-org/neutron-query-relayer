@@ -22,7 +22,7 @@ type ProofQuerier struct {
 }
 
 func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*ProofQuerier, error) {
-	client, err := newRPCClient(addr, timeout)
+	client, err := NewRPCClient(addr, timeout)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize http client: %w", err)
@@ -137,7 +137,8 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height 
 	return result, nil
 }
 
-func newRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, error) {
+// TODO: move out of here?
+func NewRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, error) {
 	httpClient, err := jsonrpcclient.DefaultHTTPClient(addr)
 	if err != nil {
 		return nil, err
