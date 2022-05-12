@@ -18,28 +18,30 @@ type TxSubmitter struct {
 	txf       tx.Factory
 	codec     Codec
 	rpcClient rpcclient.Client
+	chainID   string
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainId string, codec Codec, gasAdj float64, gasPrices string) (*TxSubmitter, error) {
+func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdj float64, gasPrices string) (*TxSubmitter, error) {
 	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-	keybase, err := keyring.New(chainId, "test", "/Users/nhpd/lido/cosmos-query-relayer/keys", nil, codec.Marshaller)
+	keybase, err := keyring.New(chainID, "test", "/Users/nhpd/lido/cosmos-query-relayer/keys", nil, codec.Marshaller)
 	if err != nil {
 		return nil, err
 	}
 	return &TxSubmitter{
 		ctx:       ctx,
 		codec:     codec,
-		txf:       TxFactory(chainId, codec, gasAdj, gasPrices, keybase),
+		txf:       TxFactory(chainID, codec, gasAdj, gasPrices, keybase),
 		rpcClient: rpcClient,
+		chainID:   chainID,
 	}, nil
 }
 
-func TxFactory(chainId string, codec Codec, gasAdj float64, gasPrices string, keybase keyring.Keyring) tx.Factory {
+func TxFactory(chainId string, codec Codec, gasAdjustment float64, gasPrices string, keybase keyring.Keyring) tx.Factory {
 	return tx.Factory{}.
 		//WithAccountRetriever(cc).
 		WithChainID(chainId).
 		WithTxConfig(codec.TxConfig).
-		WithGasAdjustment(gasAdj).
+		WithGasAdjustment(gasAdjustment).
 		WithGasPrices(gasPrices).
 		WithKeybase(keybase).
 		WithSignMode(mode)
@@ -52,7 +54,7 @@ func (cc *TxSubmitter) Send(prefix, address1, address2 string) error {
 	if err != nil {
 		return err
 	}
-	//err = cc.simulateTx(bz)
+	_, err = cc.calculateGas(bz)
 	if err != nil {
 		return err
 	}
@@ -85,8 +87,8 @@ func (cc *TxSubmitter) buildTxBz(prefix, address1, address2 string) ([]byte, err
 		//fmt.Printf("\n\n\nvalidate error\n\n\n")
 		return nil, err
 	}
-	kek := msg.GetSignBytes()
-	fmt.Printf("SIGNED BYTERS: %+v\n\n\n", string(kek))
+	signedTx := msg.GetSignBytes()
+	fmt.Printf("\nSIGNED Tx: %+v\n\n", string(signedTx))
 	txBuilder := cc.codec.TxConfig.NewTxBuilder()
 
 	//aminoConfig := legacytx.StdTxConfig{Cdc: cc.codec.Amino}
@@ -107,7 +109,6 @@ func (cc *TxSubmitter) buildTxBz(prefix, address1, address2 string) ([]byte, err
 	err = tx.Sign(cc.txf, "bob", txBuilder, true)
 
 	if err != nil {
-		fmt.Printf("KEK1")
 		return nil, err
 	}
 
@@ -115,7 +116,8 @@ func (cc *TxSubmitter) buildTxBz(prefix, address1, address2 string) ([]byte, err
 	return bz, err
 }
 
-func (cc *TxSubmitter) simulateTx(txBytes []byte) error {
+func (cc *TxSubmitter) calculateGas(txBytes []byte) (uint64, error) {
+	//BuildSimTx(txf, msgs...)
 	// We then call the Simulate method on this client.
 	simQuery := abci.RequestQuery{
 		Path: "/cosmos.tx.v1beta1.Service/Simulate",
@@ -123,15 +125,53 @@ func (cc *TxSubmitter) simulateTx(txBytes []byte) error {
 	}
 	res, err := cc.rpcClient.ABCIQuery(cc.ctx, simQuery.Path, simQuery.Data)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	var simRes txtypes.SimulateResponse
 	if err := simRes.Unmarshal(res.Response.Value); err != nil {
-		return err
+		return 0, err
 	}
 
 	fmt.Printf("Simulate Result: %+v\n", simRes) // Prints estimated gas used.
 
-	return nil
+	return uint64(cc.txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil
 }
+
+//func (cc *ChainClient) CalculateGas(ctx context.Context, txf tx.Factory, msgs ...sdk.Msg) (txtypes.SimulateResponse, uint64, error) {
+//	var txBytes []byte
+//	if err := retry.Do(func() error {
+//		var err error
+//		txBytes, err = BuildSimTx(txf, msgs...)
+//		if err != nil {
+//			return err
+//		}
+//		return nil
+//	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
+//		return txtypes.SimulateResponse{}, 0, err
+//	}
+//
+//	simQuery := abci.RequestQuery{
+//		Path: "/cosmos.tx.v1beta1.Service/Simulate",
+//		Data: txBytes,
+//	}
+//
+//	var res abci.ResponseQuery
+//	if err := retry.Do(func() error {
+//		var err error
+//		res, err = cc.QueryABCI(ctx, simQuery)
+//		if err != nil {
+//			return err
+//		}
+//		return nil
+//	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
+//		return txtypes.SimulateResponse{}, 0, err
+//	}
+//
+//	var simRes txtypes.SimulateResponse
+//	if err := simRes.Unmarshal(res.Value); err != nil {
+//		return txtypes.SimulateResponse{}, 0, err
+//	}
+//
+//	return simRes, uint64(txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil
+//}

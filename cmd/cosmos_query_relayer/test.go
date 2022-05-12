@@ -65,7 +65,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	if err != nil {
 		log.Println(err)
 	}
-	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.TargetChain.ChainID, submitter.MakeCodecDefault(), 1.0, cfg.TargetChain.Keyring.GasPrices)
+	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, submitter.MakeCodecDefault(), cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices)
 	if err != nil {
 		log.Println(err)
 	}

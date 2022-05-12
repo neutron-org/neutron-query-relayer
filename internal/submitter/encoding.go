@@ -45,6 +45,7 @@ func MakeCodecConfig() Codec {
 }
 
 var (
+	// TODO: do we need these?
 	ModuleBasics = []module.AppModuleBasic{
 		auth.AppModuleBasic{},
 		authz.AppModuleBasic{},
