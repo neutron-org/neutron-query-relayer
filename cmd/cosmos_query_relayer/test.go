@@ -70,7 +70,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		log.Println(err)
 	}
 
-	err = s.Send(cfg.LidoChain.ChainPrefix, "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
+	err = s.Send("terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
 	if err != nil {
 		log.Println(err)
 	}
