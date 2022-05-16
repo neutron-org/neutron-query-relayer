@@ -3,12 +3,12 @@ package proofs
 import (
 	"context"
 	"fmt"
-	cosmostypes "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
-// TODO
+// TODO: test with blockchain where slashing events are there
 // See cosmos-sdk x/distribution/keeper/delegation.go #CalculateDelegationRewards
 func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
 	// Get latest block for latest height
@@ -18,12 +18,12 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 	}
 
 	// Getting starting info
-	validatorAddressBz, err := cosmostypes.GetFromBech32(validatorAddressBech32, prefix+cosmostypes.PrefixValidator+cosmostypes.PrefixOperator)
-	err = cosmostypes.VerifyAddressFormat(validatorAddressBz)
+	validatorAddressBz, err := sdk.GetFromBech32(validatorAddressBech32, prefix+sdk.PrefixValidator+sdk.PrefixOperator)
+	err = sdk.VerifyAddressFormat(validatorAddressBz)
 	if err != nil {
 		return fmt.Errorf("error converting validator address from bech32: %w", err)
 	}
-	delegatorAddressBz, err := cosmostypes.GetFromBech32(delegatorAddressBech32, prefix)
+	delegatorAddressBz, err := sdk.GetFromBech32(delegatorAddressBech32, prefix)
 	if err != nil {
 		return fmt.Errorf("error converting delegator address from bech32: %w", err)
 	}

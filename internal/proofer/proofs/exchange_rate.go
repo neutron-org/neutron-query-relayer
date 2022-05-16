@@ -3,7 +3,7 @@ package proofs
 import (
 	"context"
 	"fmt"
-	cosmostypes "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
@@ -19,7 +19,7 @@ func ProofExchangeRate(ctx context.Context, querier *proofer.ProofQuerier, denom
 	}
 
 	// TODO: use not deprecated types
-	var amount cosmostypes.Int
+	var amount sdk.Int
 	err = amount.Unmarshal(value.Value)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling value exchange rate for denom=%s: %w", denom, err)

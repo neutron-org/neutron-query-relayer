@@ -1,4 +1,4 @@
-package proofer
+package relayer
 
 import (
 	"strings"

@@ -175,16 +175,3 @@ func (cc *ProofQuerier) Test(ctx context.Context, validatorAddress []byte, start
 
 	return err
 }
-
-//func (cc *ProofQuerier) Test2(ctx context.Context, validatorAddress string, startHeight, endingHeight uint64) error {
-//	req := &distributiontypes.QueryValidatorSlashesRequest{ValidatorAddress: validatorAddress, StartingHeight: startHeight, EndingHeight: endingHeight}
-//	var conn *grpc.ClientConn
-//	queryClient := distributiontypes.NewQueryClient(conn)
-//	res, err := queryClient.ValidatorSlashes(ctx, req)
-//	fmt.Printf("Result of Test: %+v\n", res)
-//
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}

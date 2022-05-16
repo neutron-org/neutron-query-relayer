@@ -3,7 +3,7 @@ package proofs
 import (
 	"context"
 	"fmt"
-	cosmostypes "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
@@ -11,13 +11,13 @@ import (
 func ProofAllDelegations(ctx context.Context, querier *proofer.ProofQuerier, prefix string, validators []string, delegator string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
-	delegatorBz, err := cosmostypes.GetFromBech32(delegator, prefix)
+	delegatorBz, err := sdk.GetFromBech32(delegator, prefix)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, validator := range validators {
-		validatorBz, err := cosmostypes.GetFromBech32(validator, prefix+cosmostypes.PrefixValidator+cosmostypes.PrefixOperator)
+		validatorBz, err := sdk.GetFromBech32(validator, prefix+sdk.PrefixValidator+sdk.PrefixOperator)
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func ProofAllDelegations(ctx context.Context, querier *proofer.ProofQuerier, pre
 func ProofAllDelegations2(ctx context.Context, querier *proofer.ProofQuerier, prefix string, delegator string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
-	delegatorBz, err := cosmostypes.GetFromBech32(delegator, prefix)
+	delegatorBz, err := sdk.GetFromBech32(delegator, prefix)
 	if err != nil {
 		return nil, err
 	}

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/lidofinance/cosmos-query-relayer/internal/relayer"
 	"log"
 
 	sub "github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
@@ -26,6 +26,8 @@ func main() {
 	//testSubscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
 }
 
+// NOTE: cosmos-sdk sets global values for prefixes when parsing addresses and so on
+// Without this some functions just does not work as intended
 func setSDKConfig(cfg config.CosmosQueryRelayerConfig) {
 	// TODO: we set global prefix for addresses to the lido chain, is it ok?
 	sdkCfg := sdk.GetConfig()
@@ -37,13 +39,13 @@ func setSDKConfig(cfg config.CosmosQueryRelayerConfig) {
 	sdkCfg.Seal()
 }
 
-func subscribeLidoChain(ctx context.Context, addr string) {
+func subscribeLidoChain(ctx context.Context, rpcAddress string) {
 	onEvent := func(event coretypes.ResultEvent) {
 		//TODO: maybe make proofer a class with querier inside and instantiate it here, call GetProof on it?
 		fmt.Printf("OnEvent(%+v)", event.Data)
-		go proofer.GetProof(event)
+		go relayer.Relayer{}.Proof(event)
 	}
-	err := sub.Subscribe(ctx, addr, onEvent, sub.Query)
+	err := sub.Subscribe(ctx, rpcAddress, onEvent, sub.Query)
 	if err != nil {
 		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}

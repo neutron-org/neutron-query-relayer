@@ -3,7 +3,7 @@ package proofs
 import (
 	"context"
 	"fmt"
-	cosmostypes "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
@@ -29,7 +29,7 @@ type allBalancesResponse struct {
 func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, address string, denom string) (map[string]string, error) {
 	inputHeight := int64(0)
 	storeKey := banktypes.StoreKey
-	bytesAddress, err := cosmostypes.GetFromBech32(address, chainPrefix)
+	bytesAddress, err := sdk.GetFromBech32(address, chainPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainP
 		return nil, fmt.Errorf("failed to query tendermint proof for balances: %w", err)
 	}
 
-	var amount cosmostypes.Coin
+	var amount sdk.Coin
 	if err := amount.Unmarshal(value.Value); err != nil {
 		fmt.Printf("failed to unmarshal the balances response: %s", err)
 		return nil, err
