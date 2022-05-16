@@ -52,36 +52,12 @@ func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID str
 func (cc *TxSubmitter) Send(address1, address2 string) error {
 	fmt.Printf("About to Send coins from / to =: %v / %v\n", address1, address2)
 
-	msgs, err := cc.buildMsgs(address1, address2)
+	msgs, err := cc.buildSendMsgs(address1, address2)
 	if err != nil {
 		return err
 	}
 
-	account, err := cc.QueryAccount(address1)
-	if err != nil {
-		return err
-	}
-
-	txf := cc.baseTxf.
-		WithAccountNumber(account.AccountNumber).
-		WithSequence(account.Sequence)
-
-	gasNeeded, err := cc.calculateGas(txf, msgs...)
-	if err != nil {
-		return err
-	}
-
-	txf = txf.WithGas(gasNeeded)
-
-	bz, err := cc.buildTxBz(txf, msgs, address1, gasNeeded)
-	if err != nil {
-		return err
-	}
-	res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
-
-	fmt.Printf("Broadcast result: code=%+v log=%v err=%+v", res.Code, res.Log, err)
-
-	return nil
+	return cc.buildAndSendTx(address1, msgs)
 }
 
 // QueryAccount returns BaseAccount for given account address
@@ -115,7 +91,35 @@ func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, err
 	return &account, nil
 }
 
-func (cc *TxSubmitter) buildMsgs(address1, address2 string) ([]types.Msg, error) {
+func (cc *TxSubmitter) buildAndSendTx(senderAddress string, msgs []types.Msg) error {
+	account, err := cc.QueryAccount(senderAddress)
+	if err != nil {
+		return err
+	}
+
+	txf := cc.baseTxf.
+		WithAccountNumber(account.AccountNumber).
+		WithSequence(account.Sequence)
+
+	gasNeeded, err := cc.calculateGas(txf, msgs...)
+	if err != nil {
+		return err
+	}
+
+	txf = txf.WithGas(gasNeeded)
+
+	bz, err := cc.buildTxBz(txf, msgs, senderAddress, gasNeeded)
+	if err != nil {
+		return err
+	}
+	res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
+
+	fmt.Printf("Broadcast result: code=%+v log=%v err=%+v", res.Code, res.Log, err)
+
+	return nil
+}
+
+func (cc *TxSubmitter) buildSendMsgs(address1, address2 string) ([]types.Msg, error) {
 	amount := types.NewCoins(types.NewInt64Coin("uluna", 100000))
 	msg := &banktypes.MsgSend{FromAddress: address1, ToAddress: address2, Amount: amount}
 
