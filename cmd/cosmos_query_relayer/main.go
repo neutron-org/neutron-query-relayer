@@ -45,7 +45,7 @@ func main() {
 	}
 	submit := submitter.NewProofSubmitter(txSubmitter)
 
-	relayer := relay.NewRelayer(querier, submit, cfg.TargetChain.ChainPrefix, cfg.TargetChain.SubmitTxAuthor)
+	relayer := relay.NewRelayer(querier, submit, cfg.TargetChain.ChainPrefix, cfg.LidoChain.SubmitTxAuthor)
 
 	err = sub.Subscribe(ctx, cfg.LidoChain.RPCAddress, sub.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		relayer.Proof(ctx, event)

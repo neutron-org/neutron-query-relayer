@@ -36,6 +36,8 @@ type CosmosQueryRelayerConfig struct {
 			//LOCAL INTERCHAIN ADAPTER
 			GasPrices string `envconfig:"default=0.5stake"`
 		}
+
+		SubmitTxAuthor string `envconfig:"default=TODO"`
 	}
 	TargetChain struct {
 		Timeout time.Duration `envconfig:"default=5s"`
@@ -45,8 +47,7 @@ type CosmosQueryRelayerConfig struct {
 		//RPCAddress string `envconfig:"default=tcp://127.0.0.1:26657"`
 		ChainID string `envconfig:"default=columbus-5"`
 		//ChainID     string `envconfig:"default=testnet"`
-		ChainPrefix    string `envconfig:"default=terra"`
-		SubmitTxAuthor string `envconfig:"default=TODO"`
+		ChainPrefix string `envconfig:"default=terra"`
 	}
 }
 

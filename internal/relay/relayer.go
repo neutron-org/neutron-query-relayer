@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
@@ -24,6 +25,10 @@ type QueryEventMessage struct {
 	parameters  string
 }
 
+type GetDelegatorDelegationsParameters struct {
+	Delegator string `json:"delegator"`
+}
+
 func NewRelayer(querier *proofer.ProofQuerier, submitter *submitter.ProofSubmitter, targetChainPrefix string, submitTxAuthor string) Relayer {
 	return Relayer{querier: querier, submitter: submitter, targetChainPrefix: targetChainPrefix, submitTxAuthor: submitTxAuthor}
 }
@@ -43,6 +48,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 	for _, m := range messages {
 		err := r.ProofMessage(ctx, m)
 		if err != nil {
+			fmt.Printf("\ncould not process message query_id=%s err=%s\n", m.queryId, err)
 			//	TODO: log
 		}
 	}
@@ -84,12 +90,18 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 	return messages
 }
 
-// TODO: make some logging and monitoring there
 func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
+	fmt.Printf("ProofMessage message_type=%s", m.messageType)
 	switch m.messageType {
-	case "cosmos.staking.Query/DelegatorDelegations":
-		delegatorAddress := m.parameters
-		proof, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, delegatorAddress)
+	case "x/staking/DelegatorDelegations":
+		fmt.Printf("Unmarshal parameters=%s", m.parameters)
+		var delegatorParams GetDelegatorDelegationsParameters
+		err := json.Unmarshal([]byte(m.parameters), &delegatorParams)
+		if err != nil {
+			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
+		}
+
+		proof, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, delegatorParams.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
 		}

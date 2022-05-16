@@ -32,5 +32,7 @@ func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent fun
 }
 
 func SubscribeQuery(zoneId string) string {
-	return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", "interchainqueries", "query", zoneId)
+	// TODO: fix after zone_id is saved in message
+	//return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", "interchainqueries", "query", zoneId)
+	return fmt.Sprintf("message.module='%s' AND message.action='%s'", "interchainqueries", "query")
 }

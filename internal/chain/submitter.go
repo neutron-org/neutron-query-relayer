@@ -71,10 +71,14 @@ func (cc *TxSubmitter) BuildAndSendTx(senderAddress string, msgs []types.Msg) er
 	}
 	res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
 
-	fmt.Printf("Broadcast result: code=%+v log=%v err=%+v", res.Code, res.Log, err)
+	//fmt.Printf("Broadcast result: code=%+v log=%v err=%+v", res.Code, res.Log, err)
 
 	// TODO: parse result code to determine success or not
-	return nil
+	if res.Code == 0 {
+		return nil
+	} else {
+		return fmt.Errorf("error broadcasting transaction with log=%s", res.Log)
+	}
 }
 
 // QueryAccount returns BaseAccount for given account address
@@ -91,6 +95,10 @@ func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, err
 	res, err := cc.rpcClient.ABCIQueryWithOptions(cc.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	if res.Response.Code != 0 {
+		return nil, fmt.Errorf("error fetching account with address=%s log=%s", address, res.Response.Log)
 	}
 
 	var response authtypes.QueryAccountResponse
