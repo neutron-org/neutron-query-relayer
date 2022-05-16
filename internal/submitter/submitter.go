@@ -15,8 +15,6 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
-//var mode = signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
-
 var mode = signing.SignMode_SIGN_MODE_DIRECT
 
 type TxSubmitter struct {
@@ -28,16 +26,15 @@ type TxSubmitter struct {
 	addressPrefix string
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdj float64, gasPrices string, addressPrefix string, keyringRootDir string) (*TxSubmitter, error) {
-	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, codec.Marshaller)
-	if err != nil {
-		return nil, err
-	}
+func TestKeybase(chainID string, backend string, keyringRootDir string, codec Codec) (keyring.Keyring, error) {
+	return keyring.New(chainID, "test", keyringRootDir, nil, codec.Marshaller)
+}
+
+func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdjustment float64, gasPrices string, addressPrefix string, keybase keyring.Keyring) (*TxSubmitter, error) {
 	baseTxf := tx.Factory{}.
 		WithChainID(chainID).
 		WithTxConfig(codec.TxConfig).
-		WithGasAdjustment(gasAdj).
+		WithGasAdjustment(gasAdjustment).
 		WithGasPrices(gasPrices).
 		WithKeybase(keybase).
 		WithSignMode(mode)
@@ -51,7 +48,7 @@ func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID str
 	}, nil
 }
 
-// TODO: submits query with proof back to lido chain
+// Send submits query with proof back to lido chain
 func (cc *TxSubmitter) Send(address1, address2 string) error {
 	fmt.Printf("About to Send coins from / to =: %v / %v\n", address1, address2)
 
@@ -87,6 +84,37 @@ func (cc *TxSubmitter) Send(address1, address2 string) error {
 	return nil
 }
 
+// QueryAccount returns BaseAccount for given account address
+func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, error) {
+	request := authtypes.QueryAccountRequest{Address: address}
+	req, err := request.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	simQuery := abci.RequestQuery{
+		Path: "/cosmos.auth.v1beta1.Query/Account",
+		Data: req,
+	}
+	res, err := cc.rpcClient.ABCIQueryWithOptions(cc.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	var response authtypes.QueryAccountResponse
+	if err := response.Unmarshal(res.Response.Value); err != nil {
+		return nil, err
+	}
+
+	var account authtypes.BaseAccount
+	err = account.Unmarshal(response.Account.Value)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &account, nil
+}
+
 func (cc *TxSubmitter) buildMsgs(address1, address2 string) ([]types.Msg, error) {
 	amount := types.NewCoins(types.NewInt64Coin("uluna", 100000))
 	msg := &banktypes.MsgSend{FromAddress: address1, ToAddress: address2, Amount: amount}
@@ -110,7 +138,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 	}
 
 	txBuilder.SetGasLimit(gasAmount) // TODO: correct?
-	txBuilder.SetMemo("bob to alice")
+	//txBuilder.SetMemo("bob to alice")
 
 	feePayerBz, err := types.GetFromBech32(feePayerAddress, cc.addressPrefix)
 	if err != nil {
@@ -134,7 +162,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 }
 
 func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, error) {
-	simulation, err := cc.BuildSimTx(txf, msgs...)
+	simulation, err := cc.buildSimTx(txf, msgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -160,9 +188,9 @@ func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, 
 	return uint64(txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil
 }
 
-// BuildSimTx creates an unsigned tx with an empty single signature and returns
+// buildSimTx creates an unsigned tx with an empty single signature and returns
 // the encoded transaction or an error if the unsigned transaction cannot be built.
-func (cc *TxSubmitter) BuildSimTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
+func (cc *TxSubmitter) buildSimTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
 	txb, err := cc.baseTxf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, err
@@ -187,36 +215,4 @@ func (cc *TxSubmitter) BuildSimTx(txf tx.Factory, msgs ...types.Msg) ([]byte, er
 	}
 	simReq := txtypes.SimulateRequest{TxBytes: bz}
 	return simReq.Marshal()
-}
-
-// QueryAccount returns BaseAccount for given account address
-func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, error) {
-	request := authtypes.QueryAccountRequest{Address: address}
-	req, err := request.Marshal()
-	if err != nil {
-		return nil, err
-	}
-	// We then call the Simulate method on this client.
-	simQuery := abci.RequestQuery{
-		Path: "/cosmos.auth.v1beta1.Query/Account",
-		Data: req,
-	}
-	res, err := cc.rpcClient.ABCIQueryWithOptions(cc.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	var response authtypes.QueryAccountResponse
-	if err := response.Unmarshal(res.Response.Value); err != nil {
-		return nil, err
-	}
-
-	var account authtypes.BaseAccount
-	err = account.Unmarshal(response.Account.Value)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &account, nil
 }

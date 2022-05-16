@@ -61,19 +61,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		log.Println(err)
 	}
 
-	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
-	if err != nil {
-		log.Println(err)
-	}
-	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, submitter.MakeCodecDefault(), cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, cfg.LidoChain.Keyring.Dir)
-	if err != nil {
-		log.Println(err)
-	}
-
-	err = s.Send("terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
-	if err != nil {
-		log.Println(err)
-	}
+	testProofs(ctx, cfg)
 }
 
 func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proofer.ProofQuerier) {
@@ -94,5 +82,24 @@ func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, queri
 		log.Println("Verification passed")
 	} else {
 		log.Println("Verification failed")
+	}
+}
+
+func testTxSubmit(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
+	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+	if err != nil {
+		log.Println(err)
+	}
+	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
+	codec := submitter.MakeCodecDefault()
+	keybase, _ := submitter.TestKeybase(cfg.LidoChain.ChainID, "test", cfg.LidoChain.Keyring.Dir, codec)
+	s, err := submitter.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = s.Send("terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
+	if err != nil {
+		log.Println(err)
 	}
 }
