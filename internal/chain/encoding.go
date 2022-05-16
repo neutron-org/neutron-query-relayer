@@ -1,4 +1,4 @@
-package submitter
+package chain
 
 import (
 	"github.com/cosmos/cosmos-sdk/client"
