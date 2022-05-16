@@ -9,8 +9,8 @@ import (
 
 // Subscribe subscribes to target blockchain using websockets
 // WARNING: rpcclient.Subscribe from tendermint can fail to work with some blockchain versions of tendermint
-func Subscribe(ctx context.Context, addr string, onEvent func(event coretypes.ResultEvent), query string) error {
-	httpclient, err := rpcclient.New(addr)
+func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent func(event coretypes.ResultEvent)) error {
+	httpclient, err := rpcclient.New(rpcAddress)
 	if err != nil {
 		return fmt.Errorf("could not create new rpcclient: %w", err)
 	}
@@ -29,4 +29,8 @@ func Subscribe(ctx context.Context, addr string, onEvent func(event coretypes.Re
 	}
 
 	return nil
+}
+
+func SubscribeQuery(zoneId string) string {
+	return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", "interchainqueries", "query", zoneId)
 }

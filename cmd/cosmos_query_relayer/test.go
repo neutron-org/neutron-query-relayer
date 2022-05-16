@@ -12,12 +12,13 @@ import (
 	"log"
 )
 
-func testSubscribeLidoChain(ctx context.Context, addr string) {
+func testSubscribeLidoChain(ctx context.Context, addr string, query string) {
 	onEvent := func(event coretypes.ResultEvent) {
 		//TODO: maybe make proofer a class with querier inside and instantiate it here, call GetProof on it?
-		fmt.Printf("OnEvent(%+v)", event.Data)
+		fmt.Printf("OnEvent:\n%+v\n\n\n", event.Data)
+		fmt.Printf("\n\nInner events:\n%+v\n\n", event.Events)
 	}
-	err := sub.Subscribe(ctx, addr, onEvent, sub.Query)
+	err := sub.Subscribe(ctx, addr, query, onEvent)
 	if err != nil {
 		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}
@@ -98,7 +99,7 @@ func testTxSubmit(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		log.Println(err)
 		return
 	}
-	proofSubmitter := submitter.NewProofSubmitter(ctx, *txSubmitter)
+	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
 
 	err = proofSubmitter.SendCoins("terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
 	if err != nil {

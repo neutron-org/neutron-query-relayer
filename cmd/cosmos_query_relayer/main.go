@@ -3,49 +3,53 @@ package main
 import (
 	"context"
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/lidofinance/cosmos-query-relayer/internal/relayer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
+	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 
 	sub "github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 // TODO: logger configuration
+// TODO: monitoring
 
 func main() {
 	fmt.Println("cosmos-query-relayer starts...")
+
 	ctx := context.Background()
 	cfg, err := config.NewCosmosQueryRelayerConfig()
 	if err != nil {
+		log.Fatalf("cannot initialize relayer config: %s", err)
+	}
+
+	sub.SetSDKConfig(cfg)
+	querier, err := proofer.NewProofQuerier(cfg.TargetChain.Timeout, cfg.TargetChain.RPCAddress, cfg.TargetChain.ChainID)
+	if err != nil {
+		log.Fatalf("cannot connect to target chain: %s", err)
+	}
+
+	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+	if err != nil {
 		log.Println(err)
 	}
-	setSDKConfig(cfg)
-	testProofs(ctx, cfg)
-	//testSubscribeLidoChain(ctx, cfg.LidoChain.RPCAddress)
-}
-
-// NOTE: cosmos-sdk sets global values for prefixes when parsing addresses and so on
-// Without this some functions just does not work as intended
-func setSDKConfig(cfg config.CosmosQueryRelayerConfig) {
-	// TODO: we set global prefix for addresses to the lido chain, is it ok?
-	sdkCfg := sdk.GetConfig()
-	sdkCfg.SetBech32PrefixForAccount(cfg.LidoChain.ChainPrefix, cfg.LidoChain.ChainPrefix+sdk.PrefixPublic)
-	//	config.SetBech32PrefixForValidator(yourBech32PrefixValAddr, yourBech32PrefixValPub)
-	//	config.SetBech32PrefixForConsensusNode(yourBech32PrefixConsAddr, yourBech32PrefixConsPub)
-	//	config.SetPurpose(yourPurpose)
-	//	config.SetCoinType(yourCoinType)
-	sdkCfg.Seal()
-}
-
-func subscribeLidoChain(ctx context.Context, rpcAddress string) {
-	onEvent := func(event coretypes.ResultEvent) {
-		//TODO: maybe make proofer a class with querier inside and instantiate it here, call GetProof on it?
-		fmt.Printf("OnEvent(%+v)", event.Data)
-		go relayer.Relayer{}.Proof(event)
+	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
+	codec := sub.MakeCodecDefault()
+	keybase, _ := sub.TestKeybase(cfg.LidoChain.ChainID, "test", cfg.LidoChain.Keyring.Dir, codec)
+	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase)
+	if err != nil {
+		log.Println(err)
+		return
 	}
-	err := sub.Subscribe(ctx, rpcAddress, onEvent, sub.Query)
+	submit := submitter.NewProofSubmitter(txSubmitter)
+
+	relayer := relay.NewRelayer(querier, submit, cfg.TargetChain.ChainPrefix, cfg.TargetChain.SubmitTxAuthor)
+
+	err = sub.Subscribe(ctx, cfg.LidoChain.RPCAddress, sub.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
+		relayer.Proof(ctx, event)
+	})
 	if err != nil {
 		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}

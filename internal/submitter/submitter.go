@@ -1,16 +1,15 @@
 package submitter
 
 import (
-	"context"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/chain"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
 type ProofSubmitter struct {
-	ctx         context.Context
-	txSubmitter chain.TxSubmitter
+	txSubmitter *chain.TxSubmitter
 }
 
 type InterchainQueryResultMsg struct {
@@ -22,9 +21,8 @@ type InterchainQueryResultMsg struct {
 	//KVResults []StorageValue
 }
 
-func NewProofSubmitter(ctx context.Context, txSubmitter chain.TxSubmitter) ProofSubmitter {
-	return ProofSubmitter{
-		ctx:         ctx,
+func NewProofSubmitter(txSubmitter *chain.TxSubmitter) *ProofSubmitter {
+	return &ProofSubmitter{
 		txSubmitter: txSubmitter,
 	}
 }
@@ -42,9 +40,17 @@ func (cc *ProofSubmitter) SendCoins(address1, address2 string) error {
 }
 
 // SubmitProof submits query with proof back to lido chain
-func (cc *ProofSubmitter) SubmitProof(sender string) error {
+func (cc *ProofSubmitter) SubmitProof(txAuthor string, proof []proofer.StorageValue) error {
+	msgs, err := cc.buildProofMsg(proof)
+	if err != nil {
+		return err
+	}
+	return cc.txSubmitter.BuildAndSendTx(txAuthor, msgs)
+}
+
+func (cc *ProofSubmitter) buildProofMsg(proof []proofer.StorageValue) ([]types.Msg, error) {
 	// TODO
-	return nil
+	return nil, nil
 }
 
 func (cc *ProofSubmitter) buildSendMsgs(address1, address2 string) ([]types.Msg, error) {
