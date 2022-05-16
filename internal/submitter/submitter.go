@@ -6,25 +6,27 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	lidotypes "github.com/lidofinance/interchain-adapter/x/interchainqueries/types"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 type ProofSubmitter struct {
 	txSubmitter *chain.TxSubmitter
 }
 
-type InterchainQueryResultMsg struct {
-	QueryData []byte
-	QueryType string
-	ZoneID    string
-	Height    uint64 // height of queried chain when result was received
-
-	//KVResults []StorageValue
-}
-
 func NewProofSubmitter(txSubmitter *chain.TxSubmitter) *ProofSubmitter {
 	return &ProofSubmitter{
 		txSubmitter: txSubmitter,
 	}
+}
+
+// SubmitProof submits query with proof back to lido chain
+func (cc *ProofSubmitter) SubmitProof(sender string, height uint64, queryId uint64, proof []proofer.StorageValue) error {
+	msgs, err := cc.buildProofMsg(sender, height, queryId, proof)
+	if err != nil {
+		return err
+	}
+	return cc.txSubmitter.BuildAndSendTx(sender, msgs)
 }
 
 // SendCoins test func
@@ -39,18 +41,27 @@ func (cc *ProofSubmitter) SendCoins(address1, address2 string) error {
 	return cc.txSubmitter.BuildAndSendTx(address1, msgs)
 }
 
-// SubmitProof submits query with proof back to lido chain
-func (cc *ProofSubmitter) SubmitProof(txAuthor string, proof []proofer.StorageValue) error {
-	msgs, err := cc.buildProofMsg(proof)
-	if err != nil {
-		return err
+func (cc *ProofSubmitter) buildProofMsg(sender string, height uint64, queryId uint64, proof []proofer.StorageValue) ([]types.Msg, error) {
+	res := make([]*lidotypes.StorageValue, 0, len(proof))
+	for _, item := range proof {
+		res = append(res, &lidotypes.StorageValue{
+			StoragePrefix: item.StoragePrefix,
+			Key:           item.Key,
+			Value:         item.Value,
+			Proof: &crypto.ProofOps{
+				Ops: item.Proofs,
+			},
+		})
 	}
-	return cc.txSubmitter.BuildAndSendTx(txAuthor, msgs)
-}
 
-func (cc *ProofSubmitter) buildProofMsg(proof []proofer.StorageValue) ([]types.Msg, error) {
-	// TODO
-	return nil, nil
+	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Height: height, Sender: sender, KVResults: res}
+
+	err := msg.ValidateBasic()
+	if err != nil {
+		return nil, err
+	}
+
+	return []types.Msg{&msg}, nil
 }
 
 func (cc *ProofSubmitter) buildSendMsgs(address1, address2 string) ([]types.Msg, error) {
@@ -61,8 +72,8 @@ func (cc *ProofSubmitter) buildSendMsgs(address1, address2 string) ([]types.Msg,
 	if err != nil {
 		return nil, err
 	}
-	signedMsg := msg.GetSignBytes()
-	fmt.Printf("\nBuilt Tx info: %+v\n\n", string(signedMsg))
+	//signedMsg := msg.GetSignBytes()
+	//fmt.Printf("\nBuilt Tx info: %+v\n\n", string(signedMsg))
 
 	return []types.Msg{msg}, nil
 }

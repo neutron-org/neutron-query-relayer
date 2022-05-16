@@ -9,9 +9,10 @@ import (
 // TODO: use types from repo?
 // StorageValue is basic building proof block
 type StorageValue struct {
-	Key    []byte
-	Value  []byte
-	Proofs []crypto.ProofOp
+	StoragePrefix string
+	Key           []byte
+	Value         []byte
+	Proofs        []crypto.ProofOp
 }
 
 // TODO: are these types enough for our lido chain?

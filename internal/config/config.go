@@ -37,7 +37,7 @@ type CosmosQueryRelayerConfig struct {
 			GasPrices string `envconfig:"default=0.5stake"`
 		}
 
-		SubmitTxAuthor string `envconfig:"default=TODO"`
+		Sender string `envconfig:"default=TODO"`
 	}
 	TargetChain struct {
 		Timeout time.Duration `envconfig:"default=5s"`

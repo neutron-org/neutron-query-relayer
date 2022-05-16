@@ -82,7 +82,9 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, 
 	}
 
 	//revision := clienttypes.ParseChainID(chainID)
-	return &StorageValue{Value: res.Response.Value, Key: key, Proofs: res.Response.ProofOps.Ops}, nil
+	response := res.Response
+	// TODO: is storagePrefix correct here?
+	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, nil
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys

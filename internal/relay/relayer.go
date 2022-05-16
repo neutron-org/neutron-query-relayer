@@ -7,7 +7,6 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
-	itypes "github.com/lidofinance/interchain-adapter/x/interchainqueries/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 )
@@ -16,7 +15,7 @@ type Relayer struct {
 	querier           *proofer.ProofQuerier
 	submitter         *submitter.ProofSubmitter
 	targetChainPrefix string
-	submitTxAuthor    string
+	sender            string
 }
 
 type QueryEventMessage struct {
@@ -29,16 +28,11 @@ type GetDelegatorDelegationsParameters struct {
 	Delegator string `json:"delegator"`
 }
 
-func NewRelayer(querier *proofer.ProofQuerier, submitter *submitter.ProofSubmitter, targetChainPrefix string, submitTxAuthor string) Relayer {
-	return Relayer{querier: querier, submitter: submitter, targetChainPrefix: targetChainPrefix, submitTxAuthor: submitTxAuthor}
+func NewRelayer(querier *proofer.ProofQuerier, submitter *submitter.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
+	return Relayer{querier: querier, submitter: submitter, targetChainPrefix: targetChainPrefix, sender: sender}
 }
 
 func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
-	var _ itypes.MsgRegisterInterchainQuery
-	// TODO:
-	// - how event will look like
-	// - how submit response will look like
-
 	messages := filterInterchainQueryMessagesFromEvent(event)
 	fmt.Println("Got messages:")
 	for _, m := range messages {
@@ -49,7 +43,6 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 		err := r.ProofMessage(ctx, m)
 		if err != nil {
 			fmt.Printf("\ncould not process message query_id=%s err=%s\n", m.queryId, err)
-			//	TODO: log
 		}
 	}
 }
@@ -70,6 +63,7 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 			//fmt.Printf("couldn't find key in event: %s\n", err)
 			continue
 		}
+		// TODO: parse queryId to uint64
 
 		messageType, err := tryFindInEvent(m.GetAttributes(), "type")
 		if err != nil {
@@ -101,12 +95,12 @@ func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
 		}
 
-		proof, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, delegatorParams.Delegator)
+		proof, height, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, delegatorParams.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(r.submitTxAuthor, proof)
+		err = r.submitter.SubmitProof(r.sender, height, m.queryId, proof)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
 		}

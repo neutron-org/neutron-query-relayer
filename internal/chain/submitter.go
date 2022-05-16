@@ -48,8 +48,8 @@ func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID str
 }
 
 // BuildAndSendTx builds transaction with calculated gas and fees params, signs it and submits to chain
-func (cc *TxSubmitter) BuildAndSendTx(senderAddress string, msgs []types.Msg) error {
-	account, err := cc.QueryAccount(senderAddress)
+func (cc *TxSubmitter) BuildAndSendTx(sender string, msgs []types.Msg) error {
+	account, err := cc.QueryAccount(sender)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (cc *TxSubmitter) BuildAndSendTx(senderAddress string, msgs []types.Msg) er
 
 	txf = txf.WithGas(gasNeeded)
 
-	bz, err := cc.buildTxBz(txf, msgs, senderAddress, gasNeeded)
+	bz, err := cc.buildTxBz(txf, msgs, sender, gasNeeded)
 	if err != nil {
 		return err
 	}
