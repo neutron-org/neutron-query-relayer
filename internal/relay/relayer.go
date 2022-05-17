@@ -152,6 +152,8 @@ func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
 		}
 	case "x/bank/ExchangeRate":
 	//	TODO
+	case "x/distribution/CalculateDelegationRewards":
+	//	TODO
 
 	default:
 		return fmt.Errorf("unknown query message type=%s", m.messageType)

@@ -18,8 +18,8 @@ var perPage = 100
 func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, recipient string) ([]proofer.CompleteTransactionProof, uint64, error) {
 	orderBy := ""
 	page := 1
-	// TODO: how to figure out. this does not work!
-	query := fmt.Sprintf("message.recipient='%s'", recipient)
+	// TODO: figure out if it's correct
+	query := fmt.Sprintf("transfer.recipient='%s'", recipient)
 	// TODO: pagination support
 	searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 	fmt.Printf("TxSearch: %+v\n", searchResult)

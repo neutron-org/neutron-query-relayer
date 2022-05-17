@@ -12,8 +12,8 @@ import (
 // TODO: сравнить output из функции и результат вызова GetRewards напрямую
 // see: lido-terra-integration-tests
 
-// See cosmos-sdk x/distribution/keeper/delegation.go #CalculateDelegationRewards
-func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
+// CalculateDelegationRewards gets proofs for query type = 'x/distribution/CalculateDelegationRewards'
+func CalculateDelegationRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
 	// Get latest block for latest height
 	//block, err := querier.Client.Block(ctx, nil)
 	//if err != nil {

@@ -52,11 +52,11 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//query := "tx.height=3469"
 
 	//query := fmt.Sprintf("transfer.recipient='%s'", "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp")
-	//_, err = proofs.ProofTransactions(ctx, querier, query)
+	_, _, err = proofs.RecipientTransactions(ctx, querier, "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp")
 
 	//testTxProof(ctx, cfg, querier)
 
-	_, _, err = proofs.GetSupply(ctx, querier, "uluna")
+	//_, _, err = proofs.GetSupply(ctx, querier, "uluna")
 
 	if err != nil {
 		log.Println(err)
