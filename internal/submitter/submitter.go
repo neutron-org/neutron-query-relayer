@@ -29,6 +29,14 @@ func (cc *ProofSubmitter) SubmitProof(sender string, height uint64, queryId uint
 	return cc.txSubmitter.BuildAndSendTx(sender, msgs)
 }
 
+func (cc *ProofSubmitter) SubmitTxProof(sender string, height uint64, queryId uint64, proof []proofer.CompleteTransactionProof) error {
+	msgs, err := cc.buildTxProofMsg(sender, height, queryId, proof)
+	if err != nil {
+		return err
+	}
+	return cc.txSubmitter.BuildAndSendTx(sender, msgs)
+}
+
 // SendCoins test func
 func (cc *ProofSubmitter) SendCoins(address1, address2 string) error {
 	fmt.Printf("About to Send coins from / to =: %v / %v\n", address1, address2)
@@ -62,6 +70,31 @@ func (cc *ProofSubmitter) buildProofMsg(sender string, height uint64, queryId ui
 	}
 
 	return []types.Msg{&msg}, nil
+}
+
+func (cc *ProofSubmitter) buildTxProofMsg(sender string, height uint64, queryId uint64, proof []proofer.CompleteTransactionProof) ([]types.Msg, error) {
+	//res := make([]*lidotypes.StorageValue, 0, len(proof))
+	//for _, item := range proof {
+	//	res = append(res, &lidotypes.StorageValue{
+	//		StoragePrefix: item.StoragePrefix,
+	//		Key:           item.Key,
+	//		Value:         item.Value,
+	//		Proof: &crypto.ProofOps{
+	//			Ops: item.Proofs,
+	//		},
+	//	})
+	//}
+	//
+	//msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Height: height, Sender: sender, KVResults: res}
+	//
+	//err := msg.ValidateBasic()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//return []types.Msg{&msg}, nil
+	//TODO
+	return nil, nil
 }
 
 func (cc *ProofSubmitter) buildSendMsgs(address1, address2 string) ([]types.Msg, error) {

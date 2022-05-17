@@ -13,10 +13,13 @@ import (
 
 var perPage = 100
 
-// TODO: query transactions once
-func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query string) ([]*proofer.CompleteTransactionProof, uint64, error) {
+// RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions' (NOTE: there is no such query func in cosmos-sdk)
+// TODO: query transactions only once
+func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, recipient string) ([]proofer.CompleteTransactionProof, uint64, error) {
 	orderBy := ""
 	page := 1
+	// TODO: how to figure out. this does not work!
+	query := fmt.Sprintf("message.recipient='%s'", recipient)
 	// TODO: pagination support
 	searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 	fmt.Printf("TxSearch: %+v\n", searchResult)
@@ -29,7 +32,7 @@ func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query
 		return nil, 0, nil
 	}
 
-	result := make([]*proofer.CompleteTransactionProof, 0, len(searchResult.Txs))
+	result := make([]proofer.CompleteTransactionProof, 0, len(searchResult.Txs))
 	maxHeight := uint64(0)
 	for _, item := range searchResult.Txs {
 		txResultProof, err := TxCompletedSuccessfullyProof(ctx, querier, item.Height, item.Index)
@@ -46,7 +49,7 @@ func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query
 			SuccessProof: *txResultProof,
 		}
 		//fmt.Printf("made proof for height=%d index=%d proof=%+v\n", item.Height, item.Index, proof)
-		result = append(result, &proof)
+		result = append(result, proof)
 	}
 
 	return result, maxHeight, nil

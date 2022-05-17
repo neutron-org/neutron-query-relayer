@@ -29,6 +29,15 @@ type GetDelegatorDelegationsParameters struct {
 	Delegator string `json:"delegator"`
 }
 
+type GetAllBalancesParams struct {
+	Addr  string `json:"addr"`
+	Denom string `json:"denom"`
+}
+
+type RecipientTransactionsParams struct {
+	Recipient string `json:"recipient"`
+}
+
 func NewRelayer(querier *proofer.ProofQuerier, submitter *submitter.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
 	return Relayer{querier: querier, submitter: submitter, targetChainPrefix: targetChainPrefix, sender: sender}
 }
@@ -94,13 +103,13 @@ func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
 	switch m.messageType {
 	case "x/staking/DelegatorDelegations":
 		fmt.Printf("Unmarshal parameters=%s", m.parameters)
-		var delegatorParams GetDelegatorDelegationsParameters
-		err := json.Unmarshal([]byte(m.parameters), &delegatorParams)
+		var params GetDelegatorDelegationsParameters
+		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
 		}
 
-		proof, height, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, delegatorParams.Delegator)
+		proof, height, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, params.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
 		}
@@ -109,6 +118,40 @@ func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
 		}
+	case "x/bank/GetBalance":
+		var params GetAllBalancesParams
+		err := json.Unmarshal([]byte(m.parameters), &params)
+		if err != nil {
+			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
+		}
+
+		proof, height, err := proofs.GetBalance(ctx, r.querier, r.targetChainPrefix, params.Addr, params.Denom)
+		if err != nil {
+			return fmt.Errorf("could not get proof for GetBalance with query_id=%s: %w", m.queryId, err)
+		}
+
+		err = r.submitter.SubmitProof(r.sender, height, m.queryId, proof)
+		if err != nil {
+			return fmt.Errorf("could not submit proof for GetBalance with query_id=%s: %w", m.queryId, err)
+		}
+	case "x/tx/RecipientTransactions":
+		var params RecipientTransactionsParams
+		err := json.Unmarshal([]byte(m.parameters), &params)
+		if err != nil {
+			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
+		}
+
+		txProof, height, err := proofs.RecipientTransactions(ctx, r.querier, params.Recipient)
+		if err != nil {
+			return fmt.Errorf("could not get proof for GetBalance with query_id=%s: %w", m.queryId, err)
+		}
+
+		err = r.submitter.SubmitTxProof(r.sender, height, m.queryId, txProof)
+		if err != nil {
+			return fmt.Errorf("could not submit proof for GetBalance with query_id=%s: %w", m.queryId, err)
+		}
+	case "x/bank/ExchangeRate":
+	//	TODO
 
 	default:
 		return fmt.Errorf("unknown query message type=%s", m.messageType)

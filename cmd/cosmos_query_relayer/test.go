@@ -30,8 +30,8 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)
 	}
-	//_, err = proofs.ProofAllBalances(ctx, querier, "terra", "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna")
-	//_, err = proofs.ProofAllBalances(ctx, querier, "cosmos", "cosmos1jp6xu6hjqap38wk72wk2lmaxvfqswupjamahpl", "stake")
+	//_, err = proofs.GetBalance(ctx, querier, "terra", "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna")
+	//_, err = proofs.GetBalance(ctx, querier, "cosmos", "cosmos1jp6xu6hjqap38wk72wk2lmaxvfqswupjamahpl", "stake")
 	//_, err = proofs.ProofAllDelegations(ctx, querier, "terra", []string{"terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse"}, "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
 	//_, err = proofs.ProofAllDelegations2(ctx, querier, "terra", "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts")
 	//err = proofs.ProofRewards(ctx, querier, "terra", "terravaloper123gn6j23lmexu0qx5qhmgxgunmjcqsx8gmsyse", "terra1qqqz0ddedgke63z8xm8pqrujnxl0f9zdvus7yg", 0)
@@ -56,7 +56,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 
 	//testTxProof(ctx, cfg, querier)
 
-	err = proofs.ProofExchangeRate(ctx, querier, "uluna")
+	_, _, err = proofs.GetSupply(ctx, querier, "uluna")
 
 	if err != nil {
 		log.Println(err)

@@ -8,10 +8,10 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
-// ProofAllBalances gets proofs for query type = 'x/bank/GetAllBalances'
-func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, address string, denom string) ([]*proofer.StorageValue, uint64, error) {
+// GetBalance gets proofs for query type = 'x/bank/GetBalance'
+func GetBalance(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, addr string, denom string) ([]proofer.StorageValue, uint64, error) {
 	storeKey := banktypes.StoreKey
-	bytesAddress, err := sdk.GetFromBech32(address, chainPrefix)
+	bytesAddress, err := sdk.GetFromBech32(addr, chainPrefix)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -23,12 +23,12 @@ func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainP
 		return nil, 0, fmt.Errorf("failed to query tendermint proof for balances: %w", err)
 	}
 
-	var amount sdk.Coin
-	if err := amount.Unmarshal(value.Value); err != nil {
-		fmt.Printf("failed to unmarshal the balances response: %s", err)
-		return nil, 0, err
-	}
-	fmt.Printf("\nCoin: %+v, Err %v\n", amount, err)
+	//var amount sdk.Coin
+	//if err := amount.Unmarshal(value.Value); err != nil {
+	//	fmt.Printf("failed to unmarshal the balances response: %s", err)
+	//	return nil, 0, err
+	//}
+	//fmt.Printf("\nCoin: %+v, Err %v\n", amount, err)
 
-	return []*proofer.StorageValue{value}, height, err
+	return []proofer.StorageValue{*value}, height, err
 }
