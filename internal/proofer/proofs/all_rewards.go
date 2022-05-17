@@ -9,13 +9,16 @@ import (
 )
 
 // TODO: test with blockchain where slashing events are there
+// TODO: сравнить output из функции и результат вызова GetRewards напрямую
+// see: lido-terra-integration-tests
+
 // See cosmos-sdk x/distribution/keeper/delegation.go #CalculateDelegationRewards
 func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
 	// Get latest block for latest height
-	block, err := querier.Client.Block(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("error fetching latest block: %w", err)
-	}
+	//block, err := querier.Client.Block(ctx, nil)
+	//if err != nil {
+	//	return fmt.Errorf("error fetching latest block: %w", err)
+	//}
 
 	// Getting starting info
 	validatorAddressBz, err := sdk.GetFromBech32(validatorAddressBech32, prefix+sdk.PrefixValidator+sdk.PrefixOperator)
@@ -28,8 +31,7 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 		return fmt.Errorf("error converting delegator address from bech32: %w", err)
 	}
 	startingInfoKey := distributiontypes.GetDelegatorStartingInfoKey(validatorAddressBz, delegatorAddressBz)
-	height := int64(0) // TODO: height?
-	startingInfoStorageValue, err := querier.QueryTendermintProof(ctx, height, distributiontypes.StoreKey, startingInfoKey)
+	startingInfoStorageValue, height, err := querier.QueryTendermintProof(ctx, 0, distributiontypes.StoreKey, startingInfoKey)
 	if err != nil {
 		return fmt.Errorf("error fetching proof for starting info: %w", err)
 	}
@@ -44,7 +46,7 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 	// TODO: get delegation shares proof? or is it proven in other types?
 
 	startingHeight := startingInfo.Height
-	endingHeight := uint64(block.Block.Height)
+	endingHeight := height
 	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight) // _fromPrefix
 	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, endingHeight+1) // toPrefix
 
@@ -54,7 +56,7 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 	//err = querier.Test(ctx, validatorAddressBz, startingHeight, endingHeight)
 
 	// TODO: filter out slashes with height more than needed
-	allSlashes, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight))
+	allSlashes, _, err := querier.QueryIterateTendermintProof(ctx, int64(height), distributiontypes.StoreKey, distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight))
 	if err != nil {
 		return fmt.Errorf("error querying proofs for slashes: %w", err)
 	}
@@ -77,7 +79,7 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 
 	// For every needed period look for rewards
 	for _, item := range rewardPeriods {
-		value, err := querier.QueryTendermintProof(ctx, height, distributiontypes.StoreKey, distributiontypes.GetValidatorHistoricalRewardsKey(validatorAddressBz, item))
+		value, _, err := querier.QueryTendermintProof(ctx, int64(height), distributiontypes.StoreKey, distributiontypes.GetValidatorHistoricalRewardsKey(validatorAddressBz, item))
 		if err != nil {
 			return fmt.Errorf("could not query reward tendermint proof for period=%d: %w", item, err)
 		}
@@ -92,6 +94,3 @@ func ProofRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, va
 
 	return nil
 }
-
-// TODO: сравнить output из функции и результат вызова GetRewards
-// see: lido-terra-integration-tests

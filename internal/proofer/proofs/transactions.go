@@ -14,37 +14,42 @@ import (
 var perPage = 100
 
 // TODO: query transactions once
-func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query string) ([]*proofer.CompleteTransactionProof, error) {
+func ProofTransactions(ctx context.Context, querier *proofer.ProofQuerier, query string) ([]*proofer.CompleteTransactionProof, uint64, error) {
 	orderBy := ""
 	page := 1
 	// TODO: pagination support
 	searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 	fmt.Printf("TxSearch: %+v\n", searchResult)
 	if err != nil {
-		return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
+		return nil, 0, fmt.Errorf("could not query new transactions to proof: %w", err)
 	}
 
 	if searchResult.TotalCount == 0 {
 		// TODO: correct?
-		return []*proofer.CompleteTransactionProof{}, nil
+		return nil, 0, nil
 	}
 
 	result := make([]*proofer.CompleteTransactionProof, 0, len(searchResult.Txs))
+	maxHeight := uint64(0)
 	for _, item := range searchResult.Txs {
 		txResultProof, err := TxCompletedSuccessfullyProof(ctx, querier, item.Height, item.Index)
 		if err != nil {
-			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
+			return nil, 0, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
+		}
+
+		if uint64(item.Height) > maxHeight {
+			maxHeight = uint64(item.Height)
 		}
 
 		proof := proofer.CompleteTransactionProof{
 			BlockProof:   item.Proof,
 			SuccessProof: *txResultProof,
 		}
-		fmt.Printf("made proof for height=%d index=%d proof=%+v\n", item.Height, item.Index, proof)
+		//fmt.Printf("made proof for height=%d index=%d proof=%+v\n", item.Height, item.Index, proof)
 		result = append(result, &proof)
 	}
 
-	return result, nil
+	return result, maxHeight, nil
 }
 
 func TxCompletedSuccessfullyProof(ctx context.Context, querier *proofer.ProofQuerier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {

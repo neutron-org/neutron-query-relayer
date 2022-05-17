@@ -9,6 +9,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/rpc/coretypes"
+	"strconv"
 )
 
 type Relayer struct {
@@ -19,7 +20,7 @@ type Relayer struct {
 }
 
 type QueryEventMessage struct {
-	queryId     string
+	queryId     uint64
 	messageType string
 	parameters  string
 }
@@ -58,12 +59,16 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 
 	messages := make([]QueryEventMessage, 0, len(abciMessages))
 	for _, m := range abciMessages {
-		queryId, err := tryFindInEvent(m.GetAttributes(), "query_id")
+		queryIdStr, err := tryFindInEvent(m.GetAttributes(), "query_id")
 		if err != nil {
 			//fmt.Printf("couldn't find key in event: %s\n", err)
 			continue
 		}
-		// TODO: parse queryId to uint64
+		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
+		if err != nil {
+			// TODO: invalid query_id: %s?
+			continue
+		}
 
 		messageType, err := tryFindInEvent(m.GetAttributes(), "type")
 		if err != nil {

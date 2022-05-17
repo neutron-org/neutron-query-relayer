@@ -49,13 +49,13 @@ func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*Proof
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
-func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, error) {
+func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
 	// A height of 0 will query with the latest state.
 	if height != 0 && height <= 2 {
-		return nil, fmt.Errorf("proof queries at height <= 2 are not supported")
+		return nil, 0, fmt.Errorf("proof queries at height <= 2 are not supported")
 	}
 
 	// Use the IAVL height if a valid tendermint height is passed in.
@@ -78,23 +78,23 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, 
 
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	//revision := clienttypes.ParseChainID(chainID)
 	response := res.Response
 	// TODO: is storagePrefix correct here?
-	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, nil
+	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height), nil
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys
-func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) ([]StorageValue, error) {
+func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) ([]StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
 	// A height of 0 will query with the latest state.
 	if height != 0 && height <= 2 {
-		return nil, fmt.Errorf("proof queries at height <= 2 are not supported")
+		return nil, 0, fmt.Errorf("proof queries at height <= 2 are not supported")
 	}
 
 	// Use the IAVL height if a valid tendermint height is passed in.
@@ -117,26 +117,30 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height 
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	if res.Response.Code != 0 {
+		return nil, 0, fmt.Errorf("not zero response code for abci subspace query with code=%s log=%s", res.Response.Code, res.Response.Log)
 	}
 
 	var resPairs kv.Pairs
 	err = resPairs.Unmarshal(res.Response.Value)
 	if err != nil {
-		//	TODO
+		return nil, 0, err
 	}
 
 	var result = make([]StorageValue, 0, len(resPairs.Pairs))
 	for _, pair := range resPairs.Pairs {
-		storageValue, err := cc.QueryTendermintProof(ctx, height, storeKey, pair.Key)
+		storageValue, _, err := cc.QueryTendermintProof(ctx, res.Response.Height, storeKey, pair.Key)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		result = append(result, *storageValue)
 	}
 
-	return result, nil
+	return result, uint64(res.Response.Height), nil
 }
 
 // TODO: move out of here?

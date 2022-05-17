@@ -8,47 +8,27 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
 
-//var queryName = "cosmos.bank.v1beta1.Query/AllBalances"
-
-// cosmos-sdk x/bank/keeper/querier.go
-// ModuleName = "bank"
-
-//x/bank/types/key.go
-
-// TODO: use real cosmos-sdk all balances struct here?
-type allBalancesResponse struct {
-	Balances []struct {
-		Denom  string `json:"denom"`
-		Amount string `json:"amount"`
-	} `json:"balances"`
-	Pagination struct {
-		Total string `json:"total"`
-	} `json:"pagination"`
-}
-
-func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, address string, denom string) (map[string]string, error) {
-	inputHeight := int64(0)
+// ProofAllBalances gets proofs for query type = 'x/bank/GetAllBalances'
+func ProofAllBalances(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, address string, denom string) ([]*proofer.StorageValue, uint64, error) {
 	storeKey := banktypes.StoreKey
 	bytesAddress, err := sdk.GetFromBech32(address, chainPrefix)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	key := append(banktypes.CreateAccountBalancesPrefix(bytesAddress), []byte(denom)...)
-	value, err := querier.QueryTendermintProof(ctx, inputHeight, storeKey, key)
+	value, height, err := querier.QueryTendermintProof(ctx, int64(0), storeKey, key)
 	if err != nil {
 		fmt.Printf("failed to query tendermint proof for balances: %s", err)
-		return nil, fmt.Errorf("failed to query tendermint proof for balances: %w", err)
+		return nil, 0, fmt.Errorf("failed to query tendermint proof for balances: %w", err)
 	}
 
 	var amount sdk.Coin
 	if err := amount.Unmarshal(value.Value); err != nil {
 		fmt.Printf("failed to unmarshal the balances response: %s", err)
-		return nil, err
+		return nil, 0, err
 	}
 	fmt.Printf("\nCoin: %+v, Err %v\n", amount, err)
 
-	return nil, nil
+	return []*proofer.StorageValue{value}, height, err
 }
-
-// TODO: rewards
