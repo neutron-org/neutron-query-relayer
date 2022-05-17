@@ -29,8 +29,8 @@ func (cc *ProofSubmitter) SubmitProof(sender string, height uint64, queryId uint
 	return cc.txSubmitter.BuildAndSendTx(sender, msgs)
 }
 
-func (cc *ProofSubmitter) SubmitTxProof(sender string, height uint64, queryId uint64, proof []proofer.CompleteTransactionProof) error {
-	msgs, err := cc.buildTxProofMsg(sender, height, queryId, proof)
+func (cc *ProofSubmitter) SubmitTxProof(sender string, queryId uint64, proof []proofer.CompleteTransactionProof) error {
+	msgs, err := cc.buildTxProofMsg(sender, queryId, proof)
 	if err != nil {
 		return err
 	}
@@ -66,13 +66,14 @@ func (cc *ProofSubmitter) buildProofMsg(sender string, height uint64, queryId ui
 
 	err := msg.ValidateBasic()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid proof message: %w", err)
 	}
 
 	return []types.Msg{&msg}, nil
 }
 
-func (cc *ProofSubmitter) buildTxProofMsg(sender string, height uint64, queryId uint64, proof []proofer.CompleteTransactionProof) ([]types.Msg, error) {
+func (cc *ProofSubmitter) buildTxProofMsg(sender string, queryId uint64, proof []proofer.CompleteTransactionProof) ([]types.Msg, error) {
+	//TODO
 	//res := make([]*lidotypes.StorageValue, 0, len(proof))
 	//for _, item := range proof {
 	//	res = append(res, &lidotypes.StorageValue{
@@ -93,7 +94,6 @@ func (cc *ProofSubmitter) buildTxProofMsg(sender string, height uint64, queryId 
 	//}
 	//
 	//return []types.Msg{&msg}, nil
-	//TODO
 	return nil, nil
 }
 

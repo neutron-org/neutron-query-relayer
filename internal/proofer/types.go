@@ -19,6 +19,7 @@ type StorageValue struct {
 type CompleteTransactionProof struct {
 	BlockProof   coretypes.TxProof
 	SuccessProof merkle.Proof
+	Height       uint64
 }
 
 // Query has all the information for what we can collect Proof

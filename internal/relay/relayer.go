@@ -34,9 +34,7 @@ type GetAllBalancesParams struct {
 	Denom string `json:"denom"`
 }
 
-type RecipientTransactionsParams struct {
-	Recipient string `json:"recipient"`
-}
+type RecipientTransactionsParams map[string]string
 
 func NewRelayer(querier *proofer.ProofQuerier, submitter *submitter.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
 	return Relayer{querier: querier, submitter: submitter, targetChainPrefix: targetChainPrefix, sender: sender}
@@ -141,12 +139,13 @@ func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
 		}
 
-		txProof, height, err := proofs.RecipientTransactions(ctx, r.querier, params.Recipient)
+		//TODO: iterate over keys, values and join them with AND
+		txProof, err := proofs.RecipientTransactions(ctx, r.querier, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%s: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitTxProof(r.sender, height, m.queryId, txProof)
+		err = r.submitter.SubmitTxProof(r.sender, m.queryId, txProof)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetBalance with query_id=%s: %w", m.queryId, err)
 		}

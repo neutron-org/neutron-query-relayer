@@ -132,7 +132,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 		return nil, err
 	}
 	txBuilder.SetFeePayer(feePayerBz)
-	// TODO: correct?
+	// TODO: shouldn't set it like this. use gas limit and gas prices
 	txBuilder.SetFeeAmount(types.NewCoins(types.NewInt64Coin("uluna", 2000)))
 	//txBuilder.SetFeeGranter()
 	//txBuilder.SetTimeoutHeight(...)

@@ -9,27 +9,35 @@ import (
 	"github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
+	"strings"
 )
 
 var perPage = 100
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions' (NOTE: there is no such query func in cosmos-sdk)
 // TODO: query transactions only once
-func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, recipient string) ([]proofer.CompleteTransactionProof, uint64, error) {
+func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, queryParams map[string]string) ([]proofer.CompleteTransactionProof, error) {
+	queryParamsList := make([]string, 0, len(queryParams))
+	for key, value := range queryParams {
+		queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
+	}
+	query := strings.Join(queryParamsList, " AND ")
+
 	orderBy := ""
 	page := 1
 	// TODO: figure out if it's correct
-	query := fmt.Sprintf("transfer.recipient='%s'", recipient)
+	// TODO: add denom filter
+	//query := fmt.Sprintf("transfer.recipient='%s' AND TODO", recipient)
 	// TODO: pagination support
 	searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 	fmt.Printf("TxSearch: %+v\n", searchResult)
 	if err != nil {
-		return nil, 0, fmt.Errorf("could not query new transactions to proof: %w", err)
+		return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
 	}
 
 	if searchResult.TotalCount == 0 {
 		// TODO: correct?
-		return nil, 0, nil
+		return nil, nil
 	}
 
 	result := make([]proofer.CompleteTransactionProof, 0, len(searchResult.Txs))
@@ -37,7 +45,7 @@ func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, r
 	for _, item := range searchResult.Txs {
 		txResultProof, err := TxCompletedSuccessfullyProof(ctx, querier, item.Height, item.Index)
 		if err != nil {
-			return nil, 0, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
+			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
 		}
 
 		if uint64(item.Height) > maxHeight {
@@ -47,12 +55,13 @@ func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, r
 		proof := proofer.CompleteTransactionProof{
 			BlockProof:   item.Proof,
 			SuccessProof: *txResultProof,
+			Height:       uint64(item.Height),
 		}
 		//fmt.Printf("made proof for height=%d index=%d proof=%+v\n", item.Height, item.Index, proof)
 		result = append(result, proof)
 	}
 
-	return result, maxHeight, nil
+	return result, nil
 }
 
 func TxCompletedSuccessfullyProof(ctx context.Context, querier *proofer.ProofQuerier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {
