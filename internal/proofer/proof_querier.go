@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/kv"
-	"github.com/lidofinance/cosmos-query-relayer/internal/chain"
-	"time"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -19,18 +16,7 @@ type ProofQuerier struct {
 	cdc     codec.LegacyAmino
 }
 
-func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*ProofQuerier, error) {
-	client, err := chain.NewRPCClient(addr, timeout)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize http client: %w", err)
-	}
-
-	err = client.Start()
-	if err != nil {
-		return nil, fmt.Errorf("could not start http client: %w", err)
-	}
-
+func NewProofQuerier(client *rpcclienthttp.HTTP, chainId string) (*ProofQuerier, error) {
 	legacyCdc := codec.NewLegacyAmino()
 	//cdc := codec.NewAminoCodec(legacyCdc)
 

@@ -49,7 +49,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 	fmt.Println()
 
 	for _, m := range messages {
-		err := r.ProofMessage(ctx, m)
+		err := r.proofMessage(ctx, m)
 		if err != nil {
 			fmt.Printf("\ncould not process message query_id=%d err=%s\n", m.queryId, err)
 		}
@@ -97,7 +97,7 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 	return messages
 }
 
-func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
+func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 	fmt.Printf("ProofMessage message_type=%s\n", m.messageType)
 	switch m.messageType {
 	case "x/staking/DelegatorDelegations":

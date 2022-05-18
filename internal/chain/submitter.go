@@ -11,6 +11,7 @@ import (
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
@@ -35,22 +36,24 @@ func TestKeybase(chainID string, keyringRootDir string, codec Codec) (keyring.Ke
 	return keybase, nil
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdjustment float64, gasPrices string, addressPrefix string, keybase keyring.Keyring, signKeyName string) (*TxSubmitter, error) {
+func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, codec Codec, keybase keyring.Keyring, cfg config.CosmosQueryRelayerConfig) (*TxSubmitter, error) {
+	lidoCfg := cfg.LidoChain
 	baseTxf := tx.Factory{}.
-		WithChainID(chainID).
-		WithTxConfig(codec.TxConfig).
-		WithGasAdjustment(gasAdjustment).
-		WithGasPrices(gasPrices).
 		WithKeybase(keybase).
-		WithSignMode(mode)
+		WithSignMode(mode).
+		WithTxConfig(codec.TxConfig).
+		WithChainID(lidoCfg.ChainID).
+		WithGasAdjustment(lidoCfg.GasAdjustment).
+		WithGasPrices(lidoCfg.GasPrices)
+
 	return &TxSubmitter{
 		ctx:           ctx,
 		codec:         codec,
 		baseTxf:       baseTxf,
 		rpcClient:     rpcClient,
-		chainID:       chainID,
-		addressPrefix: addressPrefix,
-		signKeyName:   signKeyName,
+		chainID:       lidoCfg.ChainID,
+		addressPrefix: lidoCfg.ChainPrefix,
+		signKeyName:   lidoCfg.Keyring.SignKeyName,
 	}, nil
 }
 

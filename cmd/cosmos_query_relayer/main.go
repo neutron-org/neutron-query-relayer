@@ -26,14 +26,20 @@ func main() {
 	}
 
 	sub.SetSDKConfig(cfg)
-	querier, err := proofer.NewProofQuerier(cfg.TargetChain.Timeout, cfg.TargetChain.RPCAddress, cfg.TargetChain.ChainID)
+
+	targetClient, err := sub.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
+	if err != nil {
+		log.Fatalf("could not initialize target rpc client: %s", err)
+	}
+
+	targetQuerier, err := proofer.NewProofQuerier(targetClient, cfg.TargetChain.ChainID)
 	if err != nil {
 		log.Fatalf("cannot connect to target chain: %s", err)
 	}
 
 	//testProofs(ctx, cfg)
 
-	lidoRPCClient, err := sub.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+	lidoClient, err := sub.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
 		log.Println(err)
 		return
@@ -45,15 +51,17 @@ func main() {
 		log.Println(err)
 		return
 	}
-	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase, cfg.LidoChain.Keyring.SignKeyName)
+	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoClient, codec, keybase, cfg)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	submit := submitter.NewProofSubmitter(txSubmitter)
+	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
 
-	relayer := relay.NewRelayer(querier, submit, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
+	relayer := relay.NewRelayer(targetQuerier, proofSubmitter, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
 
+	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
+	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
 	err = sub.Subscribe(ctx, cfg.LidoChain.RPCAddress, sub.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		relayer.Proof(ctx, event)
 	})
