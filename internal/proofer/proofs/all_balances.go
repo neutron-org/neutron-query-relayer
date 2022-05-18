@@ -23,12 +23,14 @@ func GetBalance(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix 
 		return nil, 0, fmt.Errorf("failed to query tendermint proof for balances: %w", err)
 	}
 
-	//var amount sdk.Coin
-	//if err := amount.Unmarshal(value.Value); err != nil {
-	//	fmt.Printf("failed to unmarshal the balances response: %s", err)
-	//	return nil, 0, err
-	//}
-	//fmt.Printf("\nCoin: %+v, Err %v\n", amount, err)
-
 	return []proofer.StorageValue{*value}, height, err
+}
+
+func parseGetBalanceValue(value proofer.StorageValue) {
+	var amount sdk.Coin
+	if err := amount.Unmarshal(value.Value); err != nil {
+		fmt.Printf("failed to unmarshal the balances response: %s", err)
+		return
+	}
+	fmt.Printf("\nCoin: %+v", amount)
 }

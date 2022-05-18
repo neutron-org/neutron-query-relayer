@@ -13,7 +13,8 @@ import (
 )
 
 var perPage = 100
-var orderBy = ""
+
+const orderBy = ""
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)

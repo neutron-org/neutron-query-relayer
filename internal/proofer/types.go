@@ -31,6 +31,3 @@ type Query struct {
 	Type          string
 	Params        map[string]string
 }
-
-type Proof struct {
-}

@@ -14,12 +14,6 @@ import (
 
 // CalculateDelegationRewards gets proofs for query type = 'x/distribution/CalculateDelegationRewards'
 func CalculateDelegationRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
-	// Get latest block for latest height
-	//block, err := querier.Client.Block(ctx, nil)
-	//if err != nil {
-	//	return fmt.Errorf("error fetching latest block: %w", err)
-	//}
-
 	// Getting starting info
 	validatorAddressBz, err := sdk.GetFromBech32(validatorAddressBech32, prefix+sdk.PrefixValidator+sdk.PrefixOperator)
 	err = sdk.VerifyAddressFormat(validatorAddressBz)

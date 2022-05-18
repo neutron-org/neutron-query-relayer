@@ -17,6 +17,7 @@ func GetDelegatorDelegations(ctx context.Context, querier *proofer.ProofQuerier,
 	}
 
 	delegatorPrefixKey := stakingtypes.GetDelegationsKey(delegatorBz)
+
 	result, height, err := querier.QueryIterateTendermintProof(ctx, inputHeight, storeKey, delegatorPrefixKey)
 
 	return result, height, err

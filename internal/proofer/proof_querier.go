@@ -80,7 +80,6 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, 
 
 	//revision := clienttypes.ParseChainID(chainID)
 	response := res.Response
-	// TODO: is storagePrefix correct here?
 	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height), nil
 }
 

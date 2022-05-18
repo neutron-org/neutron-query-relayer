@@ -3,6 +3,7 @@ package proofs
 import (
 	"context"
 	"fmt"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 )
@@ -16,15 +17,17 @@ func GetSupply(ctx context.Context, querier *proofer.ProofQuerier, denom string)
 		return nil, 0, fmt.Errorf("error querying exchange rate tendermint proof for denom=%s: %w", denom, err)
 	}
 
-	//var amount sdk.Int
-	//err = amount.Unmarshal(value.Value)
-	//if err != nil {
-	//	return nil, 0, fmt.Errorf("error unmarshalling value exchange rate for denom=%s: %w", denom, err)
-	//}
-	//
-	//fmt.Printf("supply of denom=%s is %+v\n", denom, amount)
-
 	// TODO: do we need to calculate delegations total supply for denom here?
 
 	return []proofer.StorageValue{*value}, height, nil
+}
+
+func parseGetSupplyValue(value proofer.StorageValue) {
+	var amount sdk.Int
+	err := amount.Unmarshal(value.Value)
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("supply is %+v\n", amount)
 }
