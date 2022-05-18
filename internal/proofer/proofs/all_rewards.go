@@ -10,6 +10,7 @@ import (
 
 // TODO: test with blockchain where slashing events are there
 // TODO: сравнить output из функции и результат вызова GetRewards напрямую
+// TODO: add them to Proofer interface
 // see: lido-terra-integration-tests
 
 // CalculateDelegationRewards gets proofs for query type = 'x/distribution/CalculateDelegationRewards'

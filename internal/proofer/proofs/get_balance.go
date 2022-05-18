@@ -9,7 +9,7 @@ import (
 )
 
 // GetBalance gets proofs for query type = 'x/bank/GetBalance'
-func GetBalance(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix string, addr string, denom string) ([]proofer.StorageValue, uint64, error) {
+func (p ProoferImpl) GetBalance(ctx context.Context, chainPrefix string, addr string, denom string) ([]proofer.StorageValue, uint64, error) {
 	storeKey := banktypes.StoreKey
 	bytesAddress, err := sdk.GetFromBech32(addr, chainPrefix)
 	if err != nil {
@@ -17,7 +17,7 @@ func GetBalance(ctx context.Context, querier *proofer.ProofQuerier, chainPrefix 
 	}
 
 	key := append(banktypes.CreateAccountBalancesPrefix(bytesAddress), []byte(denom)...)
-	value, height, err := querier.QueryTendermintProof(ctx, int64(0), storeKey, key)
+	value, height, err := p.querier.QueryTendermintProof(ctx, int64(0), storeKey, key)
 	if err != nil {
 		fmt.Printf("failed to query tendermint proof for balances: %s", err)
 		return nil, 0, fmt.Errorf("failed to query tendermint proof for balances: %w", err)

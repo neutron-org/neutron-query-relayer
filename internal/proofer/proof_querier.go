@@ -10,6 +10,7 @@ import (
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
+// ProofQuerier can get proofs for stored blockchain values
 type ProofQuerier struct {
 	Client  *rpcclienthttp.HTTP
 	ChainID string

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
 	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
 	"github.com/tendermint/tendermint/rpc/coretypes"
@@ -51,14 +52,16 @@ func main() {
 		log.Println(err)
 		return
 	}
+
 	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoClient, codec.Marshaller, keybase, cfg)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
 
-	relayer := relay.NewRelayer(targetQuerier, proofSubmitter, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
+	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
+	proofFetcher := proofs.NewProofer(targetQuerier)
+	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
 
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now

@@ -10,9 +10,9 @@ import (
 
 // GetSupply gets proofs for query type = 'x/bank/GetSupply'
 // Needed for proof of stXXX rate (?) = DelegatorDelegations / total stXXX issued
-func GetSupply(ctx context.Context, querier *proofer.ProofQuerier, denom string) ([]proofer.StorageValue, uint64, error) {
+func (p ProoferImpl) GetSupply(ctx context.Context, denom string) ([]proofer.StorageValue, uint64, error) {
 	key := append(banktypes.SupplyKey, []byte(denom)...)
-	value, height, err := querier.QueryTendermintProof(ctx, 0, banktypes.StoreKey, key)
+	value, height, err := p.querier.QueryTendermintProof(ctx, 0, banktypes.StoreKey, key)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error querying exchange rate tendermint proof for denom=%s: %w", denom, err)
 	}

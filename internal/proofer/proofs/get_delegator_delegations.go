@@ -8,7 +8,7 @@ import (
 )
 
 // GetDelegatorDelegations gets proofs for query type = 'x/staking/GetDelegatorDelegations'
-func GetDelegatorDelegations(ctx context.Context, querier *proofer.ProofQuerier, prefix string, delegator string) ([]proofer.StorageValue, uint64, error) {
+func (p ProoferImpl) GetDelegatorDelegations(ctx context.Context, prefix string, delegator string) ([]proofer.StorageValue, uint64, error) {
 	inputHeight := int64(0)
 	storeKey := stakingtypes.StoreKey
 	delegatorBz, err := sdk.GetFromBech32(delegator, prefix)
@@ -18,7 +18,7 @@ func GetDelegatorDelegations(ctx context.Context, querier *proofer.ProofQuerier,
 
 	delegatorPrefixKey := stakingtypes.GetDelegationsKey(delegatorBz)
 
-	result, height, err := querier.QueryIterateTendermintProof(ctx, inputHeight, storeKey, delegatorPrefixKey)
+	result, height, err := p.querier.QueryIterateTendermintProof(ctx, inputHeight, storeKey, delegatorPrefixKey)
 
 	return result, height, err
 }

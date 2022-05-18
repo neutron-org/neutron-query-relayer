@@ -18,13 +18,13 @@ const orderBy = ""
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)
-func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, queryParams map[string]string) ([]proofer.CompleteTransactionProof, error) {
+func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) ([]proofer.CompleteTransactionProof, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
 	txs := make([]*coretypes.ResultTx, 0)
 	for {
-		searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
+		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		//fmt.Printf("TxSearch: %+v\n", searchResult)
 		if err != nil {
 			return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
@@ -51,7 +51,7 @@ func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, q
 
 	result := make([]proofer.CompleteTransactionProof, 0, len(txs))
 	for _, item := range txs {
-		txResultProof, err := TxCompletedSuccessfullyProof(ctx, querier, item.Height, item.Index)
+		txResultProof, err := TxCompletedSuccessfullyProof(ctx, p.querier, item.Height, item.Index)
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
 		}

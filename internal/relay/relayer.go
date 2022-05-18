@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -13,7 +12,7 @@ import (
 )
 
 type Relayer struct {
-	querier           *proofer.ProofQuerier
+	proofer           proofs.Proofer
 	submitter         *submitter.ProofSubmitter
 	targetChainPrefix string
 	sender            string
@@ -36,8 +35,8 @@ type GetAllBalancesParams struct {
 
 type RecipientTransactionsParams map[string]string
 
-func NewRelayer(querier *proofer.ProofQuerier, submitter *submitter.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
-	return Relayer{querier: querier, submitter: submitter, targetChainPrefix: targetChainPrefix, sender: sender}
+func NewRelayer(proofer proofs.Proofer, submitter *submitter.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
+	return Relayer{proofer, submitter, targetChainPrefix, sender}
 }
 
 func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
@@ -108,7 +107,7 @@ func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		proof, height, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, params.Delegator)
+		proof, height, err := r.proofer.GetDelegatorDelegations(ctx, r.targetChainPrefix, params.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
@@ -124,7 +123,7 @@ func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		proof, height, err := proofs.GetBalance(ctx, r.querier, r.targetChainPrefix, params.Addr, params.Denom)
+		proof, height, err := r.proofer.GetBalance(ctx, r.targetChainPrefix, params.Addr, params.Denom)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
@@ -140,7 +139,7 @@ func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		txProof, err := proofs.RecipientTransactions(ctx, r.querier, params)
+		txProof, err := r.proofer.RecipientTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
