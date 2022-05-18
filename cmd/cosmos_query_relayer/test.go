@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	sub "github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proofs"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
+	raw "github.com/lidofinance/cosmos-query-relayer/internal/raw"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 )
@@ -16,14 +16,14 @@ func testSubscribeLidoChain(ctx context.Context, addr string, query string) {
 		fmt.Printf("OnEvent:\n%+v\n\n\n", event.Data)
 		fmt.Printf("\n\nInner events:\n%+v\n\n", event.Events)
 	}
-	err := sub.Subscribe(ctx, addr, query, onEvent)
+	err := raw.Subscribe(ctx, addr, query, onEvent)
 	if err != nil {
 		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}
 }
 
 func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
-	client, err := sub.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
+	client, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {
 		err = fmt.Errorf("error creating new http client: %w", err)
 		log.Println(err)
@@ -55,7 +55,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//query := "tx.height=3469"
 
 	//query := fmt.Sprintf("transfer.recipient='%s'", "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp")
-	_, err = proofs.NewProofer(querier).RecipientTransactions(ctx, map[string]string{"transfer.recipient": "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp"})
+	_, err = proof_impl.NewProofer(querier).RecipientTransactions(ctx, map[string]string{"transfer.recipient": "terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp"})
 
 	//testTxProof(ctx, cfg, querier)
 
@@ -77,10 +77,10 @@ func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, queri
 	// https://atomscan.com/terra
 	height := int64(7503466)
 	indexInBlock := uint32(0)
-	proof, _ := proofs.TxCompletedSuccessfullyProof(ctx, querier, height, indexInBlock)
+	txProof, _ := proof_impl.TxCompletedSuccessfullyProof(ctx, querier, height, indexInBlock)
 
 	results, _ := querier.Client.BlockResults(ctx, &height)
-	err := proofs.VerifyProof(results, *proof, indexInBlock)
+	err := proof_impl.VerifyProof(results, *txProof, indexInBlock)
 
 	if err == nil {
 		log.Println("Verification passed")

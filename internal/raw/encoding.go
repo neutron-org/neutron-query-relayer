@@ -1,4 +1,4 @@
-package chain
+package raw
 
 import (
 	"github.com/cosmos/cosmos-sdk/codec"

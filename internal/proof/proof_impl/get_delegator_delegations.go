@@ -1,4 +1,4 @@
-package proofs
+package proof_impl
 
 import (
 	"context"

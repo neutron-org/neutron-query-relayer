@@ -1,4 +1,4 @@
-package chain
+package raw
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"

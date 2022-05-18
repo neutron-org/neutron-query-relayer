@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proofs"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/rpc/coretypes"
@@ -12,31 +12,14 @@ import (
 )
 
 type Relayer struct {
-	proofer           proofs.Proofer
-	submitter         *submit.ProofSubmitter
+	proofer           proof.Proofer
+	submitter         submit.Submitter
 	targetChainPrefix string
 	sender            string
 }
 
-type QueryEventMessage struct {
-	queryId     uint64
-	messageType string
-	parameters  string
-}
-
-type GetDelegatorDelegationsParameters struct {
-	Delegator string `json:"delegator"`
-}
-
-type GetAllBalancesParams struct {
-	Addr  string `json:"addr"`
-	Denom string `json:"denom"`
-}
-
-type RecipientTransactionsParams map[string]string
-
-func NewRelayer(proofer proofs.Proofer, submitter *submit.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
-	return Relayer{proofer, submitter, targetChainPrefix, sender}
+func NewRelayer(proofer proof.Proofer, submitter submit.Submitter, targetChainPrefix string, sender string) Relayer {
+	return Relayer{proofer: proofer, submitter: submitter, targetChainPrefix: targetChainPrefix, sender: sender}
 }
 
 func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
@@ -51,7 +34,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 }
 
 // TODO: continue on errors or return if this happens?
-func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []QueryEventMessage {
+func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []queryEventMessage {
 	abciMessages := make([]abci.Event, 0)
 	for _, e := range event.Events {
 		if e.Type == "message" {
@@ -59,7 +42,7 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 		}
 	}
 
-	messages := make([]QueryEventMessage, 0, len(abciMessages))
+	messages := make([]queryEventMessage, 0, len(abciMessages))
 	for _, m := range abciMessages {
 		queryIdStr, err := tryFindInEvent(m.GetAttributes(), "query_id")
 		if err != nil {
@@ -85,50 +68,50 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 		}
 
 		messages = append(messages,
-			QueryEventMessage{queryId: queryId, messageType: messageType, parameters: parameters})
+			queryEventMessage{queryId: queryId, messageType: messageType, parameters: parameters})
 	}
 
 	return messages
 }
 
-func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
+func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	fmt.Printf("ProofMessage message_type=%s\n", m.messageType)
 	switch m.messageType {
 	case "x/staking/DelegatorDelegations":
 		fmt.Printf("Unmarshal parameters=%s", m.parameters)
-		var params GetDelegatorDelegationsParameters
+		var params getDelegatorDelegationsParams
 		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		proof, height, err := r.proofer.GetDelegatorDelegations(ctx, r.targetChainPrefix, params.Delegator)
+		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, r.targetChainPrefix, params.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(height, m.queryId, proof)
+		err = r.submitter.SubmitProof(height, m.queryId, proofs)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 	case "x/bank/GetBalance":
-		var params GetAllBalancesParams
+		var params getAllBalancesParams
 		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		proof, height, err := r.proofer.GetBalance(ctx, r.targetChainPrefix, params.Addr, params.Denom)
+		proofs, height, err := r.proofer.GetBalance(ctx, r.targetChainPrefix, params.Addr, params.Denom)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(height, m.queryId, proof)
+		err = r.submitter.SubmitProof(height, m.queryId, proofs)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 	case "x/tx/RecipientTransactions":
-		var params RecipientTransactionsParams
+		var params recipientTransactionsParams
 		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%d: %w", m.parameters, m.queryId, err)

@@ -1,4 +1,4 @@
-package chain
+package submit
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 
 var mode = signing.SignMode_SIGN_MODE_DIRECT
 
-type TxSubmitter struct {
+type TxSender struct {
 	ctx           context.Context
 	baseTxf       tx.Factory
 	txConfig      client.TxConfig
@@ -39,7 +39,7 @@ func TestKeybase(chainID string, keyringRootDir string, codec codec.Codec) (keyr
 	return keybase, nil
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.CosmosQueryRelayerConfig) (*TxSubmitter, error) {
+func NewTxSender(ctx context.Context, rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.CosmosQueryRelayerConfig) (*TxSender, error) {
 	lidoCfg := cfg.LidoChain
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
@@ -50,7 +50,7 @@ func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, marshaller 
 		WithGasAdjustment(lidoCfg.GasAdjustment).
 		WithGasPrices(lidoCfg.GasPrices)
 
-	return &TxSubmitter{
+	return &TxSender{
 		ctx:           ctx,
 		txConfig:      txConfig,
 		baseTxf:       baseTxf,
@@ -62,8 +62,8 @@ func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, marshaller 
 }
 
 // BuildAndSendTx builds transaction with calculated gas and fees params, signs it and submits to chain
-func (cc *TxSubmitter) BuildAndSendTx(sender string, msgs []types.Msg) error {
-	account, err := cc.QueryAccount(sender)
+func (cc *TxSender) Send(sender string, msgs []types.Msg) error {
+	account, err := cc.queryAccount(sender)
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,8 @@ func (cc *TxSubmitter) BuildAndSendTx(sender string, msgs []types.Msg) error {
 	}
 }
 
-// QueryAccount returns BaseAccount for given account address
-func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, error) {
+// queryAccount returns BaseAccount for given account address
+func (cc *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error) {
 	request := authtypes.QueryAccountRequest{Address: address}
 	req, err := request.Marshal()
 	if err != nil {
@@ -131,7 +131,7 @@ func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, err
 	return &account, nil
 }
 
-func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddress string, gasAmount uint64) ([]byte, error) {
+func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddress string, gasAmount uint64) ([]byte, error) {
 	txBuilder := cc.txConfig.NewTxBuilder()
 	err := txBuilder.SetMsgs(msgs...)
 	if err != nil {
@@ -163,7 +163,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 	return bz, err
 }
 
-func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, error) {
+func (cc *TxSender) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, error) {
 	simulation, err := cc.buildSimulationTx(txf, msgs...)
 	if err != nil {
 		return 0, err
@@ -192,7 +192,7 @@ func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, 
 
 // buildSimulationTx creates an unsigned tx with an empty single signature and returns
 // the encoded transaction or an error if the unsigned transaction cannot be built.
-func (cc *TxSubmitter) buildSimulationTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
+func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
 	txb, err := cc.baseTxf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, err
