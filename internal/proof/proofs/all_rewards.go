@@ -5,7 +5,7 @@ import (
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 )
 
 // TODO: test with blockchain where slashing events are there
@@ -14,7 +14,7 @@ import (
 // see: lido-terra-integration-tests
 
 // CalculateDelegationRewards gets proofs for query type = 'x/distribution/CalculateDelegationRewards'
-func CalculateDelegationRewards(ctx context.Context, querier *proofer.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
+func CalculateDelegationRewards(ctx context.Context, querier *proof.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
 	// Getting starting info
 	validatorAddressBz, err := sdk.GetFromBech32(validatorAddressBech32, prefix+sdk.PrefixValidator+sdk.PrefixOperator)
 	err = sdk.VerifyAddressFormat(validatorAddressBz)

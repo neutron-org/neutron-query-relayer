@@ -164,7 +164,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 }
 
 func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, error) {
-	simulation, err := cc.buildSimTx(txf, msgs...)
+	simulation, err := cc.buildSimulationTx(txf, msgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -190,9 +190,9 @@ func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, 
 	return uint64(txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil
 }
 
-// buildSimTx creates an unsigned tx with an empty single signature and returns
+// buildSimulationTx creates an unsigned tx with an empty single signature and returns
 // the encoded transaction or an error if the unsigned transaction cannot be built.
-func (cc *TxSubmitter) buildSimTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
+func (cc *TxSubmitter) buildSimulationTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
 	txb, err := cc.baseTxf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, err

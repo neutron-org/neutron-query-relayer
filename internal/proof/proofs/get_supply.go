@@ -5,12 +5,12 @@ import (
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 )
 
 // GetSupply gets proofs for query type = 'x/bank/GetSupply'
 // Needed for proof of stXXX rate (?) = DelegatorDelegations / total stXXX issued
-func (p ProoferImpl) GetSupply(ctx context.Context, denom string) ([]proofer.StorageValue, uint64, error) {
+func (p ProoferImpl) GetSupply(ctx context.Context, denom string) ([]proof.StorageValue, uint64, error) {
 	key := append(banktypes.SupplyKey, []byte(denom)...)
 	value, height, err := p.querier.QueryTendermintProof(ctx, 0, banktypes.StoreKey, key)
 	if err != nil {
@@ -19,10 +19,10 @@ func (p ProoferImpl) GetSupply(ctx context.Context, denom string) ([]proofer.Sto
 
 	// TODO: do we need to calculate delegations total supply for denom here?
 
-	return []proofer.StorageValue{*value}, height, nil
+	return []proof.StorageValue{*value}, height, nil
 }
 
-func parseGetSupplyValue(value proofer.StorageValue) {
+func parseGetSupplyValue(value proof.StorageValue) {
 	var amount sdk.Int
 	err := amount.Unmarshal(value.Value)
 	if err != nil {

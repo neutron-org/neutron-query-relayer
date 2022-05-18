@@ -1,4 +1,4 @@
-package proofer
+package proof
 
 import (
 	"context"

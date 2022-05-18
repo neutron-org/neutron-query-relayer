@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proofs"
 	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
-	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
+	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 
@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("could not initialize target rpc client: %s", err)
 	}
 
-	targetQuerier, err := proofer.NewProofQuerier(targetClient, cfg.TargetChain.ChainID)
+	targetQuerier, err := proof.NewProofQuerier(targetClient, cfg.TargetChain.ChainID)
 	if err != nil {
 		log.Fatalf("cannot connect to target chain: %s", err)
 	}
@@ -59,7 +59,7 @@ func main() {
 		return
 	}
 
-	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
+	proofSubmitter := submit.NewProofSubmitter(cfg.LidoChain.Sender, txSubmitter)
 	proofFetcher := proofs.NewProofer(targetQuerier)
 	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
 

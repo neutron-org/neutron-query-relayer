@@ -3,7 +3,7 @@ package proofs
 import (
 	"context"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/state"
@@ -18,7 +18,7 @@ const orderBy = ""
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) ([]proofer.CompleteTransactionProof, error) {
+func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) ([]proof.CompleteTransactionProof, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
@@ -46,17 +46,17 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	}
 
 	if len(txs) == 0 {
-		return []proofer.CompleteTransactionProof{}, nil
+		return []proof.CompleteTransactionProof{}, nil
 	}
 
-	result := make([]proofer.CompleteTransactionProof, 0, len(txs))
+	result := make([]proof.CompleteTransactionProof, 0, len(txs))
 	for _, item := range txs {
 		txResultProof, err := TxCompletedSuccessfullyProof(ctx, p.querier, item.Height, item.Index)
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
 		}
 
-		proof := proofer.CompleteTransactionProof{
+		proof := proof.CompleteTransactionProof{
 			BlockProof:   item.Proof,
 			SuccessProof: *txResultProof,
 			Height:       uint64(item.Height),
@@ -68,7 +68,7 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	return result, nil
 }
 
-func TxCompletedSuccessfullyProof(ctx context.Context, querier *proofer.ProofQuerier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {
+func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.ProofQuerier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {
 	results, err := querier.Client.BlockResults(ctx, &blockHeight)
 
 	if err != nil {

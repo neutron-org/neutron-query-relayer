@@ -5,8 +5,8 @@ import (
 	"fmt"
 	sub "github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proofs"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 )
@@ -28,7 +28,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		err = fmt.Errorf("error creating new http client: %w", err)
 		log.Println(err)
 	}
-	querier, err := proofer.NewProofQuerier(client, cfg.TargetChain.ChainID)
+	querier, err := proof.NewProofQuerier(client, cfg.TargetChain.ChainID)
 	if err != nil {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)
@@ -68,7 +68,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//testTxSubmit(ctx, cfg)
 }
 
-func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proofer.ProofQuerier) {
+func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proof.ProofQuerier) {
 	//hash := "0xE71F89160178AE8A6AC84F6F8810658CEDF4A66FACA27BA2FFFF2DA8539DE4A6"
 	//value, err := querier.QueryTxProof(ctx, 0, []byte(hash))
 	//var tx cosmostypes.Tx

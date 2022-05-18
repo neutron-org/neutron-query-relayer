@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
-	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proofs"
+	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"strconv"
@@ -13,7 +13,7 @@ import (
 
 type Relayer struct {
 	proofer           proofs.Proofer
-	submitter         *submitter.ProofSubmitter
+	submitter         *submit.ProofSubmitter
 	targetChainPrefix string
 	sender            string
 }
@@ -35,17 +35,12 @@ type GetAllBalancesParams struct {
 
 type RecipientTransactionsParams map[string]string
 
-func NewRelayer(proofer proofs.Proofer, submitter *submitter.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
+func NewRelayer(proofer proofs.Proofer, submitter *submit.ProofSubmitter, targetChainPrefix string, sender string) Relayer {
 	return Relayer{proofer, submitter, targetChainPrefix, sender}
 }
 
 func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 	messages := filterInterchainQueryMessagesFromEvent(event)
-	fmt.Println("Got messages:")
-	for _, m := range messages {
-		fmt.Printf("%+v\n", m)
-	}
-	fmt.Println()
 
 	for _, m := range messages {
 		err := r.proofMessage(ctx, m)
@@ -112,7 +107,7 @@ func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(r.sender, height, m.queryId, proof)
+		err = r.submitter.SubmitProof(height, m.queryId, proof)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
@@ -128,7 +123,7 @@ func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(r.sender, height, m.queryId, proof)
+		err = r.submitter.SubmitProof(height, m.queryId, proof)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
@@ -144,7 +139,7 @@ func (r Relayer) proofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitTxProof(r.sender, m.queryId, txProof)
+		err = r.submitter.SubmitTxProof(m.queryId, txProof)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
