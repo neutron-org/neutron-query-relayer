@@ -23,7 +23,12 @@ func testSubscribeLidoChain(ctx context.Context, addr string, query string) {
 }
 
 func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
-	querier, err := proofer.NewProofQuerier(cfg.TargetChain.Timeout, cfg.TargetChain.RPCAddress, cfg.TargetChain.ChainID)
+	client, err := sub.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
+	if err != nil {
+		err = fmt.Errorf("error creating new http client: %w", err)
+		log.Println(err)
+	}
+	querier, err := proofer.NewProofQuerier(client, cfg.TargetChain.ChainID)
 	if err != nil {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)

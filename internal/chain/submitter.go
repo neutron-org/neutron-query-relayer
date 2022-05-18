@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
+	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -20,15 +23,15 @@ var mode = signing.SignMode_SIGN_MODE_DIRECT
 type TxSubmitter struct {
 	ctx           context.Context
 	baseTxf       tx.Factory
-	codec         Codec
+	txConfig      client.TxConfig
 	rpcClient     rpcclient.Client
 	chainID       string
 	addressPrefix string
 	signKeyName   string
 }
 
-func TestKeybase(chainID string, keyringRootDir string, codec Codec) (keyring.Keyring, error) {
-	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, codec.Marshaller)
+func TestKeybase(chainID string, keyringRootDir string, codec codec.Codec) (keyring.Keyring, error) {
+	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, codec)
 	if err != nil {
 		return keybase, err
 	}
@@ -36,19 +39,20 @@ func TestKeybase(chainID string, keyringRootDir string, codec Codec) (keyring.Ke
 	return keybase, nil
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, codec Codec, keybase keyring.Keyring, cfg config.CosmosQueryRelayerConfig) (*TxSubmitter, error) {
+func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.CosmosQueryRelayerConfig) (*TxSubmitter, error) {
 	lidoCfg := cfg.LidoChain
+	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
 		WithSignMode(mode).
-		WithTxConfig(codec.TxConfig).
+		WithTxConfig(txConfig).
 		WithChainID(lidoCfg.ChainID).
 		WithGasAdjustment(lidoCfg.GasAdjustment).
 		WithGasPrices(lidoCfg.GasPrices)
 
 	return &TxSubmitter{
 		ctx:           ctx,
-		codec:         codec,
+		txConfig:      txConfig,
 		baseTxf:       baseTxf,
 		rpcClient:     rpcClient,
 		chainID:       lidoCfg.ChainID,
@@ -128,7 +132,7 @@ func (cc *TxSubmitter) QueryAccount(address string) (*authtypes.BaseAccount, err
 }
 
 func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddress string, gasAmount uint64) ([]byte, error) {
-	txBuilder := cc.codec.TxConfig.NewTxBuilder()
+	txBuilder := cc.txConfig.NewTxBuilder()
 	err := txBuilder.SetMsgs(msgs...)
 	if err != nil {
 		fmt.Printf("set msgs failure")
@@ -155,7 +159,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 		return nil, err
 	}
 
-	bz, err := cc.codec.TxConfig.TxEncoder()(txBuilder.GetTx())
+	bz, err := cc.txConfig.TxEncoder()(txBuilder.GetTx())
 	return bz, err
 }
 
@@ -207,7 +211,7 @@ func (cc *TxSubmitter) buildSimTx(txf tx.Factory, msgs ...types.Msg) ([]byte, er
 		return nil, err
 	}
 
-	bz, err := cc.codec.TxConfig.TxEncoder()(txb.GetTx())
+	bz, err := cc.txConfig.TxEncoder()(txb.GetTx())
 	if err != nil {
 		return nil, nil
 	}

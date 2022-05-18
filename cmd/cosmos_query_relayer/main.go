@@ -45,13 +45,13 @@ func main() {
 		return
 	}
 
-	codec := sub.MakeCodecConfig()
-	keybase, err := sub.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.Keyring.Dir, codec)
+	codec := sub.MakeCodecDefault()
+	keybase, err := sub.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.Keyring.Dir, codec.Marshaller)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoClient, codec, keybase, cfg)
+	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoClient, codec.Marshaller, keybase, cfg)
 	if err != nil {
 		log.Println(err)
 		return
