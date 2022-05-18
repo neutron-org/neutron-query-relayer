@@ -14,7 +14,7 @@ import (
 // see: lido-terra-integration-tests
 
 // CalculateDelegationRewards gets proofs for query type = 'x/distribution/CalculateDelegationRewards'
-func CalculateDelegationRewards(ctx context.Context, querier *proof.ProofQuerier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
+func CalculateDelegationRewards(ctx context.Context, querier *proof.Querier, prefix, validatorAddressBech32, delegatorAddressBech32 string, endingPeriod uint64) error {
 	// Getting starting info
 	validatorAddressBz, err := sdk.GetFromBech32(validatorAddressBech32, prefix+sdk.PrefixValidator+sdk.PrefixOperator)
 	err = sdk.VerifyAddressFormat(validatorAddressBz)

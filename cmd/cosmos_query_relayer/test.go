@@ -28,7 +28,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 		err = fmt.Errorf("error creating new http client: %w", err)
 		log.Println(err)
 	}
-	querier, err := proof.NewProofQuerier(client, cfg.TargetChain.ChainID)
+	querier, err := proof.NewQuerier(client, cfg.TargetChain.ChainID)
 	if err != nil {
 		err = fmt.Errorf("error creating new query key proofer: %w", err)
 		log.Println(err)
@@ -68,7 +68,7 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//testTxSubmit(ctx, cfg)
 }
 
-func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proof.ProofQuerier) {
+func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proof.Querier) {
 	//hash := "0xE71F89160178AE8A6AC84F6F8810658CEDF4A66FACA27BA2FFFF2DA8539DE4A6"
 	//value, err := querier.QueryTxProof(ctx, 0, []byte(hash))
 	//var tx cosmostypes.Tx

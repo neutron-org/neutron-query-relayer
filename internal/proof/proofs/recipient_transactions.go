@@ -68,7 +68,7 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	return result, nil
 }
 
-func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.ProofQuerier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {
+func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.Querier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {
 	results, err := querier.Client.BlockResults(ctx, &blockHeight)
 
 	if err != nil {

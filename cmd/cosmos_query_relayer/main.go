@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("could not initialize target rpc client: %s", err)
 	}
 
-	targetQuerier, err := proof.NewProofQuerier(targetClient, cfg.TargetChain.ChainID)
+	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID)
 	if err != nil {
 		log.Fatalf("cannot connect to target chain: %s", err)
 	}

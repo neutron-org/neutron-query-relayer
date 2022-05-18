@@ -12,9 +12,9 @@ type Proofer interface {
 }
 
 type ProoferImpl struct {
-	querier *proof.ProofQuerier
+	querier *proof.Querier
 }
 
-func NewProofer(querier *proof.ProofQuerier) Proofer {
+func NewProofer(querier *proof.Querier) Proofer {
 	return ProoferImpl{querier}
 }

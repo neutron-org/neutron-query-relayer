@@ -10,18 +10,18 @@ import (
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
-// ProofQuerier can get proofs for stored blockchain values
-type ProofQuerier struct {
+// Querier can get proofs for stored blockchain values
+type Querier struct {
 	Client  *rpcclienthttp.HTTP
 	ChainID string
 	cdc     codec.LegacyAmino
 }
 
-func NewProofQuerier(client *rpcclienthttp.HTTP, chainId string) (*ProofQuerier, error) {
+func NewQuerier(client *rpcclienthttp.HTTP, chainId string) (*Querier, error) {
 	legacyCdc := codec.NewLegacyAmino()
 	//cdc := codec.NewAminoCodec(legacyCdc)
 
-	return &ProofQuerier{Client: client, ChainID: chainId, cdc: *legacyCdc}, nil
+	return &Querier{Client: client, ChainID: chainId, cdc: *legacyCdc}, nil
 }
 
 // QueryTendermintProof performs an ABCI query with the given key and returns
@@ -33,7 +33,7 @@ func NewProofQuerier(client *rpcclienthttp.HTTP, chainId string) (*ProofQuerier,
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
-func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, uint64, error) {
+func (cc *Querier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
@@ -71,7 +71,7 @@ func (cc *ProofQuerier) QueryTendermintProof(ctx context.Context, height int64, 
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys
-func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) ([]StorageValue, uint64, error) {
+func (cc *Querier) QueryIterateTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) ([]StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
