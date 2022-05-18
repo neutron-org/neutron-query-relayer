@@ -13,34 +13,43 @@ import (
 )
 
 var perPage = 100
+var orderBy = ""
 
-// RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions' (NOTE: there is no such query func in cosmos-sdk)
-// TODO: query transactions only once
+// RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
+// (NOTE: there is no such query function in cosmos-sdk)
 func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, queryParams map[string]string) ([]proofer.CompleteTransactionProof, error) {
-	queryParamsList := make([]string, 0, len(queryParams))
-	for key, value := range queryParams {
-		queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
-	}
-	query := strings.Join(queryParamsList, " AND ")
+	query := queryFromParams(queryParams)
+	page := 1 // NOTE: page index starts from 1
 
-	orderBy := ""
-	page := 1
-	// TODO: add denom filter
-	//query := fmt.Sprintf("transfer.recipient='%s' AND TODO", recipient)
-	// TODO: pagination support
-	searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
-	fmt.Printf("TxSearch: %+v\n", searchResult)
-	if err != nil {
-		return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
+	txs := make([]*coretypes.ResultTx, 0)
+	for {
+		searchResult, err := querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
+		//fmt.Printf("TxSearch: %+v\n", searchResult)
+		if err != nil {
+			return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
+		}
+
+		if len(searchResult.Txs) == 0 {
+			break
+		}
+
+		if page*perPage >= searchResult.TotalCount {
+			break
+		}
+
+		for _, item := range searchResult.Txs {
+			txs = append(txs, item)
+		}
+
+		page += 1
 	}
 
-	if searchResult.TotalCount == 0 {
-		// TODO: correct?
-		return nil, nil
+	if len(txs) == 0 {
+		return []proofer.CompleteTransactionProof{}, nil
 	}
 
-	result := make([]proofer.CompleteTransactionProof, 0, len(searchResult.Txs))
-	for _, item := range searchResult.Txs {
+	result := make([]proofer.CompleteTransactionProof, 0, len(txs))
+	for _, item := range txs {
 		txResultProof, err := TxCompletedSuccessfullyProof(ctx, querier, item.Height, item.Index)
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
@@ -80,7 +89,7 @@ func VerifyProof(results *coretypes.ResultBlockResults, proof merkle.Proof, txIn
 	//	return
 	//}
 
-	rootHash := ABCIResponsesResultsHash(&state.ABCIResponses{DeliverTxs: results.TxsResults})
+	rootHash := abciResponsesResultHash(&state.ABCIResponses{DeliverTxs: results.TxsResults})
 
 	//if !bytes.Equal(rootHash, block.Block.Header.LastResultsHash.Bytes()) {
 	//	log.Fatalf("LastResultsHash from block header and calculated LastResultsHash are not equal!")
@@ -103,6 +112,14 @@ func toByteSlice(r *abci.ResponseDeliverTx) ([]byte, error) {
 	return bz, nil
 }
 
-func ABCIResponsesResultsHash(ar *state.ABCIResponses) []byte {
+func abciResponsesResultHash(ar *state.ABCIResponses) []byte {
 	return types.NewResults(ar.DeliverTxs).Hash()
+}
+
+func queryFromParams(params map[string]string) string {
+	queryParamsList := make([]string, 0, len(params))
+	for key, value := range params {
+		queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
+	}
+	return strings.Join(queryParamsList, " AND ")
 }
