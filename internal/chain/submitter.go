@@ -23,13 +23,19 @@ type TxSubmitter struct {
 	rpcClient     rpcclient.Client
 	chainID       string
 	addressPrefix string
+	signKeyName   string
 }
 
-func TestKeybase(chainID string, backend string, keyringRootDir string, codec Codec) (keyring.Keyring, error) {
-	return keyring.New(chainID, backend, keyringRootDir, nil, codec.Marshaller)
+func TestKeybase(chainID string, keyringRootDir string, codec Codec) (keyring.Keyring, error) {
+	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, codec.Marshaller)
+	if err != nil {
+		return keybase, err
+	}
+
+	return keybase, nil
 }
 
-func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdjustment float64, gasPrices string, addressPrefix string, keybase keyring.Keyring) (*TxSubmitter, error) {
+func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID string, codec Codec, gasAdjustment float64, gasPrices string, addressPrefix string, keybase keyring.Keyring, signKeyName string) (*TxSubmitter, error) {
 	baseTxf := tx.Factory{}.
 		WithChainID(chainID).
 		WithTxConfig(codec.TxConfig).
@@ -44,6 +50,7 @@ func NewTxSubmitter(ctx context.Context, rpcClient rpcclient.Client, chainID str
 		rpcClient:     rpcClient,
 		chainID:       chainID,
 		addressPrefix: addressPrefix,
+		signKeyName:   signKeyName,
 	}, nil
 }
 
@@ -58,7 +65,9 @@ func (cc *TxSubmitter) BuildAndSendTx(sender string, msgs []types.Msg) error {
 		WithAccountNumber(account.AccountNumber).
 		WithSequence(account.Sequence)
 
-	gasNeeded, err := cc.calculateGas(txf, msgs...)
+	//gasNeeded, err := cc.calculateGas(txf, msgs...)
+	// FIXME: simulate query is broken for now. Turn on after migrating back to cosmos-sdk v45
+	gasNeeded := uint64(2000000)
 	if err != nil {
 		return err
 	}
@@ -71,7 +80,7 @@ func (cc *TxSubmitter) BuildAndSendTx(sender string, msgs []types.Msg) error {
 	}
 	res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
 
-	//fmt.Printf("Broadcast result: code=%+v log=%v err=%+v", res.Code, res.Log, err)
+	fmt.Printf("Broadcast result: code=%+v log=%v err=%+v hash=%b", res.Code, res.Log, err, res.Hash)
 
 	// TODO: parse result code to determine success or not
 	if res.Code == 0 {
@@ -133,12 +142,12 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 	}
 	txBuilder.SetFeePayer(feePayerBz)
 	// TODO: shouldn't set it like this. use gas limit and gas prices
-	txBuilder.SetFeeAmount(types.NewCoins(types.NewInt64Coin("uluna", 2000)))
+	txBuilder.SetFeeAmount(types.NewCoins(types.NewInt64Coin("stake", 500000)))
 	//txBuilder.SetFeeGranter()
 	//txBuilder.SetTimeoutHeight(...)
 
 	fmt.Printf("\nAbout to sign with txf: %+v\n\n", txf)
-	err = tx.Sign(txf, "bob", txBuilder, true)
+	err = tx.Sign(txf, cc.signKeyName, txBuilder, true)
 
 	if err != nil {
 		return nil, err
@@ -169,7 +178,7 @@ func (cc *TxSubmitter) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, 
 		return 0, err
 	}
 	if simRes.GasInfo == nil {
-		return 0, fmt.Errorf("no result in simulation response: %+v", simRes)
+		return 0, fmt.Errorf("no result in simulation response with log=%s code=%d", res.Response.Log, res.Response.Code)
 	}
 
 	return uint64(txf.GasAdjustment() * float64(simRes.GasInfo.GasUsed)), nil

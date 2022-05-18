@@ -7,7 +7,6 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proofer/proofs"
-	"github.com/lidofinance/cosmos-query-relayer/internal/submitter"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 )
@@ -86,23 +85,23 @@ func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, queri
 	}
 }
 
-func testTxSubmit(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
-	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
-	if err != nil {
-		log.Println(err)
-	}
-	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-	codec := sub.MakeCodecDefault()
-	keybase, _ := sub.TestKeybase(cfg.LidoChain.ChainID, "test", cfg.LidoChain.Keyring.Dir, codec)
-	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
-
-	err = proofSubmitter.SendCoins("terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
-	if err != nil {
-		log.Println(err)
-	}
-}
+//func testTxSubmit(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
+//	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+//	if err != nil {
+//		log.Println(err)
+//	}
+//	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
+//	codec := sub.MakeCodecDefault()
+//	keybase, _ := sub.TestKeybase(cfg.LidoChain.ChainID, "test", cfg.LidoChain.Keyring.Dir, codec)
+//	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase)
+//	if err != nil {
+//		log.Println(err)
+//		return
+//	}
+//	proofSubmitter := submitter.NewProofSubmitter(txSubmitter)
+//
+//	err = proofSubmitter.SendCoins("terra17lmam6zguazs5q5u6z5mmx76uj63gldnse2pdp", "terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v")
+//	if err != nil {
+//		log.Println(err)
+//	}
+//}

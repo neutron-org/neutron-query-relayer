@@ -46,11 +46,12 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 	for _, m := range messages {
 		fmt.Printf("%+v\n", m)
 	}
+	fmt.Println()
 
 	for _, m := range messages {
 		err := r.ProofMessage(ctx, m)
 		if err != nil {
-			fmt.Printf("\ncould not process message query_id=%s err=%s\n", m.queryId, err)
+			fmt.Printf("\ncould not process message query_id=%d err=%s\n", m.queryId, err)
 		}
 	}
 }
@@ -97,57 +98,57 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []Query
 }
 
 func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
-	fmt.Printf("ProofMessage message_type=%s", m.messageType)
+	fmt.Printf("ProofMessage message_type=%s\n", m.messageType)
 	switch m.messageType {
 	case "x/staking/DelegatorDelegations":
 		fmt.Printf("Unmarshal parameters=%s", m.parameters)
 		var params GetDelegatorDelegationsParameters
 		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
 		proof, height, err := proofs.GetDelegatorDelegations(ctx, r.querier, r.targetChainPrefix, params.Delegator)
 		if err != nil {
-			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 
 		err = r.submitter.SubmitProof(r.sender, height, m.queryId, proof)
 		if err != nil {
-			return fmt.Errorf("could not submit proof for GetDelegatorDelegations with query_id=%s: %w", m.queryId, err)
+			return fmt.Errorf("could not submit proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 	case "x/bank/GetBalance":
 		var params GetAllBalancesParams
 		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
 		proof, height, err := proofs.GetBalance(ctx, r.querier, r.targetChainPrefix, params.Addr, params.Denom)
 		if err != nil {
-			return fmt.Errorf("could not get proof for GetBalance with query_id=%s: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 
 		err = r.submitter.SubmitProof(r.sender, height, m.queryId, proof)
 		if err != nil {
-			return fmt.Errorf("could not submit proof for GetBalance with query_id=%s: %w", m.queryId, err)
+			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 	case "x/tx/RecipientTransactions":
 		var params RecipientTransactionsParams
 		err := json.Unmarshal([]byte(m.parameters), &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%s: %w", m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
 		//TODO: iterate over keys, values and join them with AND
 		txProof, err := proofs.RecipientTransactions(ctx, r.querier, params)
 		if err != nil {
-			return fmt.Errorf("could not get proof for GetBalance with query_id=%s: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 
 		err = r.submitter.SubmitTxProof(r.sender, m.queryId, txProof)
 		if err != nil {
-			return fmt.Errorf("could not submit proof for GetBalance with query_id=%s: %w", m.queryId, err)
+			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 	case "x/bank/ExchangeRate":
 	//	TODO

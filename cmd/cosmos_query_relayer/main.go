@@ -36,11 +36,16 @@ func main() {
 	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
 	codec := sub.MakeCodecDefault()
-	keybase, _ := sub.TestKeybase(cfg.LidoChain.ChainID, "test", cfg.LidoChain.Keyring.Dir, codec)
-	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase)
+	keybase, err := sub.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.Keyring.Dir, codec)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase, cfg.LidoChain.Keyring.SignKeyName)
 	if err != nil {
 		log.Println(err)
 		return
