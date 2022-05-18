@@ -13,7 +13,6 @@ import (
 
 func testSubscribeLidoChain(ctx context.Context, addr string, query string) {
 	onEvent := func(event coretypes.ResultEvent) {
-		//TODO: maybe make proofer a class with querier inside and instantiate it here, call GetProof on it?
 		fmt.Printf("OnEvent:\n%+v\n\n\n", event.Data)
 		fmt.Printf("\n\nInner events:\n%+v\n\n", event.Events)
 	}
@@ -91,7 +90,7 @@ func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, queri
 //		log.Println(err)
 //	}
 //	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-//	codec := sub.MakeCodecDefault()
+//	codec := sub.MakeCodecConfig()
 //	keybase, _ := sub.TestKeybase(cfg.LidoChain.ChainID, "test", cfg.LidoChain.Keyring.Dir, codec)
 //	txSubmitter, err := sub.NewTxSubmitter(ctx, lidoRPCClient, cfg.LidoChain.ChainID, codec, cfg.LidoChain.GasAdjustment, cfg.LidoChain.Keyring.GasPrices, cfg.LidoChain.ChainPrefix, keybase)
 //	if err != nil {

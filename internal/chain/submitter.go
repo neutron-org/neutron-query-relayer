@@ -82,7 +82,6 @@ func (cc *TxSubmitter) BuildAndSendTx(sender string, msgs []types.Msg) error {
 
 	fmt.Printf("Broadcast result: code=%+v log=%v err=%+v hash=%b", res.Code, res.Log, err, res.Hash)
 
-	// TODO: parse result code to determine success or not
 	if res.Code == 0 {
 		return nil
 	} else {
@@ -133,7 +132,7 @@ func (cc *TxSubmitter) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddre
 		return nil, err
 	}
 
-	txBuilder.SetGasLimit(gasAmount) // TODO: correct?
+	txBuilder.SetGasLimit(gasAmount)
 	//txBuilder.SetMemo("bob to alice")
 
 	feePayerBz, err := types.GetFromBech32(feePayerAddress, cc.addressPrefix)

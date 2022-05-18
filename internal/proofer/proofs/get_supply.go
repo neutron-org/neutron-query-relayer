@@ -16,7 +16,6 @@ func GetSupply(ctx context.Context, querier *proofer.ProofQuerier, denom string)
 		return nil, 0, fmt.Errorf("error querying exchange rate tendermint proof for denom=%s: %w", denom, err)
 	}
 
-	// TODO: use not deprecated types
 	//var amount sdk.Int
 	//err = amount.Unmarshal(value.Value)
 	//if err != nil {

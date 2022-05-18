@@ -140,7 +140,6 @@ func (r Relayer) ProofMessage(ctx context.Context, m QueryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		//TODO: iterate over keys, values and join them with AND
 		txProof, err := proofs.RecipientTransactions(ctx, r.querier, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)

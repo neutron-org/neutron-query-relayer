@@ -25,7 +25,6 @@ func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, q
 
 	orderBy := ""
 	page := 1
-	// TODO: figure out if it's correct
 	// TODO: add denom filter
 	//query := fmt.Sprintf("transfer.recipient='%s' AND TODO", recipient)
 	// TODO: pagination support
@@ -41,15 +40,10 @@ func RecipientTransactions(ctx context.Context, querier *proofer.ProofQuerier, q
 	}
 
 	result := make([]proofer.CompleteTransactionProof, 0, len(searchResult.Txs))
-	maxHeight := uint64(0)
 	for _, item := range searchResult.Txs {
 		txResultProof, err := TxCompletedSuccessfullyProof(ctx, querier, item.Height, item.Index)
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
-		}
-
-		if uint64(item.Height) > maxHeight {
-			maxHeight = uint64(item.Height)
 		}
 
 		proof := proofer.CompleteTransactionProof{

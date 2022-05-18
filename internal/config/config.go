@@ -7,7 +7,6 @@ import (
 )
 
 type CosmosQueryRelayerConfig struct {
-	//	TODO: full configuration
 	LidoChain struct {
 		//LOCAL INTERCHAIN ADAPTER
 		ChainPrefix string `envconfig:"default=cosmos"`
@@ -27,8 +26,9 @@ type CosmosQueryRelayerConfig struct {
 		Timeout       time.Duration `envconfig:"default=5s"`
 		GasAdjustment float64       `envconfig:"default=1.5"`
 		Keyring       struct {
-			Dir     string `envconfig:"default=keys"`
-			Backend string `envconfig:"default=test"`
+			SignKeyName string `envconfig:"default=test2"`
+			Dir         string `envconfig:"default=/Users/nhpd/.interchain-adapter"`
+			//Backend string `envconfig:"default=test"`
 
 			//LOCALTERRA
 			//GasPrices string `envconfig:"default=1000uatom"`
@@ -37,7 +37,7 @@ type CosmosQueryRelayerConfig struct {
 			GasPrices string `envconfig:"default=0.5stake"`
 		}
 
-		Sender string `envconfig:"default=TODO"`
+		Sender string `envconfig:"default=cosmos1l5wq2596y6zrgkza8zpaalqcfaj83c6lgupf82"`
 	}
 	TargetChain struct {
 		Timeout time.Duration `envconfig:"default=5s"`

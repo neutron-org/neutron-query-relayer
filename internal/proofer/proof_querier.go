@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/kv"
-	"strings"
+	"github.com/lidofinance/cosmos-query-relayer/internal/chain"
 	"time"
 
-	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
 type ProofQuerier struct {
@@ -22,7 +20,7 @@ type ProofQuerier struct {
 }
 
 func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*ProofQuerier, error) {
-	client, err := NewRPCClient(addr, timeout)
+	client, err := chain.NewRPCClient(addr, timeout)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize http client: %w", err)
@@ -36,8 +34,7 @@ func NewProofQuerier(timeout time.Duration, addr string, chainId string) (*Proof
 	legacyCdc := codec.NewLegacyAmino()
 	//cdc := codec.NewAminoCodec(legacyCdc)
 
-	proofer := ProofQuerier{Client: client, ChainID: chainId, cdc: *legacyCdc}
-	return &proofer, nil
+	return &ProofQuerier{Client: client, ChainID: chainId, cdc: *legacyCdc}, nil
 }
 
 // QueryTendermintProof performs an ABCI query with the given key and returns
@@ -141,43 +138,4 @@ func (cc *ProofQuerier) QueryIterateTendermintProof(ctx context.Context, height 
 	}
 
 	return result, uint64(res.Response.Height), nil
-}
-
-// TODO: move out of here?
-func NewRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, error) {
-	httpClient, err := jsonrpcclient.DefaultHTTPClient(addr)
-	if err != nil {
-		return nil, err
-	}
-	httpClient.Timeout = timeout
-	rpcClient, err := rpcclienthttp.NewWithClient(addr, httpClient)
-	if err != nil {
-		return nil, err
-	}
-	return rpcClient, nil
-}
-
-func (cc *ProofQuerier) Test(ctx context.Context, validatorAddress []byte, startHeight, endingHeight uint64) error {
-	height := int64(0)
-
-	///cosmos.staking.v1beta1.Query/DelegatorDelegations
-	// path := fmt.Sprintf("cosmos.distribution.v1beta1.Query/ValidatorSlashes", validatorAddress)
-	path := strings.Join([]string{"custom", distributiontypes.QuerierRoute, distributiontypes.QueryValidatorSlashes}, "/")
-	params := distributiontypes.NewQueryValidatorSlashesParams(validatorAddress, startHeight, endingHeight)
-	bz := cc.cdc.MustMarshalJSON(&params)
-	//TODO: marshal params
-	var back distributiontypes.QueryValidatorSlashesParams
-	cc.cdc.MustUnmarshalJSON(bz, &back)
-
-	req := abci.RequestQuery{
-		Path:   path,
-		Height: height,
-		Data:   bz,
-		Prove:  true,
-	}
-	res, err := cc.Client.ABCIQuery(ctx, req.Path, req.Data)
-
-	fmt.Printf("Result of Test: %+v\n", res)
-
-	return err
 }

@@ -33,13 +33,13 @@ func main() {
 
 	//testProofs(ctx, cfg)
 
-	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
+	lidoRPCClient, err := sub.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	// TODO: pick key backend: https://docs.cosmos.network/master/run-node/keyring.html
-	codec := sub.MakeCodecDefault()
+
+	codec := sub.MakeCodecConfig()
 	keybase, err := sub.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.Keyring.Dir, codec)
 	if err != nil {
 		log.Println(err)
