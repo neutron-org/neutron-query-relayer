@@ -26,13 +26,14 @@ func NewQuerier(client *rpcclienthttp.HTTP, chainId string) (*Querier, error) {
 
 // QueryTendermintProof performs an ABCI query with the given key and returns
 // the value of the query, the proto encoded merkle proof, and the height of
-// the Tendermint block containing the state root. The desired tendermint height
-// to perform the query should be set in the client context. The query will be
+// the Tendermint block containing the state root. The query will be
 // performed at one below this height (at the IAVL version) in order to obtain
 // the correct merkle proof. Proof queries at height less than or equal to 2 are
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
+// TODO: check if this is correct for our case
+// NOTE: returned uint64 height=(HEIGHT + 1) which is a height of a block with root_hash proofs it, NOT the block number that we got value for
 func (cc *Querier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
@@ -67,7 +68,7 @@ func (cc *Querier) QueryTendermintProof(ctx context.Context, height int64, store
 
 	//revision := clienttypes.ParseChainID(chainID)
 	response := res.Response
-	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height), nil
+	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height + 1), nil
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys
@@ -115,7 +116,7 @@ func (cc *Querier) QueryIterateTendermintProof(ctx context.Context, height int64
 
 	var result = make([]StorageValue, 0, len(resPairs.Pairs))
 	for _, pair := range resPairs.Pairs {
-		storageValue, _, err := cc.QueryTendermintProof(ctx, res.Response.Height, storeKey, pair.Key)
+		storageValue, _, err := cc.QueryTendermintProof(ctx, res.Response.Height+1, storeKey, pair.Key)
 		if err != nil {
 			return nil, 0, err
 		}

@@ -56,13 +56,13 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
 		}
 
-		proof := proof.CompleteTransactionProof{
+		txProof := proof.CompleteTransactionProof{
 			BlockProof:   item.Proof,
 			SuccessProof: *txResultProof,
 			Height:       uint64(item.Height),
 		}
-		//fmt.Printf("made proof for height=%d index=%d proof=%+v\n", item.Height, item.Index, proof)
-		result = append(result, proof)
+		//fmt.Printf("made txProof for height=%d index=%d txProof=%+v\n", item.Height, item.Index, txProof)
+		result = append(result, txProof)
 	}
 
 	return result, nil
@@ -76,9 +76,9 @@ func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.Querier, b
 	}
 
 	abciResults := types.NewResults(results.TxsResults)
-	proof := abciResults.ProveResult(int(txIndexInBlock))
+	txProof := abciResults.ProveResult(int(txIndexInBlock))
 
-	return &proof, nil
+	return &txProof, nil
 }
 
 // VerifyProof checks that TODO
