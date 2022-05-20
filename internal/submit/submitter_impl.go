@@ -28,7 +28,7 @@ func (cc *SubmitterImpl) SubmitProof(height uint64, queryId uint64, proof []proo
 	return cc.sender.Send(cc.senderAddr, msgs)
 }
 
-func (cc *SubmitterImpl) SubmitTxProof(queryId uint64, proof []proof.CompleteTransactionProof) error {
+func (cc *SubmitterImpl) SubmitTxProof(queryId uint64, proof []proof.TxValue) error {
 	msgs, err := cc.buildTxProofMsg(queryId, proof)
 	if err != nil {
 		return err
@@ -49,7 +49,12 @@ func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 		})
 	}
 
-	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Height: height, Sender: cc.senderAddr, KVResults: res}
+	queryResult := lidotypes.QueryResult{
+		Height:    height,
+		KvResults: res,
+		Txs:       nil,
+	}
+	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: cc.senderAddr, Result: &queryResult}
 
 	err := msg.ValidateBasic()
 	if err != nil {
@@ -59,7 +64,41 @@ func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 	return []types.Msg{&msg}, nil
 }
 
-func (cc *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.CompleteTransactionProof) ([]types.Msg, error) {
-	// TODO
-	return nil, nil
+func (cc *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) ([]types.Msg, error) {
+	res := make([]*lidotypes.TxValue, 0, len(proof))
+	for _, item := range proof {
+		inclusionProof := item.InclusionProof
+		deliveryProof := item.DeliveryProof
+
+		res = append(res, &lidotypes.TxValue{
+			Tx: item.Tx,
+			DeliveryProof: &lidotypes.MerkleProof{
+				Total:    deliveryProof.Total,
+				Index:    deliveryProof.Index,
+				LeafHash: deliveryProof.LeafHash,
+				Aunts:    deliveryProof.Aunts,
+			},
+			InclusionProof: &lidotypes.MerkleProof{
+				Total:    inclusionProof.Total,
+				Index:    inclusionProof.Index,
+				LeafHash: inclusionProof.LeafHash,
+				Aunts:    inclusionProof.Aunts,
+			},
+			Height: item.Height,
+		})
+	}
+
+	queryResult := lidotypes.QueryResult{
+		Height:    0, // NOTE: cannot use nil because it's not pointer :(
+		KvResults: nil,
+		Txs:       res,
+	}
+	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: cc.senderAddr, Result: &queryResult}
+
+	err := msg.ValidateBasic()
+	if err != nil {
+		return nil, fmt.Errorf("invalid tx proof message: %w", err)
+	}
+
+	return []types.Msg{&msg}, nil
 }

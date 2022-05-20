@@ -18,7 +18,7 @@ const orderBy = ""
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) ([]proof.CompleteTransactionProof, error) {
+func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) ([]proof.TxValue, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
@@ -46,20 +46,21 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	}
 
 	if len(txs) == 0 {
-		return []proof.CompleteTransactionProof{}, nil
+		return []proof.TxValue{}, nil
 	}
 
-	result := make([]proof.CompleteTransactionProof, 0, len(txs))
+	result := make([]proof.TxValue, 0, len(txs))
 	for _, item := range txs {
-		txResultProof, err := TxCompletedSuccessfullyProof(ctx, p.querier, item.Height, item.Index)
+		deliveryProof, inclusionProof, err := TxCompletedSuccessfullyProof(ctx, p.querier, item.Height, item.Index)
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
 		}
 
-		txProof := proof.CompleteTransactionProof{
-			BlockProof:   item.Proof,
-			SuccessProof: *txResultProof,
-			Height:       uint64(item.Height),
+		txProof := proof.TxValue{
+			InclusionProof: item.Proof.Proof,
+			DeliveryProof:  *deliveryProof,
+			Tx:             inclusionProof,
+			Height:         uint64(item.Height),
 		}
 		//fmt.Printf("made txProof for height=%d index=%d txProof=%+v\n", item.Height, item.Index, txProof)
 		result = append(result, txProof)
@@ -68,17 +69,20 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	return result, nil
 }
 
-func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.Querier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, error) {
+// TxCompletedSuccessfullyProof returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
+func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.Querier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, *abci.ResponseDeliverTx, error) {
 	results, err := querier.Client.BlockResults(ctx, &blockHeight)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch block results for height = %d: %w", blockHeight, err)
+		return nil, nil, fmt.Errorf("failed to fetch block results for height = %d: %w", blockHeight, err)
 	}
 
-	abciResults := types.NewResults(results.TxsResults)
+	txsResults := results.TxsResults
+	abciResults := types.NewResults(txsResults)
 	txProof := abciResults.ProveResult(int(txIndexInBlock))
+	txResult := txsResults[txIndexInBlock]
 
-	return &txProof, nil
+	return &txProof, txResult, nil
 }
 
 // VerifyProof checks that TODO

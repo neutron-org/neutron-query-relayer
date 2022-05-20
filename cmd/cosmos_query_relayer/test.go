@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
@@ -10,6 +11,83 @@ import (
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"log"
 )
+
+//func NewIavlCommitmentOp(key []byte, proof *ics23.CommitmentProof) CommitmentOp {
+//	return CommitmentOp{
+//		Type:  ProofOpIAVLCommitment,
+//		Spec:  ics23.IavlSpec,
+//		Key:   key,
+//		Proof: proof,
+//	}
+//}
+
+// ProofOp implements ProofOperator interface and converts a CommitmentOp
+// into a merkle.ProofOp format that can later be decoded by CommitmentOpDecoder
+// back into a CommitmentOp for proof verification
+//func (op CommitmentOp) ProofOp() tmmerkle.ProofOp {
+//	bz, err := op.Proof.Marshal()
+//	if err != nil {
+//		panic(err.Error())
+//	}
+//	return tmmerkle.ProofOp{
+//		Type: op.Type,
+//		Key:  op.Key,
+//		Data: bz,
+//	}
+//}
+
+func verifyGetBalance(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
+	client, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
+	if err != nil {
+		err = fmt.Errorf("error creating new http client: %w", err)
+		log.Println(err)
+	}
+	querier, err := proof.NewQuerier(client, cfg.TargetChain.ChainID)
+	if err != nil {
+		err = fmt.Errorf("error creating new query key proofer: %w", err)
+		log.Println(err)
+	}
+	proofer := proof_impl.NewProofer(querier)
+	value, _, err := proofer.GetBalance(ctx, "terra", "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts", "uluna")
+	if err != nil {
+		err = fmt.Errorf("error getting balance: %w", err)
+		log.Println(err)
+	}
+
+	//proof_impl.ParseGetBalanceValue(value[0])
+
+	for _, item := range value {
+		log.Printf("Proofs count: %d\n", len(item.Proofs))
+		for _, opItem := range item.Proofs {
+			op, err := storetypes.CommitmentOpDecoder(opItem)
+			if err != nil {
+				err = fmt.Errorf("error decoding op item: %w", err)
+				log.Println(err)
+			}
+
+			//rootBz, err := op.Run([][]byte{item.Value})
+			//root2Bz, err := op.Run([][]byte{value[0].Value})
+
+			//eq := rootBz == root2Bz
+			//log.Printf("Equal? % %+v", eq)
+
+			//op.GetKey()
+			//opItem.
+			//var proof ics23.CommitmentProof
+			//kek := string(item.Key)
+			//log.Printf("Item key: %s\n", kek)
+
+			_, err = op.Run([][]byte{item.Value})
+			if err != nil {
+				err = fmt.Errorf("non verified item value: %w", err)
+				log.Println(err)
+			} else {
+				log.Println("OH MY")
+			}
+		}
+	}
+
+}
 
 func testSubscribeLidoChain(ctx context.Context, addr string, query string) {
 	onEvent := func(event coretypes.ResultEvent) {
@@ -77,7 +155,7 @@ func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, queri
 	// https://atomscan.com/terra
 	height := int64(7503466)
 	indexInBlock := uint32(0)
-	txProof, _ := proof_impl.TxCompletedSuccessfullyProof(ctx, querier, height, indexInBlock)
+	txProof, _, _ := proof_impl.TxCompletedSuccessfullyProof(ctx, querier, height, indexInBlock)
 
 	results, _ := querier.Client.BlockResults(ctx, &height)
 	err := proof_impl.VerifyProof(results, *txProof, indexInBlock)

@@ -129,7 +129,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	case "x/bank/ExchangeRate":
 	//	TODO
 	case "x/distribution/CalculateDelegationRewards":
-	//	TODO
+	//	TODO: not sure if needed
 
 	default:
 		return fmt.Errorf("unknown query message type=%s", m.messageType)

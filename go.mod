@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/cosmos/cosmos-sdk v0.46.0-beta2.0.20220418184507-c53157dd63f6
 	github.com/cosmos/cosmos-sdk/api v0.1.0
-	github.com/lidofinance/interchain-adapter v0.0.0-20220505140509-e81337deb54c
+	github.com/lidofinance/interchain-adapter v0.0.0-20220518133523-88b50e6965e3
 	github.com/tendermint/tendermint v0.35.4
 	github.com/vrischmann/envconfig v1.3.0
 )
