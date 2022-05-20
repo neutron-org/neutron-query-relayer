@@ -146,26 +146,26 @@ func testProofs(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	//testTxSubmit(ctx, cfg)
 }
 
-func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proof.Querier) {
-	//hash := "0xE71F89160178AE8A6AC84F6F8810658CEDF4A66FACA27BA2FFFF2DA8539DE4A6"
-	//value, err := querier.QueryTxProof(ctx, 0, []byte(hash))
-	//var tx cosmostypes.Tx
-	//log.Println()
-
-	// https://atomscan.com/terra
-	height := int64(7503466)
-	indexInBlock := uint32(0)
-	txProof, _, _ := proof_impl.TxCompletedSuccessfullyProof(ctx, querier, height, indexInBlock)
-
-	results, _ := querier.Client.BlockResults(ctx, &height)
-	err := proof_impl.VerifyProof(results, *txProof, indexInBlock)
-
-	if err == nil {
-		log.Println("Verification passed")
-	} else {
-		log.Println("Verification failed")
-	}
-}
+//func testTxProof(ctx context.Context, cfg config.CosmosQueryRelayerConfig, querier *proof.Querier) {
+//	//hash := "0xE71F89160178AE8A6AC84F6F8810658CEDF4A66FACA27BA2FFFF2DA8539DE4A6"
+//	//value, err := querier.QueryTxProof(ctx, 0, []byte(hash))
+//	//var tx cosmostypes.Tx
+//	//log.Println()
+//
+//	// https://atomscan.com/terra
+//	height := int64(7503466)
+//	indexInBlock := uint32(0)
+//	txProof, _, _ := proof_impl.TxCompletedSuccessfullyProof(ctx, querier, height, indexInBlock)
+//
+//	results, _ := querier.Client.BlockResults(ctx, &height)
+//	err := proof_impl.VerifyProof(results, *txProof, indexInBlock)
+//
+//	if err == nil {
+//		log.Println("Verification passed")
+//	} else {
+//		log.Println("Verification failed")
+//	}
+//}
 
 //func testTxSubmit(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 //	lidoRPCClient, err := proofer.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
