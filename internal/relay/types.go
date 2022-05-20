@@ -16,3 +16,11 @@ type getAllBalancesParams struct {
 }
 
 type recipientTransactionsParams map[string]string
+
+type exchangeRateParams struct {
+	// GetSupply part
+	Denom string `json:"denom"`
+
+	// GetDelegatorDelegations part
+	Delegator string `json:"delegator"`
+}

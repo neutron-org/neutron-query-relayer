@@ -85,7 +85,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
 
-		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, r.targetChainPrefix, params.Delegator)
+		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, uint64(0), r.targetChainPrefix, params.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
@@ -110,6 +110,28 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		if err != nil {
 			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
+	case "x/bank/ExchangeRate":
+		var params exchangeRateParams
+		err := json.Unmarshal([]byte(m.parameters), &params)
+		if err != nil {
+			return fmt.Errorf("could not unmarshal parameters for ExchangeRate with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
+		}
+
+		supplyProofs, supplyHeight, err := r.proofer.GetSupply(ctx, params.Denom)
+		if err != nil {
+			return fmt.Errorf("could not get proof for ExchangeRate with query_id=%d: %w", m.queryId, err)
+		}
+
+		delegationProofs, delegationHeight, err := r.proofer.GetDelegatorDelegations(ctx, supplyHeight, r.targetChainPrefix, params.Delegator)
+
+		if delegationHeight != supplyHeight {
+			return fmt.Errorf("heights for two parts of x/bank/ExchangeRate query does not match: delegationHeight=%d supplyHeight=%d", delegationHeight, supplyHeight)
+		}
+
+		err = r.submitter.SubmitProof(delegationHeight, m.queryId, append(supplyProofs, delegationProofs...))
+		if err != nil {
+			return fmt.Errorf("could not submit proof for ExchangeRate with query_id=%d: %w", m.queryId, err)
+		}
 	case "x/tx/RecipientTransactions":
 		var params recipientTransactionsParams
 		err := json.Unmarshal([]byte(m.parameters), &params)
@@ -119,15 +141,14 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		txProof, err := r.proofer.RecipientTransactions(ctx, params)
 		if err != nil {
-			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for RecipientTransactions with query_id=%d: %w", m.queryId, err)
 		}
 
 		err = r.submitter.SubmitTxProof(m.queryId, txProof)
 		if err != nil {
-			return fmt.Errorf("could not submit proof for GetBalance with query_id=%d: %w", m.queryId, err)
+			return fmt.Errorf("could not submit proof for RecipientTransactions with query_id=%d: %w", m.queryId, err)
 		}
-	case "x/bank/ExchangeRate":
-	//	TODO
+
 	case "x/distribution/CalculateDelegationRewards":
 	//	TODO: not sure if needed
 
