@@ -46,24 +46,21 @@ func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []query
 	for _, m := range abciMessages {
 		queryIdStr, err := tryFindInEvent(m.GetAttributes(), "query_id")
 		if err != nil {
-			//fmt.Printf("couldn't find key in event: %s\n", err)
 			continue
 		}
 		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
 		if err != nil {
-			// TODO: invalid query_id: %s?
+			fmt.Printf("invalid query_id format (not an uint): %+v", queryId)
 			continue
 		}
 
 		messageType, err := tryFindInEvent(m.GetAttributes(), "type")
 		if err != nil {
-			//fmt.Printf("couldn't find key in event: %s\n", err)
 			continue
 		}
 
 		parameters, err := tryFindInEvent(m.GetAttributes(), "parameters")
 		if err != nil {
-			//fmt.Printf("couldn't find key in event: %s\n", err)
 			continue
 		}
 
@@ -150,7 +147,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 	case "x/distribution/CalculateDelegationRewards":
-	//	TODO: not sure if needed
+		return fmt.Errorf("could not relay not implemented query x/distribution/CalculateDelegationRewards")
 
 	default:
 		return fmt.Errorf("unknown query message type=%s", m.messageType)

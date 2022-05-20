@@ -103,8 +103,7 @@ func VerifyProof(results *coretypes.ResultBlockResults, proof merkle.Proof, txIn
 	newResults := types.NewResults(results.TxsResults)
 	leaf, err := toByteSlice(newResults[txIndexInBlock])
 	if err != nil {
-		// TODO: log cannot convert to byte slice error
-		return err
+		return fmt.Errorf("could not convert recipient transaction with txIndexInBlock=%d into byte slice: %w", txIndexInBlock, err)
 	}
 	return proof.Verify(rootHash, leaf)
 }
