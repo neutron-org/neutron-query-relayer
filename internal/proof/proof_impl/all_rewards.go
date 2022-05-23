@@ -8,6 +8,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 )
 
+// NOTE: we don't need all rewards query for now, so it comes unfinished now
 // TODO: test with blockchain where slashing events are there
 // TODO: сравнить output из функции и результат вызова GetRewards напрямую
 // see: lido-terra-integration-tests
@@ -43,11 +44,6 @@ func CalculateDelegationRewards(ctx context.Context, querier *proof.Querier, pre
 	endingHeight := height
 	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight) // _fromPrefix
 	_ = distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, endingHeight+1) // toPrefix
-
-	//p := distributiontypes.GetValidatorSlashEventPrefix(validatorAddressBz)
-	//storageValue, err := querier.QueryIterateTendermintProof(ctx, height, distributiontypes.S	toreKey, p)
-	//fmt.Printf("Proof iterate: %+v", storageValue)
-	//err = querier.Test(ctx, validatorAddressBz, startingHeight, endingHeight)
 
 	// TODO: filter out slashes with height more than needed
 	allSlashes, _, err := querier.QueryIterateTendermintProof(ctx, int64(height), distributiontypes.StoreKey, distributiontypes.GetValidatorSlashEventKeyPrefix(validatorAddressBz, startingHeight))

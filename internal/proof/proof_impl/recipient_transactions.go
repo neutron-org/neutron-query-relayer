@@ -24,7 +24,6 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	txs := make([]*coretypes.ResultTx, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
-		//fmt.Printf("TxSearch: %+v\n", searchResult)
 		if err != nil {
 			return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
 		}
@@ -61,7 +60,6 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 			Tx:             inclusionProof,
 			Height:         uint64(item.Height),
 		}
-		//fmt.Printf("made txProof for height=%d index=%d txProof=%+v\n", item.Height, item.Index, txProof)
 		result = append(result, txProof)
 	}
 

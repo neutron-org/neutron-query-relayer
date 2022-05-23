@@ -11,12 +11,11 @@ import (
 )
 
 var (
-	// TODO: why does this needed? It doesnot serialize properly without it
+	// TODO: why does this needed? It doesn't serialize properly without it
 	ModuleBasics = []module.AppModuleBasic{
 		auth.AppModuleBasic{},
 		authz.AppModuleBasic{},
 		bank.AppModuleBasic{},
-		//transfer.AppModuleBasic{},
 	}
 )
 

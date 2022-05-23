@@ -12,30 +12,6 @@ import (
 	"log"
 )
 
-//func NewIavlCommitmentOp(key []byte, proof *ics23.CommitmentProof) CommitmentOp {
-//	return CommitmentOp{
-//		Type:  ProofOpIAVLCommitment,
-//		Spec:  ics23.IavlSpec,
-//		Key:   key,
-//		Proof: proof,
-//	}
-//}
-
-// ProofOp implements ProofOperator interface and converts a CommitmentOp
-// into a merkle.ProofOp format that can later be decoded by CommitmentOpDecoder
-// back into a CommitmentOp for proof verification
-//func (op CommitmentOp) ProofOp() tmmerkle.ProofOp {
-//	bz, err := op.Proof.Marshal()
-//	if err != nil {
-//		panic(err.Error())
-//	}
-//	return tmmerkle.ProofOp{
-//		Type: op.Type,
-//		Key:  op.Key,
-//		Data: bz,
-//	}
-//}
-
 func verifyGetBalance(ctx context.Context, cfg config.CosmosQueryRelayerConfig) {
 	client, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {

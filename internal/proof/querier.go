@@ -19,8 +19,6 @@ type Querier struct {
 
 func NewQuerier(client *rpcclienthttp.HTTP, chainId string) (*Querier, error) {
 	legacyCdc := codec.NewLegacyAmino()
-	//cdc := codec.NewAminoCodec(legacyCdc)
-
 	return &Querier{Client: client, ChainID: chainId, cdc: *legacyCdc}, nil
 }
 
@@ -32,7 +30,6 @@ func NewQuerier(client *rpcclienthttp.HTTP, chainId string) (*Querier, error) {
 // not supported. Queries with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
-// TODO: check if this is correct for our case
 // NOTE: returned uint64 height=(HEIGHT + 1) which is a height of a block with root_hash proofs it, NOT the block number that we got value for
 func (cc *Querier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
