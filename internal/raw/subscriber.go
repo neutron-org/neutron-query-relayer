@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
-	"github.com/tendermint/tendermint/rpc/coretypes"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 // Subscribe subscribes to target blockchain using websockets
 // WARNING: rpcclient.Subscribe from tendermint can fail to work with some blockchain versions of tendermint
 func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent func(event coretypes.ResultEvent)) error {
-	httpclient, err := rpcclient.New(rpcAddress)
+	httpclient, err := rpcclient.New(rpcAddress, "/websocket") // TODO: check works?
 	if err != nil {
 		return fmt.Errorf("could not create new rpcclient: %w", err)
 	}

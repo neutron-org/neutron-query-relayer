@@ -15,7 +15,7 @@ type CosmosQueryRelayerConfig struct {
 		Timeout       time.Duration `envconfig:"default=10s"`
 		GasAdjustment float64       `envconfig:"default=1.5"`
 		GasPrices     string        `envconfig:"default=0.5stake"`
-		Sender        string        `envconfig:"default=cosmos1l5wq2596y6zrgkza8zpaalqcfaj83c6lgupf82"`
+		Sender        string        `envconfig:"default=cosmos1dlhd34j0w28gexgajys4jqafp68fxhsezs8urm"`
 
 		//LOCALTERRA
 		//ChainPrefix string `envconfig:"default=terra"`
@@ -29,7 +29,7 @@ type CosmosQueryRelayerConfig struct {
 
 		Keyring struct {
 			SignKeyName string `envconfig:"default=test2"`
-			Dir         string `envconfig:"default=/Users/nhpd/.interchain-adapter"`
+			Dir         string `envconfig:"default=/Users/nhpd/.gaia-wasm-zoned"`
 			//Backend string `envconfig:"default=test"`
 
 			//LOCALTERRA

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/rpc/coretypes"
+	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"strconv"
 )
 
@@ -18,12 +18,22 @@ type Relayer struct {
 	sender            string
 }
 
+const (
+	moduleAttr     = "message.module"
+	queryIdAttr    = "message.query_id"
+	parametersAttr = "message.parameters"
+	typeAttr       = "message.type"
+)
+
 func NewRelayer(proofer proof.Proofer, submitter submit.Submitter, targetChainPrefix string, sender string) Relayer {
 	return Relayer{proofer: proofer, submitter: submitter, targetChainPrefix: targetChainPrefix, sender: sender}
 }
 
 func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
-	messages := filterInterchainQueryMessagesFromEvent(event)
+	messages, err := tryExtractInterchainQueries(event)
+	if err != nil {
+		fmt.Printf("could not filter intechain query messages: %s", err)
+	}
 
 	for _, m := range messages {
 		err := r.proofMessage(ctx, m)
@@ -33,42 +43,45 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 	}
 }
 
-// TODO: continue on errors or return if this happens?
-func filterInterchainQueryMessagesFromEvent(event coretypes.ResultEvent) []queryEventMessage {
-	abciMessages := make([]abci.Event, 0)
-	for _, e := range event.Events {
-		if e.Type == "message" {
-			abciMessages = append(abciMessages, e)
-		}
+type eventValue []string
+
+func tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
+	fmt.Printf("\n\nEvents: %+v\n\n", event.Events)
+	events := event.Events
+	abciMessages := make(map[string]eventValue, 0)
+
+	if len(events[queryIdAttr]) == 0 {
+		return []queryEventMessage{}, nil
+	}
+
+	if len(events[moduleAttr]) != len(events[parametersAttr]) ||
+		len(events[moduleAttr]) != len(events[queryIdAttr]) ||
+		len(events[moduleAttr]) != len(events[typeAttr]) {
+		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
 	}
 
 	messages := make([]queryEventMessage, 0, len(abciMessages))
-	for _, m := range abciMessages {
-		queryIdStr, err := tryFindInEvent(m.GetAttributes(), "query_id")
-		if err != nil {
+
+	for idx, moduleName := range events[moduleAttr] {
+		if moduleName != lidotypes.ModuleName {
 			continue
 		}
+
+		queryIdStr := events[queryIdAttr][idx]
 		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
 		if err != nil {
 			fmt.Printf("invalid query_id format (not an uint): %+v", queryId)
 			continue
 		}
 
-		messageType, err := tryFindInEvent(m.GetAttributes(), "type")
-		if err != nil {
-			continue
-		}
-
-		parameters, err := tryFindInEvent(m.GetAttributes(), "parameters")
-		if err != nil {
-			continue
-		}
+		messageType := events[typeAttr][idx]
+		parameters := events[parametersAttr][idx]
 
 		messages = append(messages,
 			queryEventMessage{queryId: queryId, messageType: messageType, parameters: parameters})
 	}
 
-	return messages
+	return messages, nil
 }
 
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
@@ -154,14 +167,4 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	}
 
 	return nil
-}
-
-func tryFindInEvent(attributes []abci.EventAttribute, key string) (string, error) {
-	for _, attr := range attributes {
-		if attr.GetKey() == key {
-			return attr.GetValue(), nil
-		}
-	}
-
-	return "", fmt.Errorf("no attribute found with key=%s", key)
 }

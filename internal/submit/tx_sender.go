@@ -28,10 +28,11 @@ type TxSender struct {
 	chainID       string
 	addressPrefix string
 	signKeyName   string
+	gasPrices     string
 }
 
-func TestKeybase(chainID string, keyringRootDir string, codec codec.Codec) (keyring.Keyring, error) {
-	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, codec)
+func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
+	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil)
 	if err != nil {
 		return keybase, err
 	}
@@ -58,10 +59,11 @@ func NewTxSender(ctx context.Context, rpcClient rpcclient.Client, marshaller cod
 		chainID:       lidoCfg.ChainID,
 		addressPrefix: lidoCfg.ChainPrefix,
 		signKeyName:   lidoCfg.Keyring.SignKeyName,
+		gasPrices:     lidoCfg.GasPrices,
 	}, nil
 }
 
-// BuildAndSendTx builds transaction with calculated gas and fees params, signs it and submits to chain
+// Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
 func (cc *TxSender) Send(sender string, msgs []types.Msg) error {
 	account, err := cc.queryAccount(sender)
 	if err != nil {
@@ -73,15 +75,17 @@ func (cc *TxSender) Send(sender string, msgs []types.Msg) error {
 		WithSequence(account.Sequence)
 
 	//gasNeeded, err := cc.calculateGas(txf, msgs...)
-	// FIXME: simulate query is broken for now. Turn on after migrating back to cosmos-sdk v45
+	//if err != nil {
+	//	return err
+	//}
+
 	gasNeeded := uint64(2000000)
-	if err != nil {
-		return err
-	}
 
-	txf = txf.WithGas(gasNeeded)
+	txf = txf.
+		WithGas(gasNeeded).
+		WithGasPrices(cc.gasPrices)
 
-	bz, err := cc.buildTxBz(txf, msgs, sender, gasNeeded)
+	bz, err := cc.buildTxBz(txf, msgs, gasNeeded)
 	if err != nil {
 		return err
 	}
@@ -131,7 +135,7 @@ func (cc *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error)
 	return &account, nil
 }
 
-func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddress string, gasAmount uint64) ([]byte, error) {
+func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []types.Msg, gasAmount uint64) ([]byte, error) {
 	txBuilder := cc.txConfig.NewTxBuilder()
 	err := txBuilder.SetMsgs(msgs...)
 	if err != nil {
@@ -140,17 +144,12 @@ func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []types.Msg, feePayerAddress 
 	}
 
 	txBuilder.SetGasLimit(gasAmount)
-	//txBuilder.SetMemo("bob to alice")
 
-	feePayerBz, err := types.GetFromBech32(feePayerAddress, cc.addressPrefix)
 	if err != nil {
 		return nil, err
 	}
-	txBuilder.SetFeePayer(feePayerBz)
 	// TODO: shouldn't set it like this. use gas limit and gas prices
 	txBuilder.SetFeeAmount(types.NewCoins(types.NewInt64Coin("stake", 500000)))
-	//txBuilder.SetFeeGranter()
-	//txBuilder.SetTimeoutHeight(...)
 
 	fmt.Printf("\nAbout to sign with txf: %+v\n\n", txf)
 	err = tx.Sign(txf, cc.signKeyName, txBuilder, true)

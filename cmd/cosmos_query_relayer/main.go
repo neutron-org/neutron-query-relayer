@@ -7,7 +7,7 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
 	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
-	"github.com/tendermint/tendermint/rpc/coretypes"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"log"
 
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
@@ -45,7 +45,7 @@ func main() {
 	}
 
 	codec := raw.MakeCodecDefault()
-	keybase, err := submit.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.Keyring.Dir, codec.Marshaller)
+	keybase, err := submit.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.Keyring.Dir)
 	if err != nil {
 		log.Println(err)
 		return
