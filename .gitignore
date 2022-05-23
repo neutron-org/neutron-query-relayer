@@ -23,3 +23,5 @@ go.work
 .idea
 
 keys
+
+cmd/cosmos_query_relayer/test.go

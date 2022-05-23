@@ -38,8 +38,6 @@ func main() {
 		log.Fatalf("cannot connect to target chain: %s", err)
 	}
 
-	//testProofs(ctx, cfg)
-
 	lidoClient, err := raw.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
 		log.Println(err)
