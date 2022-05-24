@@ -13,7 +13,7 @@ func (p ProoferImpl) GetBalance(ctx context.Context, inputHeight uint64, chainPr
 	storeKey := banktypes.StoreKey
 	bytesAddress, err := sdk.GetFromBech32(addr, chainPrefix)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to decode address from bech32: %w", err)
 	}
 
 	key := append(banktypes.CreateAccountBalancesPrefix(bytesAddress), []byte(denom)...)

@@ -60,7 +60,7 @@ func (cc *Querier) QueryTendermintProof(ctx context.Context, height int64, store
 
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("error making abci query for tendermint proof: %w", err)
 	}
 
 	response := res.Response
@@ -95,9 +95,8 @@ func (cc *Querier) QueryIterateTendermintProof(ctx context.Context, height int64
 	}
 
 	res, err := cc.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
-
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("error making abci query for subspace tendermint proof: %w", err)
 	}
 
 	if res.Response.Code != 0 {
@@ -107,14 +106,14 @@ func (cc *Querier) QueryIterateTendermintProof(ctx context.Context, height int64
 	var resPairs kv.Pairs
 	err = resPairs.Unmarshal(res.Response.Value)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("error unmarshalling pairs for subspace query: %w", err)
 	}
 
 	var result = make([]StorageValue, 0, len(resPairs.Pairs))
 	for _, pair := range resPairs.Pairs {
 		storageValue, _, err := cc.QueryTendermintProof(ctx, res.Response.Height+1, storeKey, pair.Key)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("error when querying tendermint proof: %w", err)
 		}
 
 		result = append(result, *storageValue)

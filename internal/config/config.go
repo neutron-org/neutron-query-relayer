@@ -50,7 +50,7 @@ func NewCosmosQueryRelayerConfig(path string) (CosmosQueryRelayerConfig, error) 
 
 	err := cleanenv.ReadConfig(path, &cfg)
 	if err != nil {
-		return cfg, err
+		return cfg, fmt.Errorf("could not read config from a file: %w", err)
 	}
 
 	return cfg, nil

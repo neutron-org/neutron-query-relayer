@@ -25,15 +25,16 @@ func NewSubmitterImpl(senderAddr string, sender *TxSender) *SubmitterImpl {
 func (cc *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId uint64, proof []proof.StorageValue) error {
 	msgs, err := cc.buildProofMsg(height, queryId, proof)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not build proof msg: %w", err)
 	}
 	return cc.sender.Send(ctx, cc.senderAddr, msgs)
 }
 
+// SubmitTxProof submits tx query with proof back to lido chain
 func (cc *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof []proof.TxValue) error {
 	msgs, err := cc.buildTxProofMsg(queryId, proof)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not build tx proof msg: %w", err)
 	}
 	return cc.sender.Send(ctx, cc.senderAddr, msgs)
 }

@@ -37,7 +37,7 @@ type TxSender struct {
 func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
 	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil)
 	if err != nil {
-		return keybase, err
+		return keybase, fmt.Errorf("error creating keybase for chainId=%s and keyringRootDir=%s: %w", chainID, keyringRootDir, err)
 	}
 
 	return keybase, nil
@@ -69,7 +69,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) error {
 	account, err := cc.queryAccount(ctx, sender)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching account: %w", err)
 	}
 
 	txf := cc.baseTxf.
@@ -78,16 +78,16 @@ func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) err
 
 	gasNeeded, err := cc.calculateGas(ctx, txf, msgs...)
 	if err != nil {
-		return err
+		return fmt.Errorf("error calculating gas: %w", err)
 	}
 
 	txf = txf.
 		WithGas(gasNeeded).
 		WithGasPrices(cc.gasPrices)
 
-	bz, err := cc.buildTxBz(txf, msgs)
+	bz, err := cc.signAndBuildTxBz(txf, msgs)
 	if err != nil {
-		return fmt.Errorf("could not build tx bz: %w", err)
+		return fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
 
 	switch cc.txBroadcastType {
@@ -132,7 +132,7 @@ func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtype
 	request := authtypes.QueryAccountRequest{Address: address}
 	req, err := request.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error marshalling query account request for account=%s: %w", address, err)
 	}
 	simQuery := abci.RequestQuery{
 		Path: accountQueryPath,
@@ -140,7 +140,7 @@ func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtype
 	}
 	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error making abci query for account=%s: %w", address, err)
 	}
 
 	if res.Response.Code != 0 {
@@ -149,20 +149,20 @@ func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtype
 
 	var response authtypes.QueryAccountResponse
 	if err := response.Unmarshal(res.Response.Value); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling QueryAccountResponse for account=%s: %w", address, err)
 	}
 
 	var account authtypes.BaseAccount
 	err = account.Unmarshal(response.Account.Value)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling BaseAccount for account=%s: %w", address, err)
 	}
 
 	return &account, nil
 }
 
-func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
+func (cc *TxSender) signAndBuildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
 	txBuilder, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build transaction builder: %w", err)
@@ -171,7 +171,7 @@ func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
 	err = tx.Sign(txf, cc.signKeyName, txBuilder, false)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error signing transaction: %w", err)
 	}
 
 	bz, err := cc.txConfig.TxEncoder()(txBuilder.GetTx())
@@ -181,7 +181,7 @@ func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
 func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	simulation, err := cc.buildSimulationTx(txf, msgs...)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error building simulation tx: %w", err)
 	}
 	// We then call the Simulate method on this client.
 	simQuery := abci.RequestQuery{
@@ -190,13 +190,13 @@ func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sd
 	}
 	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error making abci query for gas calculation: %w", err)
 	}
 
 	var simRes txtypes.SimulateResponse
 
 	if err := simRes.Unmarshal(res.Response.Value); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error unmarshalling simulate response value: %w", err)
 	}
 	if simRes.GasInfo == nil {
 		return 0, fmt.Errorf("no result in simulation response with log=%s code=%d", res.Response.Log, res.Response.Code)
@@ -210,7 +210,7 @@ func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sd
 func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, error) {
 	txb, err := cc.baseTxf.BuildUnsignedTx(msgs...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building unsigned tx for simulation: %w", err)
 	}
 
 	// Create an empty signature literal as the ante handler will populate with a
@@ -223,12 +223,12 @@ func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, 
 		Sequence: txf.Sequence(),
 	}
 	if err := txb.SetSignatures(sig); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error settings signatures for simulation: %w", err)
 	}
 
 	bz, err := cc.txConfig.TxEncoder()(txb.GetTx())
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("error encoding transaction: %w", err)
 	}
 	simReq := txtypes.SimulateRequest{TxBytes: bz}
 	return simReq.Marshal()

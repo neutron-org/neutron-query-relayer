@@ -42,21 +42,18 @@ func main() {
 
 	lidoClient, err := raw.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatalf("cannot create lido client: %s", err)
 	}
 
 	codec := raw.MakeCodecDefault()
 	keybase, err := submit.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.KeyringDir)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatalf("cannot initialize keybase: %s", err)
 	}
 
 	txSender, err := submit.NewTxSender(lidoClient, codec.Marshaller, keybase, cfg.LidoChain)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatalf("cannot create tx sender: %s", err)
 	}
 
 	proofSubmitter := submit.NewSubmitterImpl(cfg.LidoChain.Sender, txSender)
