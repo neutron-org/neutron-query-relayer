@@ -27,6 +27,7 @@ type exchangeRateParams struct {
 	Delegator string `json:"delegator"`
 }
 
+// types of keys for parsing incoming events
 const (
 	zoneIdAttr     = "message." + lidotypes.AttributeKeyZoneID
 	queryIdAttr    = "message." + lidotypes.AttributeKeyQueryID
@@ -34,6 +35,7 @@ const (
 	typeAttr       = "message." + lidotypes.AttributeQueryType
 )
 
+// types of incoming query messages
 const (
 	delegatorDelegationsType  = "x/staking/DelegatorDelegations"
 	getBalanceType            = "x/bank/GetBalance"

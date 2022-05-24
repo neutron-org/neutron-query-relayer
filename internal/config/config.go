@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
 	LidoChain   LidoChainConfig
 	TargetChain TargetChainConfig

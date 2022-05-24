@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// NewRPCClient returns connected client for RPC queries into blockchain
 func NewRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, error) {
 	httpClient, err := jsonrpcclient.DefaultHTTPClient(addr)
 	if err != nil {

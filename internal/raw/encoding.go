@@ -29,6 +29,7 @@ func MakeCodecDefault() Codec {
 	return MakeCodec(ModuleBasics)
 }
 
+// MakeCodec registers interfaces needed for serialization
 func MakeCodec(moduleBasics []module.AppModuleBasic) Codec {
 	modBasic := module.NewBasicManager(moduleBasics...)
 	encodingConfig := MakeCodecConfig()

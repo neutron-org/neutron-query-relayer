@@ -25,3 +25,4 @@ go.work
 keys
 
 cmd/cosmos_query_relayer/test.go
+/cosmos_query_relayer

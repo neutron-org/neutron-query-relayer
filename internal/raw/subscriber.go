@@ -34,6 +34,7 @@ func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent fun
 	return nil
 }
 
+// SubscribeQuery describes query to filter out events with correct module, action and zone_id
 func SubscribeQuery(zoneId string) string {
 	// TODO: fix after zone_id is saved in message
 	//return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", lidotypes.ModuleName, lidotypes.AttributeValueQuery, zoneId)

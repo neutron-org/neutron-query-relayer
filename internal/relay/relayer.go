@@ -8,6 +8,10 @@ import (
 	"strconv"
 )
 
+// Relayer is controller for the whole app:
+// 1. takes events from lido chain
+// 2. dispatches queries by type to fetch proof for the right query
+// 3. submits proof for a query back to the lido chain
 type Relayer struct {
 	proofer           Proofer
 	submitter         Submitter

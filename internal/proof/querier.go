@@ -101,7 +101,7 @@ func (cc *Querier) QueryIterateTendermintProof(ctx context.Context, height int64
 	}
 
 	if res.Response.Code != 0 {
-		return nil, 0, fmt.Errorf("not zero response code for abci subspace query with code=%s log=%s", res.Response.Code, res.Response.Log)
+		return nil, 0, fmt.Errorf("not zero response code for abci subspace query with code=%d log=%s", res.Response.Code, res.Response.Log)
 	}
 
 	var resPairs kv.Pairs

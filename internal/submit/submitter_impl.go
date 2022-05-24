@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
+// SubmitterImpl can submit proofs using `sender` as the transaction transport mechanism
 type SubmitterImpl struct {
 	senderAddr string
 	sender     *TxSender

@@ -15,4 +15,7 @@ Relayer sees the incoming event from blockchain L and:
 Blockchain L can then verify the result for the query.
 
 # Running
-`````$ make run`````
+`$ make run`
+
+# Testing
+`$ make test` // TODO
