@@ -1,0 +1,14 @@
+lido-chain:
+  chain-prefix: "cosmos"
+  rpc-address: "tcp://127.0.0.1:26657"
+  chain-id: "testnet"
+  gas-prices: "0.5stake"
+  sender: ""
+  tx-broadcast-type: "BroadcastTxCommit"
+  keyring:
+    sign-key-name: ""
+    dir: ""
+target-chain:
+    rpc-address: "tcp://public-node.terra.dev:26657"
+    chain-id: "columbus-5"
+    chain-prefix: "terra"

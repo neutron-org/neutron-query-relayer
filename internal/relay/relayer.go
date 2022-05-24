@@ -74,8 +74,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		messageType := events[typeAttr][idx]
 		parameters := events[parametersAttr][idx]
 
-		messages = append(messages,
-			queryEventMessage{queryId: queryId, messageType: messageType, parameters: parameters})
+		messages = append(messages, queryEventMessage{queryId: queryId, messageType: messageType, parameters: parameters})
 	}
 
 	return messages, nil

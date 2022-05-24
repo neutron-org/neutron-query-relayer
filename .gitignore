@@ -26,3 +26,6 @@ keys
 
 cmd/cosmos_query_relayer/test.go
 /cosmos_query_relayer
+
+configs/prod.yml
+configs/dev.yml

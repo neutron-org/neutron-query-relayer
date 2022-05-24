@@ -2,56 +2,37 @@ package config
 
 import (
 	"fmt"
-	"github.com/vrischmann/envconfig"
+	"github.com/ilyakaznacheev/cleanenv"
 	"time"
 )
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	LidoChain   LidoChainConfig
-	TargetChain TargetChainConfig
+	LidoChain   LidoChainConfig   `yaml:"lido-chain" env-required:"true"`
+	TargetChain TargetChainConfig `yaml:"target-chain" env-required:"true"`
 }
 
 type LidoChainConfig struct {
-	//LOCAL INTERCHAIN ADAPTER
-	ChainPrefix     string          `envconfig:"default=cosmos"`
-	RPCAddress      string          `envconfig:"default=tcp://127.0.0.1:26657"`
-	ChainID         string          `envconfig:"default=testnet"`
-	Timeout         time.Duration   `envconfig:"default=10s"`
-	GasAdjustment   float64         `envconfig:"default=1.5"`
-	GasPrices       string          `envconfig:"default=0.5stake"`
-	Sender          string          `envconfig:"default=cosmos1dlhd34j0w28gexgajys4jqafp68fxhsezs8urm"`
-	TxBroadcastType TxBroadcastType `envconfig:"default=BroadcastTxCommit"`
-
-	//LOCALTERRA
-	//ChainPrefix string `envconfig:"default=terra"`
-	//RPCAddress  string `envconfig:"default=tcp://127.0.0.1:26657"`
-	//ChainID     string `envconfig:"default=localterra"`
-
-	//PUBLIC TERRA
-	//ChainPrefix   string        `envconfig:"default=terra"`
-	//ChainID    string `envconfig:"default=columbus-5"`
-	//RPCAddress string `envconfig:"default=tcp://public-node.terra.dev:26657"` // for tests only
+	ChainPrefix     string          `yaml:"chain-prefix" env-required:"true"`
+	RPCAddress      string          `yaml:"rpc-address" env-required:"true"`
+	ChainID         string          `yaml:"chain-id" env-required:"true"`
+	GasPrices       string          `yaml:"gas-prices" env-required:"true"`
+	Sender          string          `yaml:"sender" env-required:"true"`
+	Timeout         time.Duration   `yaml:"timeout" env-default:"10s"`
+	GasAdjustment   float64         `yaml:"gas-adjustment" env-default:"1.5"`
+	TxBroadcastType TxBroadcastType `yaml:"tx-broadcast-type" env-default:"BroadcastTxAsync"`
 
 	Keyring struct {
-		SignKeyName string `envconfig:"default=test2"`
-		Dir         string `envconfig:"default=/Users/nhpd/.gaia-wasm-zoned"`
-		//Backend string `envconfig:"default=test"`
-
-		//LOCALTERRA
-		//GasPrices string `envconfig:"default=1000uatom"`
+		Dir         string `yaml:"dir" env-required:"true"`
+		SignKeyName string `yaml:"sign-key-name" env-default:"default=default"`
 	}
 }
 
 type TargetChainConfig struct {
-	Timeout     time.Duration `envconfig:"default=10s"`
-	RPCAddress  string        `envconfig:"default=tcp://public-node.terra.dev:26657"`
-	ChainID     string        `envconfig:"default=columbus-5"`
-	ChainPrefix string        `envconfig:"default=terra"`
-
-	//RPCAddress string `envconfig:"default=tcp://rpc.cosmos.network:26657"`
-	//RPCAddress string `envconfig:"default=tcp://127.0.0.1:26657"`
-	//ChainID     string `envconfig:"default=testnet"`
+	RPCAddress  string        `yaml:"rpc-address"`
+	ChainID     string        `yaml:"chain-id"`
+	ChainPrefix string        `yaml:"chain-prefix"`
+	Timeout     time.Duration `yaml:"timeout" env-default:"10s"`
 }
 
 type TxBroadcastType string
@@ -62,11 +43,17 @@ const (
 	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
 )
 
-func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
-	config := CosmosQueryRelayerConfig{}
-	if err := envconfig.Init(&config); err != nil {
-		return config, fmt.Errorf("failed to init config: %w", err)
+func NewCosmosQueryRelayerConfig(path string) (CosmosQueryRelayerConfig, error) {
+	var cfg CosmosQueryRelayerConfig
+
+	if path == "" {
+		return cfg, fmt.Errorf("empty config path (please set CONFIG_PATH env variable)")
 	}
 
-	return config, nil
+	err := cleanenv.ReadConfig(path, &cfg)
+	if err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
 }
