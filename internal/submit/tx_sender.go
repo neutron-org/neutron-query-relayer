@@ -18,7 +18,10 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
-var mode = signing.SignMode_SIGN_MODE_DIRECT
+const (
+	accountQueryPath  = "/cosmos.auth.v1beta1.Query/Account"
+	simulateQueryPath = "/cosmos.tx.v1beta1.Service/Simulate"
+)
 
 type TxSender struct {
 	baseTxf         tx.Factory
@@ -44,7 +47,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
-		WithSignMode(mode).
+		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithTxConfig(txConfig).
 		WithChainID(cfg.ChainID).
 		WithGasAdjustment(cfg.GasAdjustment).
@@ -56,7 +59,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		rpcClient:       rpcClient,
 		chainID:         cfg.ChainID,
 		addressPrefix:   cfg.ChainPrefix,
-		signKeyName:     cfg.Keyring.SignKeyName,
+		signKeyName:     cfg.SignKeyName,
 		gasPrices:       cfg.GasPrices,
 		txBroadcastType: cfg.TxBroadcastType,
 	}, nil
@@ -132,7 +135,7 @@ func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtype
 		return nil, err
 	}
 	simQuery := abci.RequestQuery{
-		Path: "/cosmos.auth.v1beta1.Query/Account",
+		Path: accountQueryPath,
 		Data: req,
 	}
 	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
@@ -165,10 +168,6 @@ func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
 		return nil, fmt.Errorf("failed to build transaction builder: %w", err)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	err = tx.Sign(txf, cc.signKeyName, txBuilder, false)
 
 	if err != nil {
@@ -186,7 +185,7 @@ func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sd
 	}
 	// We then call the Simulate method on this client.
 	simQuery := abci.RequestQuery{
-		Path: "/cosmos.tx.v1beta1.Service/Simulate",
+		Path: simulateQueryPath,
 		Data: simulation,
 	}
 	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)

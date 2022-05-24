@@ -13,7 +13,7 @@ import (
 
 var perPage = 100
 
-const orderBy = ""
+const orderBy = "desc"
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)
@@ -41,10 +41,6 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 		}
 
 		page += 1
-	}
-
-	if len(txs) == 0 {
-		return []proof.TxValue{}, nil
 	}
 
 	result := make([]proof.TxValue, 0, len(txs))

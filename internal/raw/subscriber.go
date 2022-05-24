@@ -8,12 +8,12 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-const subscriber = "cosmos-query-relayer"
+const websocketPath = "/websocket"
 
 // Subscribe subscribes to target blockchain using websockets
 // WARNING: rpcclient.Subscribe from tendermint can fail to work with some blockchain versions of tendermint
-func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent func(event coretypes.ResultEvent)) error {
-	httpclient, err := rpcclient.New(rpcAddress, "/websocket") // TODO: check works?
+func Subscribe(ctx context.Context, subscriberName string, rpcAddress string, query string, onEvent func(event coretypes.ResultEvent)) error {
+	httpclient, err := rpcclient.New(rpcAddress, websocketPath)
 	if err != nil {
 		return fmt.Errorf("could not create new rpcclient: %w", err)
 	}
@@ -22,7 +22,7 @@ func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent fun
 		return fmt.Errorf("could not start httpclient when subscribing to target chain: %w", err)
 	}
 
-	response, err := httpclient.Subscribe(ctx, subscriber, query)
+	response, err := httpclient.Subscribe(ctx, subscriberName, query)
 	if err != nil {
 		return fmt.Errorf("could not subscribe to target chain: %w", err)
 	}

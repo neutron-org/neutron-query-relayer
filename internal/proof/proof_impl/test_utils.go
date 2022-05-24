@@ -12,6 +12,7 @@ type marshallingStorageValue struct {
 	Value         []byte
 	Proofs        []marshallingCryptoOp
 }
+
 type marshallingCryptoOp struct {
 	Type string
 	Key  []byte

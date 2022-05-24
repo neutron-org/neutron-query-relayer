@@ -5,9 +5,9 @@ lido-chain:
   gas-prices: "0.5stake"
   sender: ""
   tx-broadcast-type: "BroadcastTxCommit"
-  keyring:
-    sign-key-name: ""
-    dir: ""
+  event-subscriber-name: "cosmos-query-relayer"
+  keyring-dir: ""
+  sign-key-name: ""
 target-chain:
     rpc-address: "tcp://public-node.terra.dev:26657"
     chain-id: "columbus-5"

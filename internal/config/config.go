@@ -13,19 +13,17 @@ type CosmosQueryRelayerConfig struct {
 }
 
 type LidoChainConfig struct {
-	ChainPrefix     string          `yaml:"chain-prefix" env-required:"true"`
-	RPCAddress      string          `yaml:"rpc-address" env-required:"true"`
-	ChainID         string          `yaml:"chain-id" env-required:"true"`
-	GasPrices       string          `yaml:"gas-prices" env-required:"true"`
-	Sender          string          `yaml:"sender" env-required:"true"`
-	Timeout         time.Duration   `yaml:"timeout" env-default:"10s"`
-	GasAdjustment   float64         `yaml:"gas-adjustment" env-default:"1.5"`
-	TxBroadcastType TxBroadcastType `yaml:"tx-broadcast-type" env-default:"BroadcastTxAsync"`
-
-	Keyring struct {
-		Dir         string `yaml:"dir" env-required:"true"`
-		SignKeyName string `yaml:"sign-key-name" env-default:"default=default"`
-	}
+	ChainPrefix         string          `yaml:"chain-prefix" env-required:"true"`
+	RPCAddress          string          `yaml:"rpc-address" env-required:"true"`
+	ChainID             string          `yaml:"chain-id" env-required:"true"`
+	GasPrices           string          `yaml:"gas-prices" env-required:"true"`
+	Sender              string          `yaml:"sender" env-required:"true"`
+	EventSubscriberName string          `yaml:"event-subscriber-name" env-required:"true"`
+	KeyringDir          string          `yaml:"dir" env-required:"true"`
+	SignKeyName         string          `yaml:"sign-key-name" env-default:"default=default"`
+	Timeout             time.Duration   `yaml:"timeout" env-default:"10s"`
+	GasAdjustment       float64         `yaml:"gas-adjustment" env-default:"1.5"`
+	TxBroadcastType     TxBroadcastType `yaml:"tx-broadcast-type" env-default:"BroadcastTxAsync"`
 }
 
 type TargetChainConfig struct {
