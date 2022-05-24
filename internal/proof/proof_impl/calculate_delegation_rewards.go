@@ -10,7 +10,6 @@ import (
 
 // NOTE: we don't need all rewards query for now, so it comes unfinished now
 // TODO: test with blockchain where slashing events are there
-// TODO: сравнить output из функции и результат вызова GetRewards напрямую
 // see: lido-terra-integration-tests
 
 // CalculateDelegationRewards gets proofs for query type = 'x/distribution/CalculateDelegationRewards'
@@ -36,7 +35,7 @@ func CalculateDelegationRewards(ctx context.Context, querier *proof.Querier, pre
 	if err != nil {
 		return fmt.Errorf("error unmarshalling starting info: %w", err)
 	}
-	fmt.Printf("Starting info: %+v\n", startingInfo)
+	fmt.Printf("starting info: %+v\n", startingInfo)
 
 	// TODO: get delegation shares proof? or is it proven in other types?
 

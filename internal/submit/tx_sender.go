@@ -9,7 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
@@ -21,14 +21,14 @@ import (
 var mode = signing.SignMode_SIGN_MODE_DIRECT
 
 type TxSender struct {
-	ctx           context.Context
-	baseTxf       tx.Factory
-	txConfig      client.TxConfig
-	rpcClient     rpcclient.Client
-	chainID       string
-	addressPrefix string
-	signKeyName   string
-	gasPrices     string
+	baseTxf         tx.Factory
+	txConfig        client.TxConfig
+	rpcClient       rpcclient.Client
+	chainID         string
+	addressPrefix   string
+	signKeyName     string
+	gasPrices       string
+	txBroadcastType config.TxBroadcastType
 }
 
 func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
@@ -40,32 +40,31 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 	return keybase, nil
 }
 
-func NewTxSender(ctx context.Context, rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.CosmosQueryRelayerConfig) (*TxSender, error) {
-	lidoCfg := cfg.LidoChain
+func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.LidoChainConfig) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
 		WithSignMode(mode).
 		WithTxConfig(txConfig).
-		WithChainID(lidoCfg.ChainID).
-		WithGasAdjustment(lidoCfg.GasAdjustment).
-		WithGasPrices(lidoCfg.GasPrices)
+		WithChainID(cfg.ChainID).
+		WithGasAdjustment(cfg.GasAdjustment).
+		WithGasPrices(cfg.GasPrices)
 
 	return &TxSender{
-		ctx:           ctx,
-		txConfig:      txConfig,
-		baseTxf:       baseTxf,
-		rpcClient:     rpcClient,
-		chainID:       lidoCfg.ChainID,
-		addressPrefix: lidoCfg.ChainPrefix,
-		signKeyName:   lidoCfg.Keyring.SignKeyName,
-		gasPrices:     lidoCfg.GasPrices,
+		txConfig:        txConfig,
+		baseTxf:         baseTxf,
+		rpcClient:       rpcClient,
+		chainID:         cfg.ChainID,
+		addressPrefix:   cfg.ChainPrefix,
+		signKeyName:     cfg.Keyring.SignKeyName,
+		gasPrices:       cfg.GasPrices,
+		txBroadcastType: cfg.TxBroadcastType,
 	}, nil
 }
 
 // Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
-func (cc *TxSender) Send(sender string, msgs []types.Msg) error {
-	account, err := cc.queryAccount(sender)
+func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) error {
+	account, err := cc.queryAccount(ctx, sender)
 	if err != nil {
 		return err
 	}
@@ -74,34 +73,59 @@ func (cc *TxSender) Send(sender string, msgs []types.Msg) error {
 		WithAccountNumber(account.AccountNumber).
 		WithSequence(account.Sequence)
 
-	//gasNeeded, err := cc.calculateGas(txf, msgs...)
-	//if err != nil {
-	//	return err
-	//}
-
-	gasNeeded := uint64(2000000)
+	gasNeeded, err := cc.calculateGas(ctx, txf, msgs...)
+	if err != nil {
+		return err
+	}
 
 	txf = txf.
 		WithGas(gasNeeded).
 		WithGasPrices(cc.gasPrices)
 
-	bz, err := cc.buildTxBz(txf, msgs, gasNeeded)
+	bz, err := cc.buildTxBz(txf, msgs)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not build tx bz: %w", err)
 	}
-	res, err := cc.rpcClient.BroadcastTxSync(cc.ctx, bz)
 
-	fmt.Printf("Broadcast result: code=%+v log=%v err=%+v hash=%b", res.Code, res.Log, err, res.Hash)
+	switch cc.txBroadcastType {
+	case config.BroadcastTxSync:
+		res, err := cc.rpcClient.BroadcastTxSync(ctx, bz)
+		if err != nil {
+			return fmt.Errorf("error broadcasting sync transaction: %w", err)
+		}
 
-	if res.Code == 0 {
-		return nil
-	} else {
-		return fmt.Errorf("error broadcasting transaction with log=%s", res.Log)
+		if res.Code == 0 {
+			return nil
+		} else {
+			return fmt.Errorf("error broadcasting sync transaction with log=%s", res.Log)
+		}
+	case config.BroadcastTxAsync:
+		res, err := cc.rpcClient.BroadcastTxAsync(ctx, bz)
+		if err != nil {
+			return fmt.Errorf("error broadcasting async transaction: %w", err)
+		}
+		if res.Code == 0 {
+			return nil
+		} else {
+			return fmt.Errorf("error broadcasting async transaction with log=%s", res.Log)
+		}
+	case config.BroadcastTxCommit:
+		res, err := cc.rpcClient.BroadcastTxCommit(ctx, bz)
+		if err != nil {
+			return fmt.Errorf("error broadcasting commit transaction: %w", err)
+		}
+		if res.CheckTx.Code == 0 && res.DeliverTx.Code == 0 {
+			return nil
+		} else {
+			return fmt.Errorf("error broadcasting commit transaction with checktx log=%s and deliverytx log=%s", res.CheckTx.Log, res.DeliverTx.Log)
+		}
+	default:
+		return fmt.Errorf("not implemented transaction send type: %s", cc.txBroadcastType)
 	}
 }
 
 // queryAccount returns BaseAccount for given account address
-func (cc *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error) {
+func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtypes.BaseAccount, error) {
 	request := authtypes.QueryAccountRequest{Address: address}
 	req, err := request.Marshal()
 	if err != nil {
@@ -111,7 +135,7 @@ func (cc *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error)
 		Path: "/cosmos.auth.v1beta1.Query/Account",
 		Data: req,
 	}
-	res, err := cc.rpcClient.ABCIQueryWithOptions(cc.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -135,24 +159,17 @@ func (cc *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error)
 	return &account, nil
 }
 
-func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []types.Msg, gasAmount uint64) ([]byte, error) {
-	txBuilder := cc.txConfig.NewTxBuilder()
-	err := txBuilder.SetMsgs(msgs...)
+func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
+	txBuilder, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {
-		fmt.Printf("set msgs failure")
-		return nil, err
+		return nil, fmt.Errorf("failed to build transaction builder: %w", err)
 	}
-
-	txBuilder.SetGasLimit(gasAmount)
 
 	if err != nil {
 		return nil, err
 	}
-	// TODO: shouldn't set it like this. use gas limit and gas prices
-	txBuilder.SetFeeAmount(types.NewCoins(types.NewInt64Coin("stake", 500000)))
 
-	fmt.Printf("\nAbout to sign with txf: %+v\n\n", txf)
-	err = tx.Sign(txf, cc.signKeyName, txBuilder, true)
+	err = tx.Sign(txf, cc.signKeyName, txBuilder, false)
 
 	if err != nil {
 		return nil, err
@@ -162,7 +179,7 @@ func (cc *TxSender) buildTxBz(txf tx.Factory, msgs []types.Msg, gasAmount uint64
 	return bz, err
 }
 
-func (cc *TxSender) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, error) {
+func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	simulation, err := cc.buildSimulationTx(txf, msgs...)
 	if err != nil {
 		return 0, err
@@ -172,7 +189,7 @@ func (cc *TxSender) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, err
 		Path: "/cosmos.tx.v1beta1.Service/Simulate",
 		Data: simulation,
 	}
-	res, err := cc.rpcClient.ABCIQueryWithOptions(cc.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return 0, err
 	}
@@ -191,7 +208,7 @@ func (cc *TxSender) calculateGas(txf tx.Factory, msgs ...types.Msg) (uint64, err
 
 // buildSimulationTx creates an unsigned tx with an empty single signature and returns
 // the encoded transaction or an error if the unsigned transaction cannot be built.
-func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...types.Msg) ([]byte, error) {
+func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, error) {
 	txb, err := cc.baseTxf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, err

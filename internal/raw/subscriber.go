@@ -3,9 +3,12 @@ package raw
 import (
 	"context"
 	"fmt"
+	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
+
+const subscriber = "cosmos-query-relayer"
 
 // Subscribe subscribes to target blockchain using websockets
 // WARNING: rpcclient.Subscribe from tendermint can fail to work with some blockchain versions of tendermint
@@ -19,7 +22,7 @@ func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent fun
 		return fmt.Errorf("could not start httpclient when subscribing to target chain: %w", err)
 	}
 
-	response, err := httpclient.Subscribe(ctx, "cosmos-query-relayer", query)
+	response, err := httpclient.Subscribe(ctx, subscriber, query)
 	if err != nil {
 		return fmt.Errorf("could not subscribe to target chain: %w", err)
 	}
@@ -33,6 +36,6 @@ func Subscribe(ctx context.Context, rpcAddress string, query string, onEvent fun
 
 func SubscribeQuery(zoneId string) string {
 	// TODO: fix after zone_id is saved in message
-	//return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", "interchainqueries", "query", zoneId)
-	return fmt.Sprintf("message.module='%s' AND message.action='%s'", "interchainqueries", "query")
+	//return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", lidotypes.ModuleName, lidotypes.AttributeValueQuery, zoneId)
+	return fmt.Sprintf("message.module='%s' AND message.action='%s'", lidotypes.ModuleName, lidotypes.AttributeValueQuery)
 }

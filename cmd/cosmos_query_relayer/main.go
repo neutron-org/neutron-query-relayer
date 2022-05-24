@@ -14,9 +14,6 @@ import (
 	"github.com/lidofinance/cosmos-query-relayer/internal/raw"
 )
 
-// TODO: logger configuration
-// TODO: monitoring
-
 func main() {
 	fmt.Println("cosmos-query-relayer starts...")
 
@@ -26,7 +23,7 @@ func main() {
 		log.Fatalf("cannot initialize relayer config: %s", err)
 	}
 
-	raw.SetSDKConfig(cfg)
+	raw.SetSDKConfig(cfg.LidoChain)
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {
@@ -51,7 +48,7 @@ func main() {
 		return
 	}
 
-	txSender, err := submit.NewTxSender(ctx, lidoClient, codec.Marshaller, keybase, cfg)
+	txSender, err := submit.NewTxSender(ctx, lidoClient, codec.Marshaller, keybase, cfg.LidoChain)
 	if err != nil {
 		log.Println(err)
 		return
@@ -59,7 +56,7 @@ func main() {
 
 	proofSubmitter := submit.NewSubmitterImpl(cfg.LidoChain.Sender, txSender)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
-	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
+	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainID, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
 
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now

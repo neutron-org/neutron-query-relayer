@@ -1,6 +1,7 @@
 package submit
 
 import (
+	"context"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
@@ -13,27 +14,27 @@ type SubmitterImpl struct {
 	sender     *TxSender
 }
 
-func NewSubmitterImpl(senderAddr string, sender *TxSender) Submitter {
+func NewSubmitterImpl(senderAddr string, sender *TxSender) *SubmitterImpl {
 	return &SubmitterImpl{
 		senderAddr: senderAddr, sender: sender,
 	}
 }
 
 // SubmitProof submits query with proof back to lido chain
-func (cc *SubmitterImpl) SubmitProof(height uint64, queryId uint64, proof []proof.StorageValue) error {
+func (cc *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId uint64, proof []proof.StorageValue) error {
 	msgs, err := cc.buildProofMsg(height, queryId, proof)
 	if err != nil {
 		return err
 	}
-	return cc.sender.Send(cc.senderAddr, msgs)
+	return cc.sender.Send(ctx, cc.senderAddr, msgs)
 }
 
-func (cc *SubmitterImpl) SubmitTxProof(queryId uint64, proof []proof.TxValue) error {
+func (cc *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof []proof.TxValue) error {
 	msgs, err := cc.buildTxProofMsg(queryId, proof)
 	if err != nil {
 		return err
 	}
-	return cc.sender.Send(cc.senderAddr, msgs)
+	return cc.sender.Send(ctx, cc.senderAddr, msgs)
 }
 
 func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []proof.StorageValue) ([]types.Msg, error) {

@@ -63,7 +63,6 @@ func (cc *Querier) QueryTendermintProof(ctx context.Context, height int64, store
 		return nil, 0, err
 	}
 
-	//revision := clienttypes.ParseChainID(chainID)
 	response := res.Response
 	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height + 1), nil
 }
