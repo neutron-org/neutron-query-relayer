@@ -20,7 +20,7 @@ type LidoChainConfig struct {
 	GasAdjustment   float64         `envconfig:"default=1.5"`
 	GasPrices       string          `envconfig:"default=0.5stake"`
 	Sender          string          `envconfig:"default=cosmos1dlhd34j0w28gexgajys4jqafp68fxhsezs8urm"`
-	TxBroadcastType TxBroadcastType `envconfig:"default=BroadcastTxSync"`
+	TxBroadcastType TxBroadcastType `envconfig:"default=BroadcastTxCommit"`
 
 	//LOCALTERRA
 	//ChainPrefix string `envconfig:"default=terra"`

@@ -48,7 +48,7 @@ func main() {
 		return
 	}
 
-	txSender, err := submit.NewTxSender(ctx, lidoClient, codec.Marshaller, keybase, cfg.LidoChain)
+	txSender, err := submit.NewTxSender(lidoClient, codec.Marshaller, keybase, cfg.LidoChain)
 	if err != nil {
 		log.Println(err)
 		return
