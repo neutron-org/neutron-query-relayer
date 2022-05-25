@@ -11,14 +11,11 @@ import (
 
 // SubmitterImpl can submit proofs using `sender` as the transaction transport mechanism
 type SubmitterImpl struct {
-	senderAddr string
-	sender     *TxSender
+	sender *TxSender
 }
 
-func NewSubmitterImpl(senderAddr string, sender *TxSender) *SubmitterImpl {
-	return &SubmitterImpl{
-		senderAddr: senderAddr, sender: sender,
-	}
+func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
+	return &SubmitterImpl{sender: sender}
 }
 
 // SubmitProof submits query with proof back to lido chain
@@ -27,7 +24,7 @@ func (cc *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId
 	if err != nil {
 		return fmt.Errorf("could not build proof msg: %w", err)
 	}
-	return cc.sender.Send(ctx, cc.senderAddr, msgs)
+	return cc.sender.Send(ctx, msgs)
 }
 
 // SubmitTxProof submits tx query with proof back to lido chain
@@ -36,7 +33,8 @@ func (cc *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proo
 	if err != nil {
 		return fmt.Errorf("could not build tx proof msg: %w", err)
 	}
-	return cc.sender.Send(ctx, cc.senderAddr, msgs)
+
+	return cc.sender.Send(ctx, msgs)
 }
 
 func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []proof.StorageValue) ([]types.Msg, error) {
@@ -52,16 +50,21 @@ func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 		})
 	}
 
+	senderAddr, err := cc.sender.SenderAddr()
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch sender addr for building proof msg: %w", err)
+	}
+
 	queryResult := lidotypes.QueryResult{
 		Height:    height,
 		KvResults: res,
 		Txs:       nil,
 	}
-	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: cc.senderAddr, Result: &queryResult}
+	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
-	err := msg.ValidateBasic()
+	err = msg.ValidateBasic()
 	if err != nil {
-		return nil, fmt.Errorf("invalid proof message: %w", err)
+		return nil, fmt.Errorf("invalid proof message for query=%d: %w", queryId, err)
 	}
 
 	return []types.Msg{&msg}, nil
@@ -91,14 +94,19 @@ func (cc *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) 
 		})
 	}
 
+	senderAddr, err := cc.sender.SenderAddr()
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch sender addr for building tx proof msg: %w", err)
+	}
+
 	queryResult := lidotypes.QueryResult{
 		Height:    0, // NOTE: cannot use nil because it's not pointer :(
 		KvResults: nil,
 		Txs:       res,
 	}
-	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: cc.senderAddr, Result: &queryResult}
+	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
-	err := msg.ValidateBasic()
+	err = msg.ValidateBasic()
 	if err != nil {
 		return nil, fmt.Errorf("invalid tx proof message: %w", err)
 	}

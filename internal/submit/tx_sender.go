@@ -24,6 +24,7 @@ const (
 )
 
 type TxSender struct {
+	keybase         keyring.Keyring
 	baseTxf         tx.Factory
 	txConfig        client.TxConfig
 	rpcClient       rpcclient.Client
@@ -54,6 +55,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		WithGasPrices(cfg.GasPrices)
 
 	return &TxSender{
+		keybase:         keybase,
 		txConfig:        txConfig,
 		baseTxf:         baseTxf,
 		rpcClient:       rpcClient,
@@ -66,33 +68,38 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 }
 
 // Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
-func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) error {
-	account, err := cc.queryAccount(ctx, sender)
+func (s *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
+	senderAddr, err := s.SenderAddr()
+	if err != nil {
+		return fmt.Errorf("could not fetch sender addr: %w", err)
+	}
+
+	account, err := s.queryAccount(ctx, senderAddr)
 	if err != nil {
 		return fmt.Errorf("error fetching account: %w", err)
 	}
 
-	txf := cc.baseTxf.
+	txf := s.baseTxf.
 		WithAccountNumber(account.AccountNumber).
 		WithSequence(account.Sequence)
 
-	gasNeeded, err := cc.calculateGas(ctx, txf, msgs...)
+	gasNeeded, err := s.calculateGas(ctx, txf, msgs...)
 	if err != nil {
 		return fmt.Errorf("error calculating gas: %w", err)
 	}
 
 	txf = txf.
 		WithGas(gasNeeded).
-		WithGasPrices(cc.gasPrices)
+		WithGasPrices(s.gasPrices)
 
-	bz, err := cc.signAndBuildTxBz(txf, msgs)
+	bz, err := s.signAndBuildTxBz(txf, msgs)
 	if err != nil {
 		return fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
 
-	switch cc.txBroadcastType {
+	switch s.txBroadcastType {
 	case config.BroadcastTxSync:
-		res, err := cc.rpcClient.BroadcastTxSync(ctx, bz)
+		res, err := s.rpcClient.BroadcastTxSync(ctx, bz)
 		if err != nil {
 			return fmt.Errorf("error broadcasting sync transaction: %w", err)
 		}
@@ -103,7 +110,7 @@ func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) err
 			return fmt.Errorf("error broadcasting sync transaction with log=%s", res.Log)
 		}
 	case config.BroadcastTxAsync:
-		res, err := cc.rpcClient.BroadcastTxAsync(ctx, bz)
+		res, err := s.rpcClient.BroadcastTxAsync(ctx, bz)
 		if err != nil {
 			return fmt.Errorf("error broadcasting async transaction: %w", err)
 		}
@@ -113,7 +120,7 @@ func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) err
 			return fmt.Errorf("error broadcasting async transaction with log=%s", res.Log)
 		}
 	case config.BroadcastTxCommit:
-		res, err := cc.rpcClient.BroadcastTxCommit(ctx, bz)
+		res, err := s.rpcClient.BroadcastTxCommit(ctx, bz)
 		if err != nil {
 			return fmt.Errorf("error broadcasting commit transaction: %w", err)
 		}
@@ -123,12 +130,21 @@ func (cc *TxSender) Send(ctx context.Context, sender string, msgs []sdk.Msg) err
 			return fmt.Errorf("error broadcasting commit transaction with checktx log=%s and deliverytx log=%s", res.CheckTx.Log, res.DeliverTx.Log)
 		}
 	default:
-		return fmt.Errorf("not implemented transaction send type: %s", cc.txBroadcastType)
+		return fmt.Errorf("not implemented transaction send type: %s", s.txBroadcastType)
 	}
 }
 
+func (s *TxSender) SenderAddr() (string, error) {
+	info, err := s.keybase.Key(s.signKeyName)
+	if err != nil {
+		return "", fmt.Errorf("could not fetch sender info from keychain with signKeyName=%s: %w", s.signKeyName, err)
+	}
+
+	return info.GetAddress().String(), nil
+}
+
 // queryAccount returns BaseAccount for given account address
-func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtypes.BaseAccount, error) {
+func (s *TxSender) queryAccount(ctx context.Context, address string) (*authtypes.BaseAccount, error) {
 	request := authtypes.QueryAccountRequest{Address: address}
 	req, err := request.Marshal()
 	if err != nil {
@@ -138,7 +154,7 @@ func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtype
 		Path: accountQueryPath,
 		Data: req,
 	}
-	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := s.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error making abci query for account=%s: %w", address, err)
 	}
@@ -162,24 +178,24 @@ func (cc *TxSender) queryAccount(ctx context.Context, address string) (*authtype
 	return &account, nil
 }
 
-func (cc *TxSender) signAndBuildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
+func (s *TxSender) signAndBuildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
 	txBuilder, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build transaction builder: %w", err)
 	}
 
-	err = tx.Sign(txf, cc.signKeyName, txBuilder, false)
+	err = tx.Sign(txf, s.signKeyName, txBuilder, false)
 
 	if err != nil {
 		return nil, fmt.Errorf("error signing transaction: %w", err)
 	}
 
-	bz, err := cc.txConfig.TxEncoder()(txBuilder.GetTx())
+	bz, err := s.txConfig.TxEncoder()(txBuilder.GetTx())
 	return bz, err
 }
 
-func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
-	simulation, err := cc.buildSimulationTx(txf, msgs...)
+func (s *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
+	simulation, err := s.buildSimulationTx(txf, msgs...)
 	if err != nil {
 		return 0, fmt.Errorf("error building simulation tx: %w", err)
 	}
@@ -188,7 +204,7 @@ func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sd
 		Path: simulateQueryPath,
 		Data: simulation,
 	}
-	res, err := cc.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := s.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return 0, fmt.Errorf("error making abci query for gas calculation: %w", err)
 	}
@@ -207,8 +223,8 @@ func (cc *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sd
 
 // buildSimulationTx creates an unsigned tx with an empty single signature and returns
 // the encoded transaction or an error if the unsigned transaction cannot be built.
-func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, error) {
-	txb, err := cc.baseTxf.BuildUnsignedTx(msgs...)
+func (s *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, error) {
+	txb, err := s.baseTxf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, fmt.Errorf("error building unsigned tx for simulation: %w", err)
 	}
@@ -218,7 +234,7 @@ func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, 
 	sig := signing.SignatureV2{
 		PubKey: &secp256k1.PubKey{},
 		Data: &signing.SingleSignatureData{
-			SignMode: cc.baseTxf.SignMode(),
+			SignMode: s.baseTxf.SignMode(),
 		},
 		Sequence: txf.Sequence(),
 	}
@@ -226,7 +242,7 @@ func (cc *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte, 
 		return nil, fmt.Errorf("error settings signatures for simulation: %w", err)
 	}
 
-	bz, err := cc.txConfig.TxEncoder()(txb.GetTx())
+	bz, err := s.txConfig.TxEncoder()(txb.GetTx())
 	if err != nil {
 		return nil, fmt.Errorf("error encoding transaction: %w", err)
 	}

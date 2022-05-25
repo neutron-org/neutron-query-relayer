@@ -56,9 +56,9 @@ func main() {
 		log.Fatalf("cannot create tx sender: %s", err)
 	}
 
-	proofSubmitter := submit.NewSubmitterImpl(cfg.LidoChain.Sender, txSender)
+	proofSubmitter := submit.NewSubmitterImpl(txSender)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
-	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainID, cfg.TargetChain.ChainPrefix, cfg.LidoChain.Sender)
+	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainID, cfg.TargetChain.ChainPrefix)
 
 	fmt.Println("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?

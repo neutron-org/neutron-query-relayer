@@ -3,7 +3,6 @@ lido-chain:
   rpc-address: "tcp://127.0.0.1:26657"
   chain-id: "testnet"
   gas-prices: "0.5stake"
-  sender: ""
   tx-broadcast-type: "BroadcastTxCommit"
   event-subscriber-name: "cosmos-query-relayer"
   keyring-dir: ""

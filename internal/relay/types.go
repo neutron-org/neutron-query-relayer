@@ -5,7 +5,7 @@ import lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/type
 type queryEventMessage struct {
 	queryId     uint64
 	messageType string
-	parameters  string
+	parameters  []byte
 }
 
 type delegatorDelegationsParams struct {

@@ -10,18 +10,17 @@ import (
 
 // Relayer is controller for the whole app:
 // 1. takes events from lido chain
-// 2. dispatches queries by type to fetch proof for the right query
+// 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the lido chain
 type Relayer struct {
 	proofer           Proofer
 	submitter         Submitter
 	targetChainId     string
 	targetChainPrefix string
-	sender            string
 }
 
-func NewRelayer(proofer Proofer, submitter Submitter, targetChainId, targetChainPrefix string, sender string) Relayer {
-	return Relayer{proofer: proofer, submitter: submitter, targetChainId: targetChainId, targetChainPrefix: targetChainPrefix, sender: sender}
+func NewRelayer(proofer Proofer, submitter Submitter, targetChainId, targetChainPrefix string) Relayer {
+	return Relayer{proofer: proofer, submitter: submitter, targetChainId: targetChainId, targetChainPrefix: targetChainPrefix}
 }
 
 func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
@@ -40,14 +39,10 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 	}
 }
 
-type eventValue []string
-
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
 	fmt.Printf("\n\nEvents: %+v\n\n", event.Events)
 	events := event.Events
-	abciMessages := make(map[string]eventValue, 0)
-
-	if len(events[queryIdAttr]) == 0 {
+	if len(events[zoneIdAttr]) == 0 {
 		return []queryEventMessage{}, nil
 	}
 
@@ -57,7 +52,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
 	}
 
-	messages := make([]queryEventMessage, 0, len(abciMessages))
+	messages := make([]queryEventMessage, 0, len(events[zoneIdAttr]))
 
 	for idx, zoneId := range events[zoneIdAttr] {
 		if zoneId != r.targetChainId {
@@ -74,7 +69,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		messageType := events[typeAttr][idx]
 		parameters := events[parametersAttr][idx]
 
-		messages = append(messages, queryEventMessage{queryId: queryId, messageType: messageType, parameters: parameters})
+		messages = append(messages, queryEventMessage{queryId: queryId, messageType: messageType, parameters: []byte(parameters)})
 	}
 
 	return messages, nil
@@ -85,7 +80,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	switch m.messageType {
 	case delegatorDelegationsType:
 		var params delegatorDelegationsParams
-		err := json.Unmarshal([]byte(m.parameters), &params)
+		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
@@ -101,7 +96,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 	case getBalanceType:
 		var params getBalanceParams
-		err := json.Unmarshal([]byte(m.parameters), &params)
+		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
@@ -117,7 +112,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 	case exchangeRateType:
 		var params exchangeRateParams
-		err := json.Unmarshal([]byte(m.parameters), &params)
+		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for ExchangeRate with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
@@ -139,7 +134,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 	case recipientTransactionsType:
 		var params recipientTransactionsParams
-		err := json.Unmarshal([]byte(m.parameters), &params)
+		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
 		}
