@@ -23,10 +23,10 @@ func NewRelayer(proofer Proofer, submitter Submitter, targetChainId, targetChain
 	return Relayer{proofer: proofer, submitter: submitter, targetChainId: targetChainId, targetChainPrefix: targetChainPrefix}
 }
 
-func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
+func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	messages, err := r.tryExtractInterchainQueries(event)
 	if err != nil {
-		fmt.Printf("could not filter intechain query messages: %s\n", err)
+		return fmt.Errorf("could not filter interchain query messages: %w", err)
 	}
 
 	for _, m := range messages {
@@ -37,10 +37,12 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) {
 			fmt.Printf("proof for query_id=%d submitted successfully\n", m.queryId)
 		}
 	}
+
+	return nil
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	fmt.Printf("\n\nEvents: %+v\n\n", event.Events)
+	fmt.Printf("\nTry extracting events:\n%+v\n", event.Events)
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return []queryEventMessage{}, nil
