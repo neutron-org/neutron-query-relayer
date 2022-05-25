@@ -36,25 +36,26 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 			break
 		}
 
-		for _, item := range searchResult.Txs {
-			txs = append(txs, item)
+		for _, tx := range searchResult.Txs {
+			txs = append(txs, tx)
 		}
 
 		page += 1
 	}
 
 	result := make([]proof.TxValue, 0, len(txs))
-	for _, item := range txs {
-		deliveryProof, inclusionProof, err := TxCompletedSuccessfullyProof(ctx, p.querier, item.Height, item.Index)
+	for _, tx := range txs {
+		deliveryProof, deliveryResult, err := TxCompletedSuccessfullyProof(ctx, p.querier, tx.Height, tx.Index)
+		inclusionProof := tx.Proof.Proof
 		if err != nil {
-			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", item.Tx.String(), err)
+			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
 		}
 
 		txProof := proof.TxValue{
-			InclusionProof: item.Proof.Proof,
+			InclusionProof: inclusionProof,
 			DeliveryProof:  *deliveryProof,
-			Tx:             inclusionProof,
-			Height:         uint64(item.Height),
+			Tx:             deliveryResult,
+			Height:         uint64(tx.Height),
 		}
 		result = append(result, txProof)
 	}

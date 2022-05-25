@@ -19,25 +19,25 @@ func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
 }
 
 // SubmitProof submits query with proof back to lido chain
-func (cc *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId uint64, proof []proof.StorageValue) error {
-	msgs, err := cc.buildProofMsg(height, queryId, proof)
+func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId uint64, proof []proof.StorageValue) error {
+	msgs, err := si.buildProofMsg(height, queryId, proof)
 	if err != nil {
 		return fmt.Errorf("could not build proof msg: %w", err)
 	}
-	return cc.sender.Send(ctx, msgs)
+	return si.sender.Send(ctx, msgs)
 }
 
 // SubmitTxProof submits tx query with proof back to lido chain
-func (cc *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof []proof.TxValue) error {
-	msgs, err := cc.buildTxProofMsg(queryId, proof)
+func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof []proof.TxValue) error {
+	msgs, err := si.buildTxProofMsg(queryId, proof)
 	if err != nil {
 		return fmt.Errorf("could not build tx proof msg: %w", err)
 	}
 
-	return cc.sender.Send(ctx, msgs)
+	return si.sender.Send(ctx, msgs)
 }
 
-func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []proof.StorageValue) ([]types.Msg, error) {
+func (si *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []proof.StorageValue) ([]types.Msg, error) {
 	res := make([]*lidotypes.StorageValue, 0, len(proof))
 	for _, item := range proof {
 		res = append(res, &lidotypes.StorageValue{
@@ -50,7 +50,7 @@ func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 		})
 	}
 
-	senderAddr, err := cc.sender.SenderAddr()
+	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building proof msg: %w", err)
 	}
@@ -70,7 +70,7 @@ func (cc *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 	return []types.Msg{&msg}, nil
 }
 
-func (cc *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) ([]types.Msg, error) {
+func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) ([]types.Msg, error) {
 	res := make([]*lidotypes.TxValue, 0, len(proof))
 	for _, item := range proof {
 		inclusionProof := item.InclusionProof
@@ -94,7 +94,7 @@ func (cc *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) 
 		})
 	}
 
-	senderAddr, err := cc.sender.SenderAddr()
+	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building tx proof msg: %w", err)
 	}
