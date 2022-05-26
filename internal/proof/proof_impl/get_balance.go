@@ -24,12 +24,3 @@ func (p ProoferImpl) GetBalance(ctx context.Context, inputHeight uint64, chainPr
 
 	return []proof.StorageValue{*value}, height, err
 }
-
-func ParseGetBalanceValue(value proof.StorageValue) {
-	var amount sdk.Coin
-	if err := amount.Unmarshal(value.Value); err != nil {
-		fmt.Printf("failed to unmarshal the balances response: %s", err)
-		return
-	}
-	fmt.Printf("Coin: %+v\n", amount)
-}

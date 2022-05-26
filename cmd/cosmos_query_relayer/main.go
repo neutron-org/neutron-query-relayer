@@ -28,7 +28,7 @@ func main() {
 	}
 	fmt.Println("initialized config")
 
-	raw.SetSDKConfig(cfg.LidoChain)
+	raw.SetSDKConfig(cfg.LidoChain.ChainPrefix)
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {

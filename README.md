@@ -16,7 +16,7 @@ Blockchain L can then verify the result for the query.
 
 # Running in development
 - `$ cp configs/dev.example.yml configs/dev.yml`
-- Fill your configs/dev.yml with necessary values (see sender, keyring.sign-key-name and keyring.dir)
+- Fill your configs/dev.yml with necessary values (see, sign-key-name and keyring-dir)
 - `$ make dev`
 
 For more configuration parameters see struct in internal/config/config.go

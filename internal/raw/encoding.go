@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	// TODO: why does this needed? It doesn't serialize properly without it
 	ModuleBasics = []module.AppModuleBasic{
 		auth.AppModuleBasic{},
 		authz.AppModuleBasic{},

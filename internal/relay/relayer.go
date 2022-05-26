@@ -45,7 +45,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 	fmt.Printf("\nTry extracting events:\n%+v\n", event.Events)
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
-		return []queryEventMessage{}, nil
+		return nil, nil
 	}
 
 	if len(events[zoneIdAttr]) != len(events[parametersAttr]) ||

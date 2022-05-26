@@ -45,7 +45,7 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 
 	result := make([]proof.TxValue, 0, len(txs))
 	for _, tx := range txs {
-		deliveryProof, deliveryResult, err := TxCompletedSuccessfullyProof(ctx, p.querier, tx.Height, tx.Index)
+		deliveryProof, deliveryResult, err := p.txCompletedSuccessfullyProof(ctx, tx.Height, tx.Index)
 		inclusionProof := tx.Proof.Proof
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
@@ -63,9 +63,9 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	return result, nil
 }
 
-// TxCompletedSuccessfullyProof returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
-func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.Querier, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, *abci.ResponseDeliverTx, error) {
-	results, err := querier.Client.BlockResults(ctx, &blockHeight)
+// txCompletedSuccessfullyProof returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
+func (p ProoferImpl) txCompletedSuccessfullyProof(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, *abci.ResponseDeliverTx, error) {
+	results, err := p.querier.Client.BlockResults(ctx, &blockHeight)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch block results for height = %d: %w", blockHeight, err)
@@ -79,6 +79,7 @@ func TxCompletedSuccessfullyProof(ctx context.Context, querier *proof.Querier, b
 	return &txProof, txResult, nil
 }
 
+// queryFromParams creates query from params like `key1=value1 AND key2=value2 AND ...`
 func queryFromParams(params map[string]string) string {
 	queryParamsList := make([]string, 0, len(params))
 	for key, value := range params {

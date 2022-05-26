@@ -3,7 +3,6 @@ package proof_impl
 import (
 	"context"
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 )
@@ -18,14 +17,4 @@ func (p ProoferImpl) GetSupply(ctx context.Context, inputHeight uint64, denom st
 	}
 
 	return []proof.StorageValue{*value}, height, nil
-}
-
-func parseGetSupplyValue(value proof.StorageValue) {
-	var amount sdk.Int
-	err := amount.Unmarshal(value.Value)
-	if err != nil {
-		return
-	}
-
-	fmt.Printf("supply is %+v\n", amount)
 }
