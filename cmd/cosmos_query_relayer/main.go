@@ -63,7 +63,7 @@ func main() {
 	fmt.Println("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-	err = raw.Subscribe(ctx, cfg.LidoChain.EventSubscriberName, cfg.LidoChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
+	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.LidoChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		err = relayer.Proof(ctx, event)
 		if err != nil {
 			fmt.Printf("error proofing event: %s\n", err)

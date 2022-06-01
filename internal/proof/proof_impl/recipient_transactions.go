@@ -32,12 +32,12 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 			break
 		}
 
-		if page*perPage >= searchResult.TotalCount {
-			break
-		}
-
 		for _, tx := range searchResult.Txs {
 			txs = append(txs, tx)
+		}
+
+		if page*perPage >= searchResult.TotalCount {
+			break
 		}
 
 		page += 1
@@ -45,7 +45,7 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 
 	result := make([]proof.TxValue, 0, len(txs))
 	for _, tx := range txs {
-		deliveryProof, deliveryResult, err := p.txCompletedSuccessfullyProof(ctx, tx.Height, tx.Index)
+		deliveryProof, deliveryResult, err := p.proofDelivery(ctx, tx.Height, tx.Index)
 		inclusionProof := tx.Proof.Proof
 		if err != nil {
 			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
@@ -63,8 +63,8 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 	return result, nil
 }
 
-// txCompletedSuccessfullyProof returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
-func (p ProoferImpl) txCompletedSuccessfullyProof(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, *abci.ResponseDeliverTx, error) {
+// proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
+func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, *abci.ResponseDeliverTx, error) {
 	results, err := p.querier.Client.BlockResults(ctx, &blockHeight)
 
 	if err != nil {
