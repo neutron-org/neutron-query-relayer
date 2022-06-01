@@ -3,6 +3,7 @@ package submit
 import (
 	"context"
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -83,10 +84,12 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 		WithAccountNumber(account.AccountNumber).
 		WithSequence(account.Sequence)
 
-	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
-	if err != nil {
-		return fmt.Errorf("error calculating gas: %w", err)
-	}
+	//gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
+	//if err != nil {
+	//	return fmt.Errorf("error calculating gas: %w", err)
+	//}
+
+	gasNeeded := uint64(50000000)
 
 	txf = txf.
 		WithGas(gasNeeded).
