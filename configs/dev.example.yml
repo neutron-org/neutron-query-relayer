@@ -4,7 +4,6 @@ lido-chain:
   chain-id: "testnet"
   gas-prices: "0.5stake"
   tx-broadcast-type: "BroadcastTxCommit"
-  event-subscriber-name: "cosmos-query-relayer"
   keyring-dir: ""
   sign-key-name: ""
 target-chain:
