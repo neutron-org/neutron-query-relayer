@@ -7,6 +7,7 @@ lido-chain:
   keyring-dir: ""
   sign-key-name: ""
 target-chain:
-  chain-prefix: "terra"
-  rpc-address: "tcp://public-node.terra.dev:26657"
-  chain-id: "columbus-5"
+  account-prefix: "osmo"
+  validator-account-prefix: "osmovaloper"
+  rpc-address: "tcp://52.9.216.144:26657"
+  chain-id: "osmosis-1"

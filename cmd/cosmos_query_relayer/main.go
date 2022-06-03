@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("could not initialize target rpc client: %s", err)
 	}
 
-	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID)
+	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID, cfg.TargetChain.ValidatorAccountPrefix)
 	if err != nil {
 		log.Fatalf("cannot connect to target chain: %s", err)
 	}
@@ -58,7 +58,7 @@ func main() {
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
-	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainID, cfg.TargetChain.ChainPrefix)
+	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainID, cfg.TargetChain.AccountPrefix)
 
 	fmt.Println("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?

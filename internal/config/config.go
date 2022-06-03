@@ -25,10 +25,11 @@ type LidoChainConfig struct {
 }
 
 type TargetChainConfig struct {
-	RPCAddress  string        `yaml:"rpc-address"`
-	ChainID     string        `yaml:"chain-id"`
-	ChainPrefix string        `yaml:"chain-prefix"`
-	Timeout     time.Duration `yaml:"timeout" env-default:"10s"`
+	RPCAddress             string        `yaml:"rpc-address"`
+	ChainID                string        `yaml:"chain-id"`
+	AccountPrefix          string        `yaml:"account-prefix"`
+	ValidatorAccountPrefix string        `yaml:"validator-account-prefix"`
+	Timeout                time.Duration `yaml:"timeout" env-default:"10s"`
 }
 
 type TxBroadcastType string
