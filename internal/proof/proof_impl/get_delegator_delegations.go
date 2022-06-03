@@ -23,7 +23,10 @@ func (p ProoferImpl) GetDelegatorDelegations(ctx context.Context, inputHeight ui
 
 	validatorsWithProofs := make([]proof.StorageValue, 0, len(result))
 	for _, delegationBz := range result {
-		delegation := stakingtypes.MustUnmarshalDelegation(raw.MakeCodecDefault().Marshaller, delegationBz.Value)
+		delegation, err := stakingtypes.UnmarshalDelegation(raw.MakeCodecDefault().Marshaller, delegationBz.Value)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to unmarshal delegation: %w", err)
+		}
 
 		valAddr, err := sdk.GetFromBech32(delegation.ValidatorAddress, p.querier.ValidatorAccountPrefix)
 		if err != nil {

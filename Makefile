@@ -1,5 +1,5 @@
 dev:
-	CONFIG_PATH="configs/dev.example.yml" go run ./cmd/cosmos_query_relayer/
+	CONFIG_PATH="configs/dev.yml" go run ./cmd/cosmos_query_relayer/
 
 test:
 	CONFIG_PATH="configs/test.yml" go test ./...
