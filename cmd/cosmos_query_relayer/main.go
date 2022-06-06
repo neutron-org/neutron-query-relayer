@@ -38,7 +38,7 @@ func main() {
 		log.Fatalf("could not initialize target rpc client: %s", err)
 	}
 
-	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID)
+	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID, cfg.TargetChain.ValidatorAccountPrefix)
 	if err != nil {
 		log.Fatalf("cannot connect to target chain: %s", err)
 	}
@@ -96,15 +96,15 @@ func main() {
 		proofFetcher,
 		proofSubmitter,
 		cfg.TargetChain.ChainID,
-		cfg.TargetChain.ChainPrefix,
+		cfg.TargetChain.AccountPrefix,
 		targetChain,
 		lidoChain,
-	)
+		)
 
 	fmt.Println("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-	err = raw.Subscribe(ctx, cfg.LidoChain.EventSubscriberName, cfg.LidoChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
+	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.LidoChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		err = relayer.Proof(ctx, event)
 		if err != nil {
 			fmt.Printf("error proofing event: %s\n", err)

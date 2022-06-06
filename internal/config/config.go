@@ -18,7 +18,6 @@ type LidoChainConfig struct {
 	RPCAddress              string          `yaml:"rpc-address" env-required:"true"`
 	ChainID                 string          `yaml:"chain-id" env-required:"true"`
 	GasPrices               string          `yaml:"gas-prices" env-required:"true"`
-	EventSubscriberName     string          `yaml:"event-subscriber-name" env-required:"true"`
 	HomeDir                 string          `yaml:"home-dir" env-required:"true"`
 	SignKeyName             string          `yaml:"sign-key-name" env-default:"default=default"`
 	Timeout                 time.Duration   `yaml:"timeout" env-default:"10s"`
@@ -33,7 +32,8 @@ type LidoChainConfig struct {
 type TargetChainConfig struct {
 	RPCAddress              string        `yaml:"rpc-address"`
 	ChainID                 string        `yaml:"chain-id"`
-	ChainPrefix             string        `yaml:"chain-prefix"`
+	AccountPrefix          string        `yaml:"account-prefix"`
+	ValidatorAccountPrefix             string        `yaml:"validator-account-prefix"`
 	HomeDir                 string        `yaml:"home-dir" env-required:"true"`
 	Timeout                 time.Duration `yaml:"timeout" env-default:"10s"`
 	ConnectionID            string        `yaml:"connection-id" env-default:"connection-0"`
