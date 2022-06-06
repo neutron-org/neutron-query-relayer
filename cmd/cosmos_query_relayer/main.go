@@ -6,16 +6,14 @@ import (
 	"log"
 	"os"
 
-	"go.uber.org/zap"
-
+	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
+	"github.com/lidofinance/cosmos-query-relayer/internal/raw"
 	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-
-	"github.com/lidofinance/cosmos-query-relayer/internal/config"
-	"github.com/lidofinance/cosmos-query-relayer/internal/raw"
+	"go.uber.org/zap"
 )
 
 const configPathEnv = "CONFIG_PATH"
@@ -99,7 +97,7 @@ func main() {
 		cfg.TargetChain.AccountPrefix,
 		targetChain,
 		lidoChain,
-		)
+	)
 
 	fmt.Println("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?

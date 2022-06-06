@@ -32,8 +32,8 @@ type LidoChainConfig struct {
 type TargetChainConfig struct {
 	RPCAddress              string        `yaml:"rpc-address"`
 	ChainID                 string        `yaml:"chain-id"`
-	AccountPrefix          string        `yaml:"account-prefix"`
-	ValidatorAccountPrefix             string        `yaml:"validator-account-prefix"`
+	AccountPrefix           string        `yaml:"account-prefix"`
+	ValidatorAccountPrefix  string        `yaml:"validator-account-prefix"`
 	HomeDir                 string        `yaml:"home-dir" env-required:"true"`
 	Timeout                 time.Duration `yaml:"timeout" env-default:"10s"`
 	ConnectionID            string        `yaml:"connection-id" env-default:"connection-0"`

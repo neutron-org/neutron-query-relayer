@@ -7,11 +7,16 @@ lido-chain:
   event-subscriber-name: "cosmos-query-relayer"
   home-dir: "../interchain-adapter/data/test-1"
   sign-key-name: "demowallet1"
+  connection-id: "connection-0"
+  client-id: "07-tendermint-0"
   chain-provider-config-path: "./configs/chains/lido.json"
 
 target-chain:
-  chain-prefix: "cosmos"
+  account-prefix: "cosmos"
+  validator-account-prefix: "cosmosvaloper"
   rpc-address: "tcp://127.0.0.1:26657"
   chain-id: "test-2"
   home-dir: "../interchain-adapter/data/test-2"
+  connection-id: "connection-0"
+  client-id: "07-tendermint-0"
   chain-provider-config-path: "./configs/chains/target.json"

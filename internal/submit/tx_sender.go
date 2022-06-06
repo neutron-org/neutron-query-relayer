@@ -84,6 +84,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 		WithAccountNumber(account.AccountNumber).
 		WithSequence(account.Sequence)
 
+	// TODO: https://p2pvalidator.atlassian.net/browse/LSC-42
 	//gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
 	//if err != nil {
 	//	return fmt.Errorf("error calculating gas: %w", err)
