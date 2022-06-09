@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
 	"strconv"
 
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
@@ -175,12 +177,41 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				m.parameters, m.queryId, err)
 		}
 
-		txProof, err := r.proofer.RecipientTransactions(ctx, params)
+		blocks, err := r.proofer.RecipientTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for RecipientTransactions with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitTxProof(ctx, m.queryId, txProof)
+		resultBlocks := make([]*lidotypes.Block, 0, len(blocks))
+		for height, txs := range blocks {
+			header, err := r.getSrcChainHeader(ctx, int64(height))
+			if err != nil {
+				return fmt.Errorf("failed to get header for src chain: %w", err)
+			}
+
+			packedHeader, err := clienttypes.PackHeader(header)
+			if err != nil {
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
+
+			nextHeader, err := r.getSrcChainHeader(ctx, int64(height+1))
+			if err != nil {
+				return fmt.Errorf("failed to get next header for src chain: %w", err)
+			}
+
+			packedNextHeader, err := clienttypes.PackHeader(nextHeader)
+			if err != nil {
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
+
+			resultBlocks = append(resultBlocks, &lidotypes.Block{
+				Header:          packedHeader,
+				NextBlockHeader: packedNextHeader,
+				Txs:             txs,
+			})
+		}
+
+		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.lidoChain.PathEnd.ClientID, resultBlocks)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for RecipientTransactions with query_id=%d: %w", m.queryId, err)
 		}
@@ -195,12 +226,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	return nil
 }
 
-func (r *Relayer) getUpdateClientMsg(ctx context.Context, srch int64) (sdk.Msg, error) {
-	// Query IBC Update Header
+func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {
 	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, srch, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		// TODO: this sometimes triggers the following error: failed to GetIBCUpdateHeader: height requested is too high,
@@ -209,6 +239,16 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srch int64) (sdk.Msg, 
 			"failed to GetIBCUpdateHeader:", err,
 		)
 	})); err != nil {
+		return nil, err
+	}
+
+	return srcHeader, nil
+}
+
+func (r *Relayer) getUpdateClientMsg(ctx context.Context, srch int64) (sdk.Msg, error) {
+	// Query IBC Update Header
+	srcHeader, err := r.getSrcChainHeader(ctx, srch)
+	if err != nil {
 		return nil, err
 	}
 

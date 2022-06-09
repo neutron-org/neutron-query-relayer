@@ -31,8 +31,8 @@ func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId
 }
 
 // SubmitTxProof submits tx query with proof back to lido chain
-func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof []proof.TxValue) error {
-	msgs, err := si.buildTxProofMsg(queryId, proof)
+func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clientID string, proof []*lidotypes.Block) error {
+	msgs, err := si.buildTxProofMsg(queryId, clientID, proof)
 	if err != nil {
 		return fmt.Errorf("could not build tx proof msg: %w", err)
 	}
@@ -61,7 +61,6 @@ func (si *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 	queryResult := lidotypes.QueryResult{
 		Height:    height,
 		KvResults: res,
-		Txs:       nil,
 	}
 	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
@@ -73,30 +72,7 @@ func (si *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 	return []sdk.Msg{&msg}, nil
 }
 
-func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) ([]sdk.Msg, error) {
-	res := make([]*lidotypes.TxValue, 0, len(proof))
-	for _, item := range proof {
-		inclusionProof := item.InclusionProof
-		deliveryProof := item.DeliveryProof
-
-		res = append(res, &lidotypes.TxValue{
-			Tx: item.Tx,
-			DeliveryProof: &lidotypes.MerkleProof{
-				Total:    deliveryProof.Total,
-				Index:    deliveryProof.Index,
-				LeafHash: deliveryProof.LeafHash,
-				Aunts:    deliveryProof.Aunts,
-			},
-			InclusionProof: &lidotypes.MerkleProof{
-				Total:    inclusionProof.Total,
-				Index:    inclusionProof.Index,
-				LeafHash: inclusionProof.LeafHash,
-				Aunts:    inclusionProof.Aunts,
-			},
-			Height: item.Height,
-		})
-	}
-
+func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof []*lidotypes.Block) ([]sdk.Msg, error) {
 	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building tx proof msg: %w", err)
@@ -105,9 +81,9 @@ func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, proof []proof.TxValue) 
 	queryResult := lidotypes.QueryResult{
 		Height:    0, // NOTE: cannot use nil because it's not pointer :(
 		KvResults: nil,
-		Txs:       res,
+		Blocks:    proof,
 	}
-	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
+	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: clientID}
 
 	err = msg.ValidateBasic()
 	if err != nil {
