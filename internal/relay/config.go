@@ -14,9 +14,8 @@ import (
 // GetChainFromFile reads a JSON-formatted chain from the named file and adds it to a's chains.
 func GetChainFromFile(logger *zap.Logger, homepath, file string, debug bool) (*relayer.Chain, error) {
 	// If the user passes in a file, attempt to read the chain config from that file
-	var pcw cmd.ProviderConfigWrapper
 	if _, err := os.Stat(file); err != nil {
-		return nil, fmt.Errorf("failed to get FileInfo for ")
+		return nil, fmt.Errorf("failed to get FileInfo for %s", file)
 	}
 
 	byt, err := os.ReadFile(file)
@@ -24,6 +23,7 @@ func GetChainFromFile(logger *zap.Logger, homepath, file string, debug bool) (*r
 		return nil, fmt.Errorf("failed to read provider config file: %w", err)
 	}
 
+	var pcw cmd.ProviderConfigWrapper
 	if err = json.Unmarshal(byt, &pcw); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal provider config file: %w", err)
 	}

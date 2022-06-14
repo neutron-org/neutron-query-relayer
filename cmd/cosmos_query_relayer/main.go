@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
@@ -62,32 +63,9 @@ func main() {
 
 	logger := zap.NewExample() // TODO: add proper logging.
 
-	targetChain, err := relay.GetChainFromFile(logger, cfg.TargetChain.HomeDir,
-		cfg.TargetChain.ChainProviderConfigPath, cfg.TargetChain.Debug)
+	lidoChain, targetChain, err := loadChains(cfg, logger)
 	if err != nil {
-		log.Fatalf("failed to GetChainFromFile %s: %s", cfg.TargetChain.ChainProviderConfigPath, err)
-	}
-
-	if err := targetChain.AddPath(cfg.TargetChain.ClientID, cfg.TargetChain.ConnectionID); err != nil {
-		log.Fatalf("failed to AddPath to source chain: %s", err)
-	}
-
-	if err := targetChain.ChainProvider.Init(); err != nil {
-		log.Fatalf("failed to Init source chain provider: %s", err)
-	}
-
-	lidoChain, err := relay.GetChainFromFile(logger, cfg.LidoChain.HomeDir,
-		cfg.LidoChain.ChainProviderConfigPath, cfg.LidoChain.Debug)
-	if err != nil {
-		log.Fatalf("failed to GetChainFromFile %s: %s", cfg.LidoChain.ChainProviderConfigPath, err)
-	}
-
-	if err := lidoChain.AddPath(cfg.LidoChain.ClientID, cfg.LidoChain.ConnectionID); err != nil {
-		log.Fatalf("failed to AddPath to destination chain: %s", err)
-	}
-
-	if err := lidoChain.ChainProvider.Init(); err != nil {
-		log.Fatalf("failed to Init source chain provider: %s", err)
+		log.Fatalf("failed to loadChains: %s", err)
 	}
 
 	relayer := relay.NewRelayer(
@@ -111,4 +89,36 @@ func main() {
 	if err != nil {
 		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}
+}
+
+func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (lidoChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+	targetChain, err = relay.GetChainFromFile(logger, cfg.TargetChain.HomeDir,
+		cfg.TargetChain.ChainProviderConfigPath, cfg.TargetChain.Debug)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to GetChainFromFile %s: %s", cfg.TargetChain.ChainProviderConfigPath, err)
+	}
+
+	if err := targetChain.AddPath(cfg.TargetChain.ClientID, cfg.TargetChain.ConnectionID); err != nil {
+		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
+	}
+
+	if err := targetChain.ChainProvider.Init(); err != nil {
+		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+	}
+
+	lidoChain, err = relay.GetChainFromFile(logger, cfg.LidoChain.HomeDir,
+		cfg.LidoChain.ChainProviderConfigPath, cfg.LidoChain.Debug)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to GetChainFromFile %s: %w", cfg.LidoChain.ChainProviderConfigPath, err)
+	}
+
+	if err := lidoChain.AddPath(cfg.LidoChain.ClientID, cfg.LidoChain.ConnectionID); err != nil {
+		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
+	}
+
+	if err := lidoChain.ChainProvider.Init(); err != nil {
+		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+	}
+
+	return lidoChain, targetChain, nil
 }
