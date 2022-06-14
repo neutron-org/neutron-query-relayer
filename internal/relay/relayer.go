@@ -105,7 +105,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	fmt.Printf("proofMessage message_type=%s\n", m.messageType)
 
-	latestHeight, err := r.lidoChain.ChainProvider.QueryLatestHeight(ctx)
+	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to QueryLatestHeight: %w", err)
 	}
