@@ -195,12 +195,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	return nil
 }
 
-func (r *Relayer) getUpdateClientMsg(ctx context.Context, srch int64) (sdk.Msg, error) {
+func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Msg, error) {
 	// Query IBC Update Header
-	var srcHeader ibcexported.Header
+	var targetHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, srch, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+		targetHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, targeth, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		// TODO: this sometimes triggers the following error: failed to GetIBCUpdateHeader: height requested is too high,
@@ -216,7 +216,7 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srch int64) (sdk.Msg, 
 	var updateMsgRelayer provider.RelayerMessage
 	if err := retry.Do(func() error {
 		var err error
-		updateMsgRelayer, err = r.lidoChain.ChainProvider.UpdateClient(r.lidoChain.PathEnd.ClientID, srcHeader)
+		updateMsgRelayer, err = r.lidoChain.ChainProvider.UpdateClient(r.lidoChain.PathEnd.ClientID, targetHeader)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		fmt.Println(
