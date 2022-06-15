@@ -3,16 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
-	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
-	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"log"
 	"os"
 
+	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
+	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
 	"github.com/lidofinance/cosmos-query-relayer/internal/raw"
+	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
+	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"go.uber.org/zap"
 )
 
 const configPathEnv = "CONFIG_PATH"
@@ -46,7 +48,7 @@ func main() {
 	}
 
 	codec := raw.MakeCodecDefault()
-	keybase, err := submit.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.KeyringDir)
+	keybase, err := submit.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.HomeDir)
 	if err != nil {
 		log.Fatalf("cannot initialize keybase: %s", err)
 	}
@@ -58,7 +60,22 @@ func main() {
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
-	relayer := relay.NewRelayer(proofFetcher, proofSubmitter, cfg.TargetChain.ChainID, cfg.TargetChain.AccountPrefix)
+
+	logger := zap.NewExample() // TODO: add proper logging.
+
+	lidoChain, targetChain, err := loadChains(cfg, logger)
+	if err != nil {
+		log.Fatalf("failed to loadChains: %s", err)
+	}
+
+	relayer := relay.NewRelayer(
+		proofFetcher,
+		proofSubmitter,
+		cfg.TargetChain.ChainID,
+		cfg.TargetChain.AccountPrefix,
+		targetChain,
+		lidoChain,
+	)
 
 	fmt.Println("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
@@ -72,4 +89,36 @@ func main() {
 	if err != nil {
 		log.Fatalf("error subscribing to lido chain events: %s", err)
 	}
+}
+
+func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (lidoChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+	targetChain, err = relay.GetChainFromFile(logger, cfg.TargetChain.HomeDir,
+		cfg.TargetChain.ChainProviderConfigPath, cfg.TargetChain.Debug)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to GetChainFromFile %s: %s", cfg.TargetChain.ChainProviderConfigPath, err)
+	}
+
+	if err := targetChain.AddPath(cfg.TargetChain.ClientID, cfg.TargetChain.ConnectionID); err != nil {
+		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
+	}
+
+	if err := targetChain.ChainProvider.Init(); err != nil {
+		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+	}
+
+	lidoChain, err = relay.GetChainFromFile(logger, cfg.LidoChain.HomeDir,
+		cfg.LidoChain.ChainProviderConfigPath, cfg.LidoChain.Debug)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to GetChainFromFile %s: %w", cfg.LidoChain.ChainProviderConfigPath, err)
+	}
+
+	if err := lidoChain.AddPath(cfg.LidoChain.ClientID, cfg.LidoChain.ConnectionID); err != nil {
+		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
+	}
+
+	if err := lidoChain.ChainProvider.Init(); err != nil {
+		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+	}
+
+	return lidoChain, targetChain, nil
 }

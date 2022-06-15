@@ -23,3 +23,21 @@ For more configuration parameters see struct in internal/config/config.go
 
 # Testing
 `$ make test`
+
+# Testing with 2 lido-chains (easier for development)
+
+### terminal 1
+
+1. `git clone git@github.com:lidofinance/gaia-wasm-zone.git`
+2. `cd gaia-wasm-zone`
+3. `make init`
+4. `make start-rly`
+
+### terminal 2
+
+1. `gaia-wasm-zoned tx interchainqueries register-interchain-query test-2 connection-0 x/staking/DelegatorDelegations '{"delegator": "cosmos1qnk2n4nlkpw9xfqntladh74w6ujtulwn7j8za9"}' 1 --from demowallet1 --gas 10000000 --gas-adjustment 1.4 --gas-prices 0.5stake --broadcast-mode block --chain-id test-1 --keyring-backend test --home ./data/test-1 --node tcp://127.0.0.1:16657`
+
+### terminal 3
+
+1. `cp configs/dev.example.2-lido-chains.yml configs/dev.yml`
+2. `make dev`
