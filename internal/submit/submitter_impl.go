@@ -19,8 +19,8 @@ func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
 }
 
 // SubmitProof submits query with proof back to lido chain
-func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, queryId uint64, proof []proof.StorageValue, updateClientMsg sdk.Msg) error {
-	msgs, err := si.buildProofMsg(height, queryId, proof)
+func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, revision uint64, queryId uint64, proof []proof.StorageValue, updateClientMsg sdk.Msg) error {
+	msgs, err := si.buildProofMsg(height, revision, queryId, proof)
 	if err != nil {
 		return fmt.Errorf("could not build proof msg: %w", err)
 	}
@@ -40,7 +40,7 @@ func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clie
 	return si.sender.Send(ctx, msgs)
 }
 
-func (si *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []proof.StorageValue) ([]sdk.Msg, error) {
+func (si *SubmitterImpl) buildProofMsg(height uint64, revision uint64, queryId uint64, proof []proof.StorageValue) ([]sdk.Msg, error) {
 	res := make([]*lidotypes.StorageValue, 0, len(proof))
 	for _, item := range proof {
 		res = append(res, &lidotypes.StorageValue{
@@ -61,6 +61,7 @@ func (si *SubmitterImpl) buildProofMsg(height uint64, queryId uint64, proof []pr
 	queryResult := lidotypes.QueryResult{
 		Height:    height,
 		KvResults: res,
+		Revision:  revision,
 	}
 	msg := lidotypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 

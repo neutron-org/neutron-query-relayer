@@ -718,6 +718,8 @@ github.com/lidofinance/gaia-wasm-zone v0.0.0-20220609092450-6effb913d2cb h1:ahEQ
 github.com/lidofinance/gaia-wasm-zone v0.0.0-20220609092450-6effb913d2cb/go.mod h1:7tlqw7l65D3tCBD60gOh4E4MS1WXTQQaISvjje1E5nQ=
 github.com/lidofinance/gaia-wasm-zone v0.0.0-20220609144039-968a0a817265 h1:Q5d6eHYW6r1OSBdOThrMTpjgnwmjRywj0i0vzK6nHLA=
 github.com/lidofinance/gaia-wasm-zone v0.0.0-20220609144039-968a0a817265/go.mod h1:7tlqw7l65D3tCBD60gOh4E4MS1WXTQQaISvjje1E5nQ=
+github.com/lidofinance/gaia-wasm-zone v0.0.0-20220616113949-cf6eab9fc652 h1:aXGEqA/+E9oWYzoho+dlnQJX+Cn8C3t8mYX87ejojms=
+github.com/lidofinance/gaia-wasm-zone v0.0.0-20220616113949-cf6eab9fc652/go.mod h1:7tlqw7l65D3tCBD60gOh4E4MS1WXTQQaISvjje1E5nQ=
 github.com/lightstep/lightstep-tracer-common/golang/gogo v0.0.0-20190605223551-bc2310a04743/go.mod h1:qklhhLq1aX+mtWk9cPHPzaBjWImj5ULL6C7HFJtXQMM=
 github.com/lightstep/lightstep-tracer-go v0.18.1/go.mod h1:jlF1pusYV4pidLvZ+XD0UBX0ZE6WURAspgAczcDHrL4=
 github.com/lucasjones/reggen v0.0.0-20180717132126-cdb49ff09d77/go.mod h1:5ELEyG+X8f+meRWHuqUOewBOhvHkl7M76pdGEansxW4=

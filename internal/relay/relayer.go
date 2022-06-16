@@ -117,6 +117,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
 	}
 
+	srcHeader, err := r.getSrcChainHeader(ctx, latestHeight)
+	if err != nil {
+		return fmt.Errorf("failed to get header for height: %d: %w", latestHeight, err)
+	}
+
 	switch m.messageType {
 	case delegatorDelegationsType:
 		var params delegatorDelegationsParams
@@ -131,7 +136,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(ctx, height, m.queryId, proofs, updateClientMsg)
+		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
@@ -147,7 +152,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(ctx, height, m.queryId, proofs, updateClientMsg)
+		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
@@ -165,7 +170,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
 
-		err = r.submitter.SubmitProof(ctx, height, m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
+		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
