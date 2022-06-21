@@ -110,7 +110,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	fmt.Printf("proofMessage message_type=%s\n", m.messageType)
 
-	latestHeight, err := r.lidoChain.ChainProvider.QueryLatestHeight(ctx)
+	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to QueryLatestHeight: %w", err)
 	}
@@ -333,9 +333,9 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 	return srcHeader, nil
 }
 
-func (r *Relayer) getUpdateClientMsg(ctx context.Context, srch int64) (sdk.Msg, error) {
+func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Msg, error) {
 	// Query IBC Update Header
-	srcHeader, err := r.getSrcChainHeader(ctx, srch)
+	srcHeader, err := r.getSrcChainHeader(ctx, targeth)
 	if err != nil {
 		return nil, err
 	}
