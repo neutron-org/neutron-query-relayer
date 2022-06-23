@@ -274,23 +274,25 @@ func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.Consens
 
 // The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
 func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusStates []clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
-	minDiff := uint64(0)
+	minDiff := uint64(math.MaxUint64)
 	bestTrustedHeight := clienttypes.Height{
 		RevisionNumber: 0,
 		RevisionHeight: 0,
 	}
 
 	for _, cs := range consensusStates {
-		if bestTrustedHeight.IsZero() {
-			bestTrustedHeight = cs.GetHeight()
-			minDiff = height - cs.Height.RevisionHeight
-			continue
-		}
-
 		if height >= cs.Height.RevisionHeight && (height-cs.Height.RevisionHeight) < minDiff {
 			bestTrustedHeight = cs.Height
 			minDiff = height - cs.Height.RevisionHeight
+			// we won't find anything better
+			if minDiff == 0 {
+				break
+			}
 		}
+	}
+
+	if bestTrustedHeight.IsZero() {
+		return nil, fmt.Errorf("no satisfying trusted height found for height: %v", height)
 	}
 
 	// Without this hack we can't call InjectTrustedFields
