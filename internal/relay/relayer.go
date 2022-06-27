@@ -67,7 +67,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	fmt.Printf("\nTry extracting events:\n%+v\n", event.Events)
+	fmt.Printf("extracting events:\n%+v\n", event.Events)
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return nil, nil
@@ -137,12 +137,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		var params getBalanceParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for GetBalance with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
 
 		proofs, height, err := r.proofer.GetBalance(ctx, uint64(latestHeight), r.targetChainPrefix, params.Addr, params.Denom)
 		if err != nil {
-			return fmt.Errorf("could not get proof for GetBalance with query_id=%d: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
 		err = r.submitter.SubmitProof(ctx, height, m.queryId, proofs, updateClientMsg)
@@ -153,12 +153,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		var params exchangeRateParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for ExchangeRate with params=%s query_id=%d: %w", m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
 
 		supplyProofs, height, err := r.proofer.GetSupply(ctx, uint64(latestHeight), params.Denom)
 		if err != nil {
-			return fmt.Errorf("could not get proof for ExchangeRate with query_id=%d: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
 		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
@@ -171,25 +171,25 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		var params recipientTransactionsParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for RecipientTransactions with params=%s query_id=%d: %w",
-				m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w",
+				m.messageType, m.parameters, m.queryId, err)
 		}
 
 		txProof, err := r.proofer.RecipientTransactions(ctx, params)
 		if err != nil {
-			return fmt.Errorf("could not get proof for RecipientTransactions with query_id=%d: %w", m.queryId, err)
+			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
 		err = r.submitter.SubmitTxProof(ctx, m.queryId, txProof)
 		if err != nil {
-			return fmt.Errorf("could not submit proof for RecipientTransactions with query_id=%d: %w", m.queryId, err)
+			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
 	case delegationRewardsType:
 		return fmt.Errorf("could not relay not implemented query x/distribution/CalculateDelegationRewards")
 
 	default:
-		return fmt.Errorf("unknown query message type=%s", m.messageType)
+		return fmt.Errorf("unknown query messageType=%s", m.messageType)
 	}
 
 	return nil
