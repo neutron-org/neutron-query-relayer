@@ -172,6 +172,9 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
+		if err != nil {
+			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
+		}
 
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
 		if err != nil {
@@ -271,7 +274,7 @@ func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.Consens
 // It has the same purpose as r.targetChain.ChainProvider.GetIBCUpdateHeader() but the difference is
 // that getHeaderWithBestTrustedHeight() trys to find the best TrustedHeight for the header
 // relying on existing light client's consensus states on the Lido chain.
-
+//
 // The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
 func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusStates []clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
 	minDiff := uint64(math.MaxUint64)
@@ -280,6 +283,9 @@ func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusS
 		RevisionHeight: 0,
 	}
 
+	// TODO: maybe sort consensusStates before call of this method, to use some binary search here or smth.
+	// 	and since we should implement paging for getting the consensus states, maybe it's better to move searching of
+	// 	the best height there
 	for _, cs := range consensusStates {
 		if height >= cs.Height.RevisionHeight && (height-cs.Height.RevisionHeight) < minDiff {
 			bestTrustedHeight = cs.Height
@@ -323,8 +329,6 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		// TODO: this sometimes triggers the following error: failed to GetIBCUpdateHeader: height requested is too high,
-		//		but eventually it goes away.
 		fmt.Println(
 			"failed to GetIBCUpdateHeader:", err,
 		)
