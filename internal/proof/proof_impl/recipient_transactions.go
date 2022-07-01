@@ -3,10 +3,10 @@ package proof_impl
 import (
 	"context"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
+	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 	"strings"
 )
@@ -15,13 +15,24 @@ var perPage = 100
 
 const orderBy = "desc"
 
+func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
+	cp := new(crypto.Proof)
+
+	cp.Total = mp.Total
+	cp.Index = mp.Index
+	cp.LeafHash = mp.LeafHash
+	cp.Aunts = mp.Aunts
+
+	return cp
+}
+
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) ([]proof.TxValue, error) {
+func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*lidotypes.TxValue, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
-	txs := make([]*coretypes.ResultTx, 0)
+	blocks := make(map[uint64][]*lidotypes.TxValue, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
@@ -33,7 +44,21 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 		}
 
 		for _, tx := range searchResult.Txs {
-			txs = append(txs, tx)
+			deliveryProof, deliveryResult, err := p.proofDelivery(ctx, tx.Height, tx.Index)
+			if err != nil {
+				return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
+			}
+
+			txProof := lidotypes.TxValue{
+				InclusionProof: cryptoProofFromMerkleProof(tx.Proof.Proof),
+				DeliveryProof:  deliveryProof,
+				Response:       deliveryResult,
+				Data:           tx.Tx,
+			}
+
+			txs := blocks[uint64(tx.Height)]
+			txs = append(txs, &txProof)
+			blocks[uint64(tx.Height)] = txs
 		}
 
 		if page*perPage >= searchResult.TotalCount {
@@ -43,28 +68,11 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 		page += 1
 	}
 
-	result := make([]proof.TxValue, 0, len(txs))
-	for _, tx := range txs {
-		deliveryProof, deliveryResult, err := p.proofDelivery(ctx, tx.Height, tx.Index)
-		inclusionProof := tx.Proof.Proof
-		if err != nil {
-			return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
-		}
-
-		txProof := proof.TxValue{
-			InclusionProof: inclusionProof,
-			DeliveryProof:  *deliveryProof,
-			Tx:             deliveryResult,
-			Height:         uint64(tx.Height),
-		}
-		result = append(result, txProof)
-	}
-
-	return result, nil
+	return blocks, nil
 }
 
 // proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
-func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*merkle.Proof, *abci.ResponseDeliverTx, error) {
+func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*crypto.Proof, *abci.ResponseDeliverTx, error) {
 	results, err := p.querier.Client.BlockResults(ctx, &blockHeight)
 
 	if err != nil {
@@ -76,7 +84,7 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	txProof := abciResults.ProveResult(int(txIndexInBlock))
 	txResult := txsResults[txIndexInBlock]
 
-	return &txProof, txResult, nil
+	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
 // queryFromParams creates query from params like `key1=value1 AND key2=value2 AND ...`
