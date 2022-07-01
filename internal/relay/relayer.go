@@ -277,21 +277,18 @@ func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.Consens
 //
 // The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
 func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusStates []clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
-	minDiff := uint64(math.MaxUint64)
 	bestTrustedHeight := clienttypes.Height{
 		RevisionNumber: 0,
 		RevisionHeight: 0,
 	}
 
-	// TODO: maybe sort consensusStates before call of this method, to use some binary search here or smth.
-	// 	and since we should implement paging for getting the consensus states, maybe it's better to move searching of
+	// TODO: since we should implement paging for getting the consensus states, maybe it's better to move searching of
 	// 	the best height there
 	for _, cs := range consensusStates {
-		if height >= cs.Height.RevisionHeight && (height-cs.Height.RevisionHeight) < minDiff {
+		if height >= cs.Height.RevisionHeight && cs.Height.RevisionHeight > bestTrustedHeight.RevisionHeight {
 			bestTrustedHeight = cs.Height
-			minDiff = height - cs.Height.RevisionHeight
 			// we won't find anything better
-			if minDiff == 0 {
+			if cs.Height.RevisionHeight == height {
 				break
 			}
 		}
