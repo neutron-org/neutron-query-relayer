@@ -3,7 +3,7 @@ package relay
 import (
 	"context"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
-	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	lidotypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // Proofer can obtain proofs for different kinds of queries we need answers to

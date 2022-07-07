@@ -1,6 +1,6 @@
 package relay
 
-import lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+import lidotypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 
 type queryEventMessage struct {
 	queryId     uint64

@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/ilyakaznacheev/cleanenv v1.2.6
-	github.com/lidofinance/gaia-wasm-zone v0.0.0-20220706132832-85589840ff90
+	github.com/neutron-org/neutron v0.0.0-20220707110726-303e09d486d9
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
 )
@@ -138,5 +138,3 @@ require (
 )
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
-
-replace github.com/lidofinance/gaia-wasm-zone => ../gaia-wasm-zone

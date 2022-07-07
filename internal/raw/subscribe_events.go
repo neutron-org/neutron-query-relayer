@@ -3,7 +3,7 @@ package raw
 import (
 	"context"
 	"fmt"
-	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	lidotypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
-	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	lidotypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // Submitter knows how to submit proof to the chain
