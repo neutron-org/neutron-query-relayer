@@ -9,11 +9,11 @@ import (
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	LidoChain   LidoChainConfig   `yaml:"lido-chain" env-required:"true"`
-	TargetChain TargetChainConfig `yaml:"target-chain" env-required:"true"`
+	NeutronChain NeutronChainConfig `yaml:"neutron-chain" env-required:"true"`
+	TargetChain  TargetChainConfig  `yaml:"target-chain" env-required:"true"`
 }
 
-type LidoChainConfig struct {
+type NeutronChainConfig struct {
 	ChainPrefix             string          `yaml:"chain-prefix" env-required:"true"`
 	RPCAddress              string          `yaml:"rpc-address" env-required:"true"`
 	ChainID                 string          `yaml:"chain-id" env-required:"true"`
@@ -26,7 +26,7 @@ type LidoChainConfig struct {
 	ConnectionID            string          `yaml:"connection-id" env-default:"connection-0"`
 	ClientID                string          `yaml:"client-id" env-default:"07-tendermint-0"`
 	Debug                   bool            `yaml:"debug" env-default:"false"`
-	ChainProviderConfigPath string          `yaml:"chain-provider-config-path" env-default:"./configs/chains/lido.json"`
+	ChainProviderConfigPath string          `yaml:"chain-provider-config-path" env-default:"./configs/chains/neutron.json"`
 }
 
 type TargetChainConfig struct {

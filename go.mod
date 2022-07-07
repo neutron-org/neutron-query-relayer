@@ -1,4 +1,4 @@
-module github.com/lidofinance/cosmos-query-relayer
+module github.com/neutron-org/cosmos-query-relayer
 
 go 1.17
 
@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/ilyakaznacheev/cleanenv v1.2.6
-	github.com/lidofinance/gaia-wasm-zone v0.0.0-20220616113949-cf6eab9fc652
+	github.com/neutron-org/neutron v0.0.0-20220708132257-0d737933f507
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
 )
