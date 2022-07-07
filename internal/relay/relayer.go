@@ -155,7 +155,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
+		err = r.submitter.SubmitProof(ctx, height-1, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}

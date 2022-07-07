@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/ilyakaznacheev/cleanenv v1.2.6
-	github.com/lidofinance/gaia-wasm-zone v0.0.0-20220616113949-cf6eab9fc652
+	github.com/lidofinance/gaia-wasm-zone v0.0.0-20220706132832-85589840ff90
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
 )
@@ -124,7 +124,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect
@@ -138,3 +138,5 @@ require (
 )
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
+
+replace github.com/lidofinance/gaia-wasm-zone => ../gaia-wasm-zone
