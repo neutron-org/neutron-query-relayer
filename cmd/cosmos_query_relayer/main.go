@@ -13,6 +13,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
+	neutronapp "github.com/neutron-org/neutron/app"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 )
@@ -30,7 +31,9 @@ func main() {
 	}
 	fmt.Println("initialized config")
 
-	raw.SetSDKConfig(cfg.NeutronChain.ChainPrefix)
+	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
+	globalCfg := neutronapp.GetDefaultConfig()
+	globalCfg.Seal()
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {
