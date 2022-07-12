@@ -30,7 +30,7 @@ func New() Client {
 		requests.NewProofCount(),
 		requests.NewRequestTime(),
 		requests.NewProofLidoTime(),
-		requests.NewProofTargetTime(),
+		requests.NewTargetGettersTime(),
 	}
 
 	return client

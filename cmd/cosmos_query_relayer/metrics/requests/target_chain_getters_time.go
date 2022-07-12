@@ -12,7 +12,7 @@ type TargetChainGettersTime struct {
 	values map[proofHistData]TimeRecord
 }
 
-func NewProofTargetTime() *TargetChainGettersTime {
+func NewTargetGettersTime() *TargetChainGettersTime {
 	return &TargetChainGettersTime{
 		mu: &sync.Mutex{},
 		metric: prometheus.NewHistogramVec(prometheus.HistogramOpts{
