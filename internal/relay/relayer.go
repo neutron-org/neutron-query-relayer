@@ -5,15 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/lidofinance/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
+	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	"math"
 	"strconv"
+	"time"
 
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
+	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"go.uber.org/zap"
 )
 
 // Relayer is controller for the whole app:
@@ -25,6 +33,9 @@ type Relayer struct {
 	submitter   Submitter
 	targetChain *relayer.Chain
 	lidoChain   *relayer.Chain
+	Metrics     metrics.Client
+	PromMetrics []metrics.PromMetric
+	logger      *zap.Logger
 
 	targetChainId     string
 	targetChainPrefix string
@@ -37,6 +48,9 @@ func NewRelayer(
 	targetChainPrefix string,
 	srcChain,
 	dstChain *relayer.Chain,
+	logger *zap.Logger,
+	promMetrics []metrics.PromMetric,
+	metrics metrics.Client,
 ) Relayer {
 	return Relayer{
 		proofer:           proofer,
@@ -45,6 +59,9 @@ func NewRelayer(
 		targetChainPrefix: targetChainPrefix,
 		targetChain:       srcChain,
 		lidoChain:         dstChain,
+		PromMetrics:       promMetrics,
+		logger:            logger,
+		Metrics:           metrics,
 	}
 }
 
@@ -57,9 +74,11 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	for _, m := range messages {
 		err := r.proofMessage(ctx, m)
 		if err != nil {
-			fmt.Printf("could not process message query_id=%d err=%s\n", m.queryId, err)
+			r.Metrics.ProofCount.AddFailed()
+			r.logger.Error(fmt.Sprintf("could not process message query_id=%d err=%s\n", m.queryId, err))
 		} else {
-			fmt.Printf("proof for query_id=%d submitted successfully\n", m.queryId)
+			r.Metrics.ProofCount.AddSucceess()
+			r.logger.Info(fmt.Sprintf("proof for query_id=%d submitted successfully\n", m.queryId))
 		}
 	}
 
@@ -67,7 +86,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	fmt.Printf("extracting events:\n%+v\n", event.Events)
+	r.logger.Info(fmt.Sprintf("extracting events:\n%+v\n", event.Events))
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return nil, nil
@@ -89,7 +108,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		queryIdStr := events[queryIdAttr][idx]
 		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
 		if err != nil {
-			fmt.Printf("invalid query_id format (not an uint): %+v", queryId)
+			r.logger.Info(fmt.Sprintf("invalid query_id format (not an uint): %+v", queryId))
 			continue
 		}
 
@@ -103,16 +122,21 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 }
 
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
-	fmt.Printf("proofMessage message_type=%s\n", m.messageType)
+	start := time.Now()
 
+	r.logger.Info(fmt.Sprintf("proofMessage message_type=%s\n", m.messageType))
 	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to QueryLatestHeight: %w", err)
 	}
-
 	updateClientMsg, err := r.getUpdateClientMsg(ctx, latestHeight)
 	if err != nil {
 		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
+	}
+
+	srcHeader, err := r.getSrcChainHeader(ctx, latestHeight)
+	if err != nil {
+		return fmt.Errorf("failed to get header for height: %d: %w", latestHeight, err)
 	}
 
 	switch m.messageType {
@@ -120,95 +144,256 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		var params delegatorDelegationsParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("delegatorDelegations", time.Since(start).Seconds())
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w",
 				m.parameters, m.queryId, err)
 		}
 
 		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("delegatorDelegations", time.Since(start).Seconds())
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
-
-		err = r.submitter.SubmitProof(ctx, height, m.queryId, proofs, updateClientMsg)
+		proofStart := time.Now()
+		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("delegatorDelegations", time.Since(start).Seconds())
+			r.Metrics.ProofLidoChainTime.AddFailed("delegatorDelegations", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+		r.Metrics.RequestTime.AddSuccess("delegatorDelegations", time.Since(start).Seconds())
+		r.Metrics.ProofLidoChainTime.AddSuccess("delegatorDelegations", time.Since(proofStart).Seconds())
 	case getBalanceType:
+
 		var params getBalanceParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("getBalance", time.Since(start).Seconds())
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
-
 		proofs, height, err := r.proofer.GetBalance(ctx, uint64(latestHeight), r.targetChainPrefix, params.Addr, params.Denom)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("getBalance", time.Since(start).Seconds())
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
-		err = r.submitter.SubmitProof(ctx, height, m.queryId, proofs, updateClientMsg)
+		proofStart := time.Now()
+		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("getBalance", time.Since(start).Seconds())
+			r.Metrics.ProofLidoChainTime.AddFailed("getBalance", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+		r.Metrics.RequestTime.AddFailed("getBalance", time.Since(start).Seconds())
+		r.Metrics.ProofLidoChainTime.AddSuccess("getBalance", time.Since(start).Seconds())
 	case exchangeRateType:
 		var params exchangeRateParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("exchangeRate", time.Since(start).Seconds())
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
 
 		supplyProofs, height, err := r.proofer.GetSupply(ctx, uint64(latestHeight), params.Denom)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("exchangeRate", time.Since(start).Seconds())
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
 		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
-
-		err = r.submitter.SubmitProof(ctx, height, m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("exchangeRate", time.Since(start).Seconds())
+			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
+		}
+
+		proofStart := time.Now()
+		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
+		if err != nil {
+			r.Metrics.RequestTime.AddFailed("exchangeRate", time.Since(start).Seconds())
+			r.Metrics.ProofLidoChainTime.AddFailed("exchangeRate", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+		r.Metrics.ProofLidoChainTime.AddSuccess("exchangeRate", time.Since(proofStart).Seconds())
 	case recipientTransactionsType:
 		var params recipientTransactionsParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w",
 				m.messageType, m.parameters, m.queryId, err)
 		}
 
-		txProof, err := r.proofer.RecipientTransactions(ctx, params)
+		blocks, err := r.proofer.RecipientTransactions(ctx, params)
 		if err != nil {
+			r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
-		err = r.submitter.SubmitTxProof(ctx, m.queryId, txProof)
+		consensusStates, err := r.getConsensusStates(ctx)
 		if err != nil {
-			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
+			r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
+			return fmt.Errorf("failed to get consensus states: %w", err)
 		}
 
+		resultBlocks := make([]*lidotypes.Block, 0, len(blocks))
+		for height, txs := range blocks {
+			header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
+			if err != nil {
+				r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
+				return fmt.Errorf("failed to get header for src chain: %w", err)
+			}
+
+			packedHeader, err := clienttypes.PackHeader(header)
+			if err != nil {
+				r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
+
+			nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height+1)
+			if err != nil {
+				r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
+				return fmt.Errorf("failed to get next header for src chain: %w", err)
+			}
+
+			packedNextHeader, err := clienttypes.PackHeader(nextHeader)
+			if err != nil {
+				r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
+
+			resultBlocks = append(resultBlocks, &lidotypes.Block{
+				Header:          packedHeader,
+				NextBlockHeader: packedNextHeader,
+				Txs:             txs,
+			})
+		}
+
+		proofStart := time.Now()
+		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.lidoChain.PathEnd.ClientID, resultBlocks)
+		if err != nil {
+			r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
+			r.Metrics.ProofLidoChainTime.AddFailed("recipientTransactions", time.Since(proofStart).Seconds())
+			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
+		}
+		r.Metrics.ProofLidoChainTime.AddSuccess("recipientTransactions", time.Since(proofStart).Seconds())
+
 	case delegationRewardsType:
+		r.Metrics.RequestTime.AddFailed("delegationRewards", time.Since(start).Seconds())
 		return fmt.Errorf("could not relay not implemented query x/distribution/CalculateDelegationRewards")
 
 	default:
+		r.Metrics.RequestTime.AddFailed("unknown", time.Since(start).Seconds())
 		return fmt.Errorf("unknown query messageType=%s", m.messageType)
 	}
 
 	return nil
 }
 
-func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Msg, error) {
-	// Query IBC Update Header
-	var targetHeader ibcexported.Header
+// getConsensusStates returns light client consensus states from lido chain
+func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.ConsensusStateWithHeight, error) {
+	// Without this hack it doesn't want to work with NewQueryClient
+	provConcreteLidoChain, ok := r.lidoChain.ChainProvider.(*cosmos.CosmosProvider)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast ChainProvider to concrete type (cosmos.CosmosProvider)")
+	}
+
+	qc := clienttypes.NewQueryClient(provConcreteLidoChain)
+
+	consensusStatesResponse, err := qc.ConsensusStates(ctx, &clienttypes.QueryConsensusStatesRequest{
+		ClientId: r.lidoChain.ClientID(),
+		Pagination: &query.PageRequest{
+			// TODO: paging
+			Limit:      math.MaxUint64,
+			Reverse:    true,
+			CountTotal: true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", r.lidoChain.ClientID(), err)
+	}
+
+	return consensusStatesResponse.ConsensusStates, nil
+}
+
+// getHeaderWithBestTrustedHeight returns an IBC Update Header which can be used to update an on chain
+// light client on the Lido chain.
+//
+// It has the same purpose as r.targetChain.ChainProvider.GetIBCUpdateHeader() but the difference is
+// that getHeaderWithBestTrustedHeight() trys to find the best TrustedHeight for the header
+// relying on existing light client's consensus states on the Lido chain.
+//
+// The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
+func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusStates []clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
+	start := time.Now()
+	bestTrustedHeight := clienttypes.Height{
+		RevisionNumber: 0,
+		RevisionHeight: 0,
+	}
+
+	// TODO: since we should implement paging for getting the consensus states, maybe it's better to move searching of
+	// 	the best height there
+	for _, cs := range consensusStates {
+		if height >= cs.Height.RevisionHeight && cs.Height.RevisionHeight > bestTrustedHeight.RevisionHeight {
+			bestTrustedHeight = cs.Height
+			// we won't find anything better
+			if cs.Height.RevisionHeight == height {
+				break
+			}
+		}
+	}
+
+	if bestTrustedHeight.IsZero() {
+		return nil, fmt.Errorf("no satisfying trusted height found for height: %v", height)
+	}
+
+	// Without this hack we can't call InjectTrustedFields
+	provConcreteTargetChain, ok := r.targetChain.ChainProvider.(*cosmos.CosmosProvider)
+	if !ok {
+		r.Metrics.TargetChainGettersTime.AddFailed("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
+		return nil, fmt.Errorf("failed to cast ChainProvider to concrete type (cosmos.CosmosProvider)")
+	}
+	header, err := r.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
+	if err != nil {
+		r.Metrics.TargetChainGettersTime.AddFailed("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
+		return nil, err
+	}
+
+	tmHeader, ok := header.(*tmclient.Header)
+	if !ok {
+		r.Metrics.TargetChainGettersTime.AddFailed("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
+		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
+	}
+
+	tmHeader.TrustedHeight = bestTrustedHeight
+	r.Metrics.TargetChainGettersTime.AddSuccess("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
+	return provConcreteTargetChain.InjectTrustedFields(ctx, tmHeader, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+}
+
+func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {
+	start := time.Now()
+	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		targetHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, targeth, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		// TODO: this sometimes triggers the following error: failed to GetIBCUpdateHeader: height requested is too high,
-		//		but eventually it goes away.
-		fmt.Println(
+		r.logger.Info(fmt.Sprintf(
 			"failed to GetIBCUpdateHeader:", err,
-		)
+		))
 	})); err != nil {
+		r.Metrics.TargetChainGettersTime.AddFailed("GetIBCUpdateHeader", time.Since(start).Seconds())
+		return nil, err
+	}
+	r.Metrics.TargetChainGettersTime.AddSuccess("GetIBCUpdateHeader", time.Since(start).Seconds())
+	return srcHeader, nil
+}
+
+func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Msg, error) {
+	start := time.Now()
+	// Query IBC Update Header
+	srcHeader, err := r.getSrcChainHeader(ctx, targeth)
+	if err != nil {
+		r.Metrics.TargetChainGettersTime.AddFailed("GetChainHeader", time.Since(start).Seconds())
 		return nil, err
 	}
 
@@ -216,12 +401,12 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 	var updateMsgRelayer provider.RelayerMessage
 	if err := retry.Do(func() error {
 		var err error
-		updateMsgRelayer, err = r.lidoChain.ChainProvider.UpdateClient(r.lidoChain.PathEnd.ClientID, targetHeader)
+		updateMsgRelayer, err = r.lidoChain.ChainProvider.UpdateClient(r.lidoChain.PathEnd.ClientID, srcHeader)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		fmt.Println(
-			"failed to build message:", err,
-		)
+		r.logger.Error(fmt.Sprintf(
+			"failed to build message: %s", err,
+		))
 	})); err != nil {
 		return nil, err
 	}
