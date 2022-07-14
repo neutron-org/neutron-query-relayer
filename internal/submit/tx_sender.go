@@ -15,7 +15,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/lidofinance/cosmos-query-relayer/internal/config"
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
@@ -45,7 +45,7 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 	return keybase, nil
 }
 
-func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.LidoChainConfig) (*TxSender, error) {
+func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).

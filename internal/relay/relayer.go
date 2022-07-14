@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"math"
 	"strconv"
 
@@ -22,26 +22,26 @@ import (
 )
 
 // Relayer is controller for the whole app:
-// 1. takes events from lido chain
+// 1. takes events from Neutron chain
 // 2. dispatches each query by type to fetch proof for the right query
-// 3. submits proof for a query back to the lido chain
+// 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	proofer     Proofer
-	submitter   Submitter
-	targetChain *relayer.Chain
-	lidoChain   *relayer.Chain
+	proofer      Proofer
+	submitter    Submitter
+	targetChain  *relayer.Chain
+	neutronChain *relayer.Chain
 
 	targetChainId     string
 	targetChainPrefix string
 }
 
 func NewRelayer(
-	proofer Proofer,
-	submitter Submitter,
-	targetChainId,
-	targetChainPrefix string,
-	srcChain,
-	dstChain *relayer.Chain,
+		proofer Proofer,
+		submitter Submitter,
+		targetChainId,
+		targetChainPrefix string,
+		srcChain,
+		dstChain *relayer.Chain,
 ) Relayer {
 	return Relayer{
 		proofer:           proofer,
@@ -49,7 +49,7 @@ func NewRelayer(
 		targetChainId:     targetChainId,
 		targetChainPrefix: targetChainPrefix,
 		targetChain:       srcChain,
-		lidoChain:         dstChain,
+		neutronChain:      dstChain,
 	}
 }
 
@@ -79,8 +79,8 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 	}
 
 	if len(events[zoneIdAttr]) != len(events[parametersAttr]) ||
-		len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
-		len(events[zoneIdAttr]) != len(events[typeAttr]) {
+			len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
+			len(events[zoneIdAttr]) != len(events[typeAttr]) {
 		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
 	}
 
@@ -198,7 +198,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get consensus states: %w", err)
 		}
 
-		resultBlocks := make([]*lidotypes.Block, 0, len(blocks))
+		resultBlocks := make([]*neutrontypes.Block, 0, len(blocks))
 		for height, txs := range blocks {
 			header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
 			if err != nil {
@@ -220,14 +220,14 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				return fmt.Errorf("failed to pack header: %w", err)
 			}
 
-			resultBlocks = append(resultBlocks, &lidotypes.Block{
+			resultBlocks = append(resultBlocks, &neutrontypes.Block{
 				Header:          packedHeader,
 				NextBlockHeader: packedNextHeader,
 				Txs:             txs,
 			})
 		}
 
-		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.lidoChain.PathEnd.ClientID, resultBlocks)
+		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, resultBlocks)
 		if err != nil {
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
@@ -242,18 +242,18 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	return nil
 }
 
-// getConsensusStates returns light client consensus states from lido chain
+// getConsensusStates returns light client consensus states from Neutron chain
 func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.ConsensusStateWithHeight, error) {
 	// Without this hack it doesn't want to work with NewQueryClient
-	provConcreteLidoChain, ok := r.lidoChain.ChainProvider.(*cosmos.CosmosProvider)
+	provConcreteNeutronChain, ok := r.neutronChain.ChainProvider.(*cosmos.CosmosProvider)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast ChainProvider to concrete type (cosmos.CosmosProvider)")
 	}
 
-	qc := clienttypes.NewQueryClient(provConcreteLidoChain)
+	qc := clienttypes.NewQueryClient(provConcreteNeutronChain)
 
 	consensusStatesResponse, err := qc.ConsensusStates(ctx, &clienttypes.QueryConsensusStatesRequest{
-		ClientId: r.lidoChain.ClientID(),
+		ClientId: r.neutronChain.ClientID(),
 		Pagination: &query.PageRequest{
 			// TODO: paging
 			Limit:      math.MaxUint64,
@@ -262,18 +262,18 @@ func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.Consens
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", r.lidoChain.ClientID(), err)
+		return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", r.neutronChain.ClientID(), err)
 	}
 
 	return consensusStatesResponse.ConsensusStates, nil
 }
 
 // getHeaderWithBestTrustedHeight returns an IBC Update Header which can be used to update an on chain
-// light client on the Lido chain.
+// light client on the Neutron chain.
 //
 // It has the same purpose as r.targetChain.ChainProvider.GetIBCUpdateHeader() but the difference is
 // that getHeaderWithBestTrustedHeight() trys to find the best TrustedHeight for the header
-// relying on existing light client's consensus states on the Lido chain.
+// relying on existing light client's consensus states on the Neutron chain.
 //
 // The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
 func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusStates []clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
@@ -316,14 +316,14 @@ func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusS
 
 	tmHeader.TrustedHeight = bestTrustedHeight
 
-	return provConcreteTargetChain.InjectTrustedFields(ctx, tmHeader, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+	return provConcreteTargetChain.InjectTrustedFields(ctx, tmHeader, r.neutronChain.ChainProvider, r.neutronChain.PathEnd.ClientID)
 }
 
 func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {
 	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.neutronChain.ChainProvider, r.neutronChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		fmt.Println(
@@ -347,7 +347,7 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 	var updateMsgRelayer provider.RelayerMessage
 	if err := retry.Do(func() error {
 		var err error
-		updateMsgRelayer, err = r.lidoChain.ChainProvider.UpdateClient(r.lidoChain.PathEnd.ClientID, srcHeader)
+		updateMsgRelayer, err = r.neutronChain.ChainProvider.UpdateClient(r.neutronChain.PathEnd.ClientID, srcHeader)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		fmt.Println(

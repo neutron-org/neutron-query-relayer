@@ -3,7 +3,7 @@ package raw
 import (
 	"context"
 	"fmt"
-	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -37,6 +37,6 @@ func Subscribe(ctx context.Context, subscriberName string, rpcAddress string, qu
 // SubscribeQuery describes query to filter out events with correct module, action and zone_id
 func SubscribeQuery(zoneId string) string {
 	// TODO: fix after zone_id is saved in message
-	//return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", lidotypes.ModuleName, lidotypes.AttributeValueQuery, zoneId)
-	return fmt.Sprintf("message.module='%s' AND message.action='%s'", lidotypes.ModuleName, lidotypes.AttributeValueQuery)
+	//return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.zone_id='%s'", neutrontypes.ModuleName, neutrontypes.AttributeValueQuery, zoneId)
+	return fmt.Sprintf("message.module='%s' AND message.action='%s'", neutrontypes.ModuleName, neutrontypes.AttributeValueQuery)
 }

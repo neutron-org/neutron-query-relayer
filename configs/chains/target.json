@@ -5,7 +5,7 @@
     "chain-id": "test-2",
     "rpc-addr": "tcp://127.0.0.1:26657",
     "grpc-addr": "",
-    "account-prefix": "cosmos",
+    "account-prefix": "neutron",
     "keyring-backend": "test",
     "gas-adjustment": 1.0,
     "gas-prices": "0.5stake",

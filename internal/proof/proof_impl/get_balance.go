@@ -5,7 +5,7 @@ import (
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
+	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
 )
 
 // GetBalance gets proofs for query type = 'x/bank/GetBalance'

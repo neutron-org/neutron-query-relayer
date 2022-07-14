@@ -3,7 +3,7 @@ package proof_impl
 import (
 	"context"
 	"fmt"
-	lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -28,11 +28,11 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*lidotypes.TxValue, error) {
+func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*neutrontypes.TxValue, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
-	blocks := make(map[uint64][]*lidotypes.TxValue, 0)
+	blocks := make(map[uint64][]*neutrontypes.TxValue, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
@@ -49,7 +49,7 @@ func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[
 				return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
 			}
 
-			txProof := lidotypes.TxValue{
+			txProof := neutrontypes.TxValue{
 				InclusionProof: cryptoProofFromMerkleProof(tx.Proof.Proof),
 				DeliveryProof:  deliveryProof,
 				Response:       deliveryResult,
