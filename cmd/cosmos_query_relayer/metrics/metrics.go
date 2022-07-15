@@ -21,7 +21,7 @@ type PromMetric interface {
 type Client struct {
 	ProofCount             *requests.ProofCount
 	RequestTime            *requests.RequestTime
-	ProofLidoChainTime     *requests.ProofLidoTime
+	ProofNeutronChainTime  *requests.ProofNeutronTime
 	TargetChainGettersTime *requests.TargetChainGettersTime
 }
 
@@ -29,7 +29,7 @@ func New() Client {
 	client := Client{
 		requests.NewProofCount(),
 		requests.NewRequestTime(),
-		requests.NewProofLidoTime(),
+		requests.NewNeutronTime(),
 		requests.NewTargetGettersTime(),
 	}
 
@@ -38,7 +38,7 @@ func New() Client {
 
 func (c Client) Metrics() []PromMetric {
 	return []PromMetric{
-		c.ProofLidoChainTime,
+		c.ProofNeutronChainTime,
 		c.TargetChainGettersTime,
 		c.ProofCount,
 		c.RequestTime,

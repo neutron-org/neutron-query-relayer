@@ -77,7 +77,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 			r.Metrics.ProofCount.AddFailed()
 			r.logger.Error(fmt.Sprintf("could not process message query_id=%d err=%s\n", m.queryId, err))
 		} else {
-			r.Metrics.ProofCount.AddSucceess()
+			r.Metrics.ProofCount.AddSuccess()
 			r.logger.Info(fmt.Sprintf("proof for query_id=%d submitted successfully\n", m.queryId))
 		}
 	}
@@ -125,10 +125,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	start := time.Now()
 
 	r.logger.Info(fmt.Sprintf("proofMessage message_type=%s\n", m.messageType))
+
 	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to QueryLatestHeight: %w", err)
 	}
+
 	updateClientMsg, err := r.getUpdateClientMsg(ctx, latestHeight)
 	if err != nil {
 		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
@@ -158,11 +160,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
 			r.Metrics.RequestTime.AddFailed("delegatorDelegations", time.Since(start).Seconds())
-			r.Metrics.ProofLidoChainTime.AddFailed("delegatorDelegations", time.Since(proofStart).Seconds())
+			r.Metrics.ProofNeutronChainTime.AddFailed("delegatorDelegations", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 		r.Metrics.RequestTime.AddSuccess("delegatorDelegations", time.Since(start).Seconds())
-		r.Metrics.ProofLidoChainTime.AddSuccess("delegatorDelegations", time.Since(proofStart).Seconds())
+		r.Metrics.ProofNeutronChainTime.AddSuccess("delegatorDelegations", time.Since(proofStart).Seconds())
 	case getBalanceType:
 
 		var params getBalanceParams
@@ -181,11 +183,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
 			r.Metrics.RequestTime.AddFailed("getBalance", time.Since(start).Seconds())
-			r.Metrics.ProofLidoChainTime.AddFailed("getBalance", time.Since(proofStart).Seconds())
+			r.Metrics.ProofNeutronChainTime.AddFailed("getBalance", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 		r.Metrics.RequestTime.AddFailed("getBalance", time.Since(start).Seconds())
-		r.Metrics.ProofLidoChainTime.AddSuccess("getBalance", time.Since(start).Seconds())
+		r.Metrics.ProofNeutronChainTime.AddSuccess("getBalance", time.Since(start).Seconds())
 	case exchangeRateType:
 		var params exchangeRateParams
 		err := json.Unmarshal(m.parameters, &params)
@@ -210,10 +212,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
 		if err != nil {
 			r.Metrics.RequestTime.AddFailed("exchangeRate", time.Since(start).Seconds())
-			r.Metrics.ProofLidoChainTime.AddFailed("exchangeRate", time.Since(proofStart).Seconds())
+			r.Metrics.ProofNeutronChainTime.AddFailed("exchangeRate", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
-		r.Metrics.ProofLidoChainTime.AddSuccess("exchangeRate", time.Since(proofStart).Seconds())
+		r.Metrics.ProofNeutronChainTime.AddSuccess("exchangeRate", time.Since(proofStart).Seconds())
+		r.Metrics.RequestTime.AddSuccess("exchangeRate", time.Since(start).Seconds())
 	case recipientTransactionsType:
 		var params recipientTransactionsParams
 		err := json.Unmarshal(m.parameters, &params)
@@ -272,10 +275,10 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.lidoChain.PathEnd.ClientID, resultBlocks)
 		if err != nil {
 			r.Metrics.RequestTime.AddFailed("recipientTransactions", time.Since(start).Seconds())
-			r.Metrics.ProofLidoChainTime.AddFailed("recipientTransactions", time.Since(proofStart).Seconds())
+			r.Metrics.ProofNeutronChainTime.AddFailed("recipientTransactions", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
-		r.Metrics.ProofLidoChainTime.AddSuccess("recipientTransactions", time.Since(proofStart).Seconds())
+		r.Metrics.ProofNeutronChainTime.AddSuccess("recipientTransactions", time.Since(proofStart).Seconds())
 
 	case delegationRewardsType:
 		r.Metrics.RequestTime.AddFailed("delegationRewards", time.Since(start).Seconds())
@@ -378,7 +381,7 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		r.logger.Info(fmt.Sprintf(
-			"failed to GetIBCUpdateHeader:", err,
+			"failed to GetIBCUpdateHeader: %s", err,
 		))
 	})); err != nil {
 		r.Metrics.TargetChainGettersTime.AddFailed("GetIBCUpdateHeader", time.Since(start).Seconds())

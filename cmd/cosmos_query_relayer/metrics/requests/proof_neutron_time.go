@@ -6,14 +6,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type ProofLidoTime struct {
+type ProofNeutronTime struct {
 	mu     *sync.Mutex
 	metric *prometheus.HistogramVec
 	values map[proofHistData]TimeRecord
 }
 
-func NewProofLidoTime() *ProofLidoTime {
-	return &ProofLidoTime{
+func NewNeutronTime() *ProofNeutronTime {
+	return &ProofNeutronTime{
 		mu: &sync.Mutex{},
 		metric: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace:   "relayer",
@@ -26,11 +26,11 @@ func NewProofLidoTime() *ProofLidoTime {
 	}
 }
 
-func (m *ProofLidoTime) Register(registry *prometheus.Registry) {
+func (m *ProofNeutronTime) Register(registry *prometheus.Registry) {
 	registry.MustRegister(m.metric)
 }
 
-func (m *ProofLidoTime) SetToPrometheus() {
+func (m *ProofNeutronTime) SetToPrometheus() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -47,7 +47,7 @@ func (m *ProofLidoTime) SetToPrometheus() {
 }
 
 // Add duration in seconds of message processing time
-func (m *ProofLidoTime) Add(proofData proofHistData, duration float64) {
+func (m *ProofNeutronTime) Add(proofData proofHistData, duration float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -61,14 +61,14 @@ func (m *ProofLidoTime) Add(proofData proofHistData, duration float64) {
 	m.values[proofData] = record
 }
 
-func (m *ProofLidoTime) AddSuccess(method string, duration float64) {
+func (m *ProofNeutronTime) AddSuccess(method string, duration float64) {
 	m.Add(proofHistData{
 		method:  method,
 		reqType: typeSuccess,
 	}, duration)
 }
 
-func (m *ProofLidoTime) AddFailed(method string, duration float64) {
+func (m *ProofNeutronTime) AddFailed(method string, duration float64) {
 	m.Add(proofHistData{
 		method:  method,
 		reqType: typeFailed,

@@ -62,15 +62,14 @@ func main() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot create tx sender: %s", err))
 	}
-
-	proofSubmitter := submit.NewSubmitterImpl(txSender)
-	proofFetcher := proof_impl.NewProofer(targetQuerier)
-
 	metricsClient := metrics.New()
 	pm := metricsClient.Metrics()
 
 	router := mux.NewRouter()
 	router.Handle("/metrics", metrics.NewMetricsHandler(pm))
+
+	proofSubmitter := submit.NewSubmitterImpl(txSender)
+	proofFetcher := proof_impl.NewProofer(targetQuerier)
 
 	lidoChain, targetChain, err := loadChains(cfg, logger)
 	if err != nil {

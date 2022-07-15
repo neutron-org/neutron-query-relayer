@@ -56,7 +56,7 @@ func (m *ProofCount) add(data proofCountData) {
 	m.values[data]++
 }
 
-func (m *ProofCount) AddSucceess() {
+func (m *ProofCount) AddSuccess() {
 	m.add(proofCountData{
 		metricType: typeSuccess,
 	})
