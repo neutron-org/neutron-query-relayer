@@ -74,7 +74,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		} else {
 			neutronmetrics.IncSuccessProofs()
 			neutronmetrics.AddSuccessRequest(m.messageType, time.Since(start).Seconds())
-			r.logger.Info(fmt.Sprintf("proof for query_id=%d submitted successfully\n", m.queryId))
+			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 		}
 	}
 
@@ -82,7 +82,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	r.logger.Info(fmt.Sprintf("extracting events:\n%+v\n", event.Events))
+	r.logger.Info("extracting events", zap.Any("events", event.Events))
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return nil, nil
@@ -104,7 +104,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		queryIdStr := events[queryIdAttr][idx]
 		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
 		if err != nil {
-			r.logger.Info(fmt.Sprintf("invalid query_id format (not an uint): %+v", queryId))
+			r.logger.Info("invalid query_id format (not an uint)", zap.Error(err))
 			continue
 		}
 
@@ -119,7 +119,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
-	r.logger.Info(fmt.Sprintf("proofMessage message_type=%s\n", m.messageType))
+	r.logger.Info("proofMessage message_type", zap.String("message_type", m.messageType))
 
 	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
@@ -158,7 +158,6 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 	case getBalanceType:
-
 		var params getBalanceParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
@@ -353,9 +352,8 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		r.logger.Info(fmt.Sprintf(
-			"failed to GetIBCUpdateHeader: %s", err,
-		))
+		r.logger.Info(
+			"failed to GetIBCUpdateHeader", zap.Error(err))
 	})); err != nil {
 		neutronmetrics.AddFailedTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
 		return nil, err
@@ -380,9 +378,8 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 		updateMsgRelayer, err = r.lidoChain.ChainProvider.UpdateClient(r.lidoChain.PathEnd.ClientID, srcHeader)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		r.logger.Error(fmt.Sprintf(
-			"failed to build message: %s", err,
-		))
+		r.logger.Error(
+			"failed to build message", zap.Error(err))
 	})); err != nil {
 		return nil, err
 	}

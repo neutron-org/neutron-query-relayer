@@ -22,7 +22,7 @@ const configPathEnv = "CONFIG_PATH"
 func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
-		fmt.Printf("coulnd initialize loggerr: %s", err)
+		fmt.Printf("couldn't initialize logger: %s", err)
 	}
 	logger.Info("cosmos-query-relayer starts...")
 
@@ -34,35 +34,35 @@ func main() {
 	cfgPath := os.Getenv(configPathEnv)
 	cfg, err := config.NewCosmosQueryRelayerConfig(cfgPath)
 	if err != nil {
-		logger.Error(fmt.Sprintf("cannot initialize relayer config: %s", err))
+		logger.Error("cannot initialize relayer config", zap.Error(err))
 	}
 	logger.Info("initialized config")
 	raw.SetSDKConfig(cfg.LidoChain.ChainPrefix)
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {
-		logger.Fatal(fmt.Sprintf("could not initialize target rpc client: %s", err))
+		logger.Fatal("could not initialize target rpc client", zap.Error(err))
 	}
 
 	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID, cfg.TargetChain.ValidatorAccountPrefix)
 	if err != nil {
-		logger.Fatal(fmt.Sprintf("cannot connect to target chain: %s", err))
+		logger.Fatal("cannot connect to target chain", zap.Error(err))
 	}
 
 	lidoClient, err := raw.NewRPCClient(cfg.LidoChain.RPCAddress, cfg.LidoChain.Timeout)
 	if err != nil {
-		logger.Fatal(fmt.Sprintf("cannot create lido client: %s", err))
+		logger.Fatal("cannot create lido client", zap.Error(err))
 	}
 
 	codec := raw.MakeCodecDefault()
 	keybase, err := submit.TestKeybase(cfg.LidoChain.ChainID, cfg.LidoChain.HomeDir)
 	if err != nil {
-		logger.Fatal(fmt.Sprintf("cannot initialize keybase: %s", err))
+		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
 	txSender, err := submit.NewTxSender(lidoClient, codec.Marshaller, keybase, cfg.LidoChain)
 	if err != nil {
-		logger.Error(fmt.Sprintf("cannot create tx sender: %s", err))
+		logger.Fatal("cannot create tx sender:", zap.Error(err))
 	}
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender)
@@ -70,7 +70,7 @@ func main() {
 
 	lidoChain, targetChain, err := loadChains(cfg, logger)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to loadChains: %s", err))
+		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
 	relayer := relay.NewRelayer(
@@ -89,11 +89,11 @@ func main() {
 	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.LidoChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		err = relayer.Proof(ctx, event)
 		if err != nil {
-			logger.Info(fmt.Sprintf("error proofing event: %s\n", err))
+			logger.Info("error proofing event", zap.Error(err))
 		}
 	})
 	if err != nil {
-		logger.Fatal(fmt.Sprintf("error subscribing to lido chain events: %s", err))
+		logger.Fatal("error subscribing to lido chain events:", zap.Error(err))
 	}
 }
 
