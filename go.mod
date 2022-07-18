@@ -3,11 +3,11 @@ module github.com/lidofinance/cosmos-query-relayer
 go 1.17
 
 require (
-	github.com/cosmos/cosmos-sdk v0.45.6
+	github.com/avast/retry-go/v4 v4.0.5
+	github.com/cosmos/cosmos-sdk v0.45.4
 	github.com/cosmos/cosmos-sdk/api v0.1.0
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
-	github.com/gorilla/mux v1.8.0
 	github.com/ilyakaznacheev/cleanenv v1.2.6
 	github.com/lidofinance/gaia-wasm-zone v0.0.0-20220701084738-11d14ab08f17
 	github.com/prometheus/client_golang v1.12.1
@@ -25,7 +25,6 @@ require (
 	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/armon/go-metrics v0.3.11 // indirect
 	github.com/avast/retry-go v2.6.0+incompatible // indirect
-	github.com/avast/retry-go/v4 v4.0.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/btcsuite/btcd v0.22.1 // indirect
@@ -62,6 +61,7 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-github/v43 v43.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect

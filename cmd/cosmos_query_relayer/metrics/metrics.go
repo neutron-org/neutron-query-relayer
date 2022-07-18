@@ -1,64 +1,92 @@
-package metrics
+package instrumenters
 
 import (
-	"github.com/lidofinance/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics/requests"
-	"net/http"
-
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+const (
+	labelMethod = "method"
+	labelType   = "type"
+	typeSuccess = "success"
+	typeFailed  = "failed"
 )
 
 var (
-	metricsRegistry = prometheus.NewRegistry()
+	relayerFailedProofs = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "relayer_failed_proofs",
+		Help: "The total number of failed requests (counter)",
+	})
+	relayerSuccessProofs = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "relayer_succeed_proofs",
+		Help: "The total number of succeed requests (counter)",
+	})
+
+	requestTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "request_time",
+		Help:    "A histogram of requests duration",
+		Buckets: []float64{0.5, 1, 2, 3, 5, 10, 30},
+	}, []string{labelMethod, labelType})
+
+	proofNeutronTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "proof_neutron_time",
+		Help:    "A histogram of proofs duration",
+		Buckets: []float64{0.5, 1, 2, 3, 5, 10, 30},
+	}, []string{labelMethod, labelType})
+
+	targetChainGettersTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "target_chain_getters_timee",
+		Help:    "A histogram of target chain getters duration",
+		Buckets: []float64{0.5, 1, 2, 3, 5, 10, 30},
+	}, []string{labelMethod, labelType})
 )
 
-type PromMetric interface {
-	// SetToPrometheus is expected to bulk-update specific metrics.
-	SetToPrometheus()
+func IncFailedProofs() {
+	relayerFailedProofs.Inc()
 }
 
-type Client struct {
-	ProofCount             *requests.ProofCount
-	RequestTime            *requests.RequestTime
-	ProofNeutronChainTime  *requests.ProofNeutronTime
-	TargetChainGettersTime *requests.TargetChainGettersTime
+func IncSuccessProofs() {
+	relayerSuccessProofs.Inc()
 }
 
-func New() Client {
-	client := Client{
-		requests.NewProofCount(),
-		requests.NewRequestTime(),
-		requests.NewNeutronTime(),
-		requests.NewTargetGettersTime(),
-	}
-
-	return client
+func AddFailedRequest(message string, dur float64) {
+	requestTime.With(prometheus.Labels{
+		labelMethod: message,
+		labelType:   typeFailed,
+	}).Observe(dur)
 }
 
-func (c Client) Metrics() []PromMetric {
-	return []PromMetric{
-		c.ProofNeutronChainTime,
-		c.TargetChainGettersTime,
-		c.ProofCount,
-		c.RequestTime,
-	}
+func AddSuccessRequest(message string, dur float64) {
+	requestTime.With(prometheus.Labels{
+		labelMethod: message,
+		labelType:   typeSuccess,
+	}).Observe(dur)
 }
 
-func NewMetricsHandler(metrics []PromMetric) http.Handler {
-	return newHandler(metricsRegistry, metrics)
+func AddFailedProof(message string, dur float64) {
+	proofNeutronTime.With(prometheus.Labels{
+		labelMethod: message,
+		labelType:   typeFailed,
+	}).Observe(dur)
 }
 
-func newHandler(registry *prometheus.Registry, metrics []PromMetric) http.Handler {
-	return http.HandlerFunc(func(rsp http.ResponseWriter, req *http.Request) {
-		for _, m := range metrics {
-			m.SetToPrometheus()
-		}
-		promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(rsp, req)
-	})
+func AddSuccessProof(message string, dur float64) {
+	proofNeutronTime.With(prometheus.Labels{
+		labelMethod: message,
+		labelType:   typeSuccess,
+	}).Observe(dur)
 }
 
-func init() {
-	metricsRegistry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	metricsRegistry.MustRegister(collectors.NewGoCollector())
+func AddFailedTargetChainGetter(message string, dur float64) {
+	targetChainGettersTime.With(prometheus.Labels{
+		labelMethod: message,
+		labelType:   typeFailed,
+	}).Observe(dur)
+}
+
+func AddSuccessTargetChainGetter(message string, dur float64) {
+	targetChainGettersTime.With(prometheus.Labels{
+		labelMethod: message,
+		labelType:   typeSuccess,
+	}).Observe(dur)
 }

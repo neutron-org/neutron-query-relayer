@@ -3,19 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lidofinance/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
-	"os"
-
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"github.com/gorilla/mux"
 	"github.com/lidofinance/cosmos-query-relayer/internal/config"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
 	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
 	"github.com/lidofinance/cosmos-query-relayer/internal/raw"
 	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
 	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
+	"net/http"
+	"os"
 )
 
 const configPathEnv = "CONFIG_PATH"
@@ -27,6 +26,10 @@ func main() {
 	}
 	logger.Info("cosmos-query-relayer starts...")
 
+	http.Handle("/metrics", promhttp.Handler())
+	go http.ListenAndServe(":8080", nil)
+	logger.Info("metrics handler set up")
+
 	ctx := context.Background()
 	cfgPath := os.Getenv(configPathEnv)
 	cfg, err := config.NewCosmosQueryRelayerConfig(cfgPath)
@@ -34,7 +37,6 @@ func main() {
 		logger.Error(fmt.Sprintf("cannot initialize relayer config: %s", err))
 	}
 	logger.Info("initialized config")
-
 	raw.SetSDKConfig(cfg.LidoChain.ChainPrefix)
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
@@ -62,11 +64,6 @@ func main() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot create tx sender: %s", err))
 	}
-	metricsClient := metrics.New()
-	pm := metricsClient.Metrics()
-
-	router := mux.NewRouter()
-	router.Handle("/metrics", metrics.NewMetricsHandler(pm))
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
@@ -84,8 +81,6 @@ func main() {
 		targetChain,
 		lidoChain,
 		logger,
-		pm,
-		metricsClient,
 	)
 
 	logger.Info("subscribing to lido chain events")
