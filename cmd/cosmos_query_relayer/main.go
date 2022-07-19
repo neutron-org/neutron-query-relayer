@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"github.com/lidofinance/cosmos-query-relayer/internal/config"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof/proof_impl"
-	"github.com/lidofinance/cosmos-query-relayer/internal/raw"
-	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
-	"github.com/lidofinance/cosmos-query-relayer/internal/submit"
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
+	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
+	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
+	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
+	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
+	neutronapp "github.com/neutron-org/neutron/ app"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
@@ -37,6 +38,9 @@ func main() {
 	}
 	logger.Info("initialized config")
 	raw.SetSDKConfig(cfg.NeutronChain.ChainPrefix)
+	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
+	globalCfg := neutronapp.GetDefaultConfig()
+	globalCfg.Seal()
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
 	if err != nil {
@@ -48,9 +52,9 @@ func main() {
 		logger.Fatal("cannot connect to target chain", zap.Error(err))
 	}
 
-	lidoClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddress, cfg.NeutronChain.Timeout)
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddress, cfg.NeutronChain.Timeout)
 	if err != nil {
-		logger.Fatal("cannot create lido client", zap.Error(err))
+		log.Fatalf("cannot create neutron client: %s", err)
 	}
 
 	codec := raw.MakeCodecDefault()
@@ -59,7 +63,7 @@ func main() {
 		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
-	txSender, err := submit.NewTxSender(lidoClient, codec.Marshaller, keybase, cfg.NeutronChain)
+	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, cfg.NeutronChain)
 	if err != nil {
 		logger.Fatal("cannot create tx sender:", zap.Error(err))
 	}

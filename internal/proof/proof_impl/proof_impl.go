@@ -1,8 +1,8 @@
 package proof_impl
 
 import (
-	"github.com/lidofinance/cosmos-query-relayer/internal/proof"
-	"github.com/lidofinance/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
+	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 )
 
 type ProoferImpl struct {

@@ -1,6 +1,6 @@
 package relay
 
-import lidotypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+import neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 
 type queryEventMessage struct {
 	queryId     uint64
@@ -29,10 +29,10 @@ type exchangeRateParams struct {
 
 // types of keys for parsing incoming events
 const (
-	zoneIdAttr     = "message." + lidotypes.AttributeKeyZoneID
-	queryIdAttr    = "message." + lidotypes.AttributeKeyQueryID
-	parametersAttr = "message." + lidotypes.AttributeQueryData
-	typeAttr       = "message." + lidotypes.AttributeQueryType
+	zoneIdAttr     = "message." + neutrontypes.AttributeKeyZoneID
+	queryIdAttr    = "message." + neutrontypes.AttributeKeyQueryID
+	parametersAttr = "message." + neutrontypes.AttributeQueryData
+	typeAttr       = "message." + neutrontypes.AttributeQueryType
 )
 
 // types of incoming query messages
