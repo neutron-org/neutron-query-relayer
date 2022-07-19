@@ -2,44 +2,44 @@ package config
 
 import (
 	"fmt"
+	"github.com/cosmos/relayer/v2/relayer"
+	"github.com/kelseyhightower/envconfig"
 	"time"
-
-	"github.com/ilyakaznacheev/cleanenv"
 )
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	LidoChain   LidoChainConfig   `yaml:"lido-chain" env-required:"true"`
-	TargetChain TargetChainConfig `yaml:"target-chain" env-required:"true"`
+	NeutronChain NeutronChainConfig
+	TargetChain  TargetChainConfig
 }
 
-type LidoChainConfig struct {
-	ChainPrefix             string          `yaml:"chain-prefix" env-required:"true"`
-	RPCAddress              string          `yaml:"rpc-address" env-required:"true"`
-	ChainID                 string          `yaml:"chain-id" env-required:"true"`
-	GasPrices               string          `yaml:"gas-prices" env-required:"true"`
-	HomeDir                 string          `yaml:"home-dir" env-required:"true"`
-	SignKeyName             string          `yaml:"sign-key-name" env-default:"default=default"`
-	Timeout                 time.Duration   `yaml:"timeout" env-default:"10s"`
-	GasAdjustment           float64         `yaml:"gas-adjustment" env-default:"1.5"`
-	TxBroadcastType         TxBroadcastType `yaml:"tx-broadcast-type" env-default:"BroadcastTxAsync"`
-	ConnectionID            string          `yaml:"connection-id" env-default:"connection-0"`
-	ClientID                string          `yaml:"client-id" env-default:"07-tendermint-0"`
-	Debug                   bool            `yaml:"debug" env-default:"false"`
-	ChainProviderConfigPath string          `yaml:"chain-provider-config-path" env-default:"./configs/chains/lido.json"`
+type NeutronChainConfig struct {
+	ChainPrefix         string
+	RPCAddress          string
+	ChainID             string
+	GasPrices           string
+	HomeDir             string
+	SignKeyName         string
+	Timeout             time.Duration
+	GasAdjustment       float64
+	TxBroadcastType     TxBroadcastType
+	ConnectionID        string
+	ClientID            string
+	Debug               bool
+	ChainProviderConfig relayer.Chain
 }
 
 type TargetChainConfig struct {
-	RPCAddress              string        `yaml:"rpc-address"`
-	ChainID                 string        `yaml:"chain-id"`
-	AccountPrefix           string        `yaml:"account-prefix"`
-	ValidatorAccountPrefix  string        `yaml:"validator-account-prefix"`
-	HomeDir                 string        `yaml:"home-dir" env-required:"true"`
-	Timeout                 time.Duration `yaml:"timeout" env-default:"10s"`
-	ConnectionID            string        `yaml:"connection-id" env-default:"connection-0"`
-	ClientID                string        `yaml:"client-id" env-default:"07-tendermint-0"`
-	Debug                   bool          `yaml:"debug" env-default:"false"`
-	ChainProviderConfigPath string        `yaml:"chain-provider-config-path" env-default:"./configs/chains/target.json"`
+	RPCAddress             string
+	ChainID                string
+	AccountPrefix          string
+	ValidatorAccountPrefix string
+	HomeDir                string
+	Timeout                time.Duration
+	ConnectionID           string
+	ClientID               string
+	Debug                  bool
+	ChainProviderConfig    relayer.Chain
 }
 
 type TxBroadcastType string
@@ -48,16 +48,13 @@ const (
 	BroadcastTxSync   TxBroadcastType = "BroadcastTxSync"
 	BroadcastTxAsync  TxBroadcastType = "BroadcastTxAsync"
 	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
+	EnvPrefix         string          = "" // do we need prefix? it's decreases readableness
 )
 
-func NewCosmosQueryRelayerConfig(path string) (CosmosQueryRelayerConfig, error) {
+func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
 	var cfg CosmosQueryRelayerConfig
 
-	if path == "" {
-		return cfg, fmt.Errorf("empty config path (please set CONFIG_PATH env variable)")
-	}
-
-	err := cleanenv.ReadConfig(path, &cfg)
+	err := envconfig.Process(EnvPrefix, cfg)
 	if err != nil {
 		return cfg, fmt.Errorf("could not read config from a file: %w", err)
 	}
