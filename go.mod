@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/neutron-org/neutron v0.0.0-20220714081649-c8503c3c17df
+	github.com/neutron-org/neutron v0.0.0-20220712080719-d388fbb47223
 	github.com/prometheus/client_golang v1.12.1
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
