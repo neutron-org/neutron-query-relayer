@@ -25,7 +25,6 @@ type NeutronChainConfig struct {
 	ConnectionID    string
 	ClientID        string
 	Debug           bool
-	Key             string
 	AccountPrefix   string
 	KeyringBackend  string
 	OutputFormat    string

@@ -31,7 +31,7 @@ func GetChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath stri
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            cfg.Key,
+		Key:            cfg.SignKeyName,
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,
