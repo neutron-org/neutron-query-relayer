@@ -10,7 +10,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
-	neutronapp "github.com/neutron-org/neutron/ app"
+	neutronapp "github.com/neutron-org/neutron/app"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
@@ -37,12 +37,11 @@ func main() {
 		logger.Error("cannot initialize relayer config", zap.Error(err))
 	}
 	logger.Info("initialized config")
-	raw.SetSDKConfig(cfg.NeutronChain.ChainPrefix)
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
-	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
+	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
 	if err != nil {
 		logger.Fatal("could not initialize target rpc client", zap.Error(err))
 	}
@@ -52,9 +51,9 @@ func main() {
 		logger.Fatal("cannot connect to target chain", zap.Error(err))
 	}
 
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddress, cfg.NeutronChain.Timeout)
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
 	if err != nil {
-		log.Fatalf("cannot create neutron client: %s", err)
+		logger.Fatal("cannot create neutron client:", zap.Error(err))
 	}
 
 	codec := raw.MakeCodecDefault()
@@ -88,7 +87,7 @@ func main() {
 	logger.Info("subscribing to lido chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
+	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		err = relayer.Proof(ctx, event)
 		if err != nil {
 			logger.Info("error proofing event", zap.Error(err))
@@ -100,7 +99,7 @@ func main() {
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain = &cfg.TargetChain.ChainProviderConfig
+	targetChain, err = relay.GetTargetChain(logger, &cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %s", err)
 	}
@@ -113,7 +112,8 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain = &cfg.NeutronChain.ChainProviderConfig
+	neutronChain, err = relay.GetNeutronChain(logger, &cfg.NeutronChain)
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %s", err)
 	}

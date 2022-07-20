@@ -1,40 +1,22 @@
 package relay
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-
-	"github.com/cosmos/relayer/v2/cmd"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"go.uber.org/zap"
 )
 
-// GetChainFromFile reads a JSON-formatted chain from the named file and adds it to a's chains.
-func GetChainFromFile(logger *zap.Logger, homepath, file string, debug bool) (*relayer.Chain, error) {
-	// If the user passes in a file, attempt to read the chain config from that file
-	if _, err := os.Stat(file); err != nil {
-		return nil, fmt.Errorf("failed to get FileInfo for %s", file)
-	}
-
-	byt, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read provider config file: %w", err)
-	}
-
-	var pcw cmd.ProviderConfigWrapper
-	if err = json.Unmarshal(byt, &pcw); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal provider config file: %w", err)
-	}
-
-	prov, err := pcw.Value.NewProvider(
+// GetChain reads a chain env  and adds it to a's chains.
+func GetChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath string, debug bool) (*relayer.Chain, error) {
+	prov, err := cfg.NewProvider(
 		logger,
 		homepath,
 		debug,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build ChainProvider for %s: %w", file, err)
+		return nil, fmt.Errorf("failed to build ChainProvider for %w", err)
 	}
 
 	// Without this hack it doesn't want to work with normal home dir layout for some reason.
@@ -45,4 +27,50 @@ func GetChainFromFile(logger *zap.Logger, homepath, file string, debug bool) (*r
 	provConcrete.Config.KeyDirectory = homepath
 
 	return relayer.NewChain(logger, prov, debug), nil
+}
+
+func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
+	provCfg := cosmos.CosmosProviderConfig{
+		Key:            cfg.Key,
+		ChainID:        cfg.ChainID,
+		RPCAddr:        cfg.RPCAddr,
+		AccountPrefix:  cfg.AccountPrefix,
+		KeyringBackend: cfg.KeyringBackend,
+		GasAdjustment:  cfg.GasAdjustment,
+		GasPrices:      cfg.GasPrices,
+		Debug:          cfg.Debug,
+		Timeout:        cfg.Timeout.String(),
+		OutputFormat:   cfg.OutputFormat,
+		SignModeStr:    cfg.SignModeStr,
+	}
+	chain, err := GetChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
+	if err != nil {
+		return nil, fmt.Errorf("could not create neutron chain: %w", err)
+
+	}
+
+	return chain, nil
+}
+
+func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer.Chain, error) {
+	provCfg := cosmos.CosmosProviderConfig{
+		Key:            cfg.Key,
+		ChainID:        cfg.ChainID,
+		RPCAddr:        cfg.RPCAddr,
+		AccountPrefix:  cfg.AccountPrefix,
+		KeyringBackend: cfg.KeyringBackend,
+		GasAdjustment:  cfg.GasAdjustment,
+		GasPrices:      cfg.GasPrices,
+		Debug:          cfg.Debug,
+		Timeout:        cfg.Timeout.String(),
+		OutputFormat:   cfg.OutputFormat,
+		SignModeStr:    cfg.SignModeStr,
+	}
+	chain, err := GetChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
+	if err != nil {
+		return nil, fmt.Errorf("could not create neutron chain: %w", err)
+
+	}
+
+	return chain, nil
 }

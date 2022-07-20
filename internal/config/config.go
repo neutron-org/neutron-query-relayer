@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/kelseyhightower/envconfig"
 	"time"
 )
@@ -14,23 +13,27 @@ type CosmosQueryRelayerConfig struct {
 }
 
 type NeutronChainConfig struct {
-	ChainPrefix         string
-	RPCAddress          string
-	ChainID             string
-	GasPrices           string
-	HomeDir             string
-	SignKeyName         string
-	Timeout             time.Duration
-	GasAdjustment       float64
-	TxBroadcastType     TxBroadcastType
-	ConnectionID        string
-	ClientID            string
-	Debug               bool
-	ChainProviderConfig relayer.Chain
+	ChainPrefix     string
+	RPCAddr         string
+	ChainID         string
+	GasPrices       string
+	HomeDir         string
+	SignKeyName     string
+	Timeout         time.Duration
+	GasAdjustment   float64
+	TxBroadcastType TxBroadcastType
+	ConnectionID    string
+	ClientID        string
+	Debug           bool
+	Key             string
+	AccountPrefix   string
+	KeyringBackend  string
+	OutputFormat    string
+	SignModeStr     string
 }
 
 type TargetChainConfig struct {
-	RPCAddress             string
+	RPCAddr                string
 	ChainID                string
 	AccountPrefix          string
 	ValidatorAccountPrefix string
@@ -39,7 +42,12 @@ type TargetChainConfig struct {
 	ConnectionID           string
 	ClientID               string
 	Debug                  bool
-	ChainProviderConfig    relayer.Chain
+	Key                    string
+	KeyringBackend         string
+	OutputFormat           string
+	SignModeStr            string
+	GasAdjustment          float64
+	GasPrices              string
 }
 
 type TxBroadcastType string
@@ -56,7 +64,7 @@ func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
 
 	err := envconfig.Process(EnvPrefix, cfg)
 	if err != nil {
-		return cfg, fmt.Errorf("could not read config from a file: %w", err)
+		return cfg, fmt.Errorf("could not read config from env: %w", err)
 	}
 
 	return cfg, nil
