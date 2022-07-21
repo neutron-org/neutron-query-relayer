@@ -26,9 +26,9 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	return cp
 }
 
-// RecipientTransactions gets proofs for query type = 'x/tx/RecipientTransactions'
+// SearchTransactionsWithProofs gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) RecipientTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*neutrontypes.TxValue, error) {
+func (p ProoferImpl) SearchTransactionsWithProofs(ctx context.Context, queryParams map[string]string) (map[uint64][]*neutrontypes.TxValue, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 

@@ -65,7 +65,7 @@ func (q *Querier) QueryTendermintProof(ctx context.Context, height int64, storeK
 	}
 
 	response := res.Response
-	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height + 1), nil
+	return &StorageValue{Value: response.Value, Key: key, Proofs: response.ProofOps.Ops, StoragePrefix: storeKey}, uint64(response.Height), nil
 }
 
 // QueryIterateTendermintProof retrieves proofs for subspace of keys

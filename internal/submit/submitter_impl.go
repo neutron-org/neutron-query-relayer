@@ -2,6 +2,7 @@ package submit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
@@ -63,6 +64,9 @@ func (si *SubmitterImpl) buildProofMsg(height uint64, revision uint64, queryId u
 		KvResults: res,
 		Revision:  revision,
 	}
+	bz, err := json.Marshal(queryResult)
+	fmt.Println("KEKEKEEKEK", string(bz))
+
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
 	err = msg.ValidateBasic()
