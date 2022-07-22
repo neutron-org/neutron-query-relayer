@@ -8,45 +8,45 @@ import (
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	NeutronChain *NeutronChainConfig `env:",prefix=NEUTRON_CHAIN_"`
-	TargetChain  *TargetChainConfig  `env:",prefix=TARGET_CHAIN_"`
+	NeutronChain *NeutronChainConfig `split_words:"true"`
+	TargetChain  *TargetChainConfig  `split_words:"true"`
 }
 
 type NeutronChainConfig struct {
-	ChainPrefix     string          `required:"true,split_words:true"`
-	RPCAddr         string          `required:"true,split_words:true"`
-	ChainID         string          `required:"true,split_words:true"`
-	GasPrices       string          `required:"true,split_words:true"`
-	HomeDir         string          `required:"true,split_words:true"`
-	SignKeyName     string          `required:"true,split_words:true"`
-	Timeout         time.Duration   `required:"true,split_words:true"`
-	GasAdjustment   float64         `required:"true,split_words:true"`
-	TxBroadcastType TxBroadcastType `required:"true,split_words:true"`
-	ConnectionID    string          `required:"true,split_words:true"`
-	ClientID        string          `required:"true,split_words:true"`
-	Debug           bool            `required:"true,split_words:true"`
-	AccountPrefix   string          `required:"true,split_words:true"`
-	KeyringBackend  string          `required:"true,split_words:true"`
-	OutputFormat    string          `required:"true,split_words:true"`
-	SignModeStr     string          `required:"true,split_words:true"`
+	ChainPrefix     string          `required:"true" split_words:"true"`
+	RPCAddr         string          `required:"true"  split_words:"true"`
+	ChainID         string          `required:"true"  split_words:"true"`
+	GasPrices       string          `required:"true"  split_words:"true"`
+	HomeDir         string          `required:"true"  split_words:"true"`
+	SignKeyName     string          `required:"true"  split_words:"true"`
+	Timeout         time.Duration   `required:"true"  split_words:"true"`
+	GasAdjustment   float64         `required:"true"  split_words:"true"`
+	TxBroadcastType TxBroadcastType `required:"true"  split_words:"true"`
+	ConnectionID    string          `required:"true"  split_words:"true"`
+	ClientID        string          `required:"true"  split_words:"true"`
+	Debug           bool            `required:"true"  split_words:"true"`
+	AccountPrefix   string          `required:"true"  split_words:"true"`
+	KeyringBackend  string          `required:"true"  split_words:"true"`
+	OutputFormat    string          `required:"true"  split_words:"true"`
+	SignModeStr     string          `required:"true"  split_words:"true"`
 }
 
 type TargetChainConfig struct {
-	RPCAddr                string        `required:"true,split_words:true"`
-	ChainID                string        `required:"true,split_words:true"`
-	AccountPrefix          string        `required:"true,split_words:true"`
-	ValidatorAccountPrefix string        `required:"true,split_words:true"`
-	HomeDir                string        `required:"true,split_words:true"`
-	Timeout                time.Duration `required:"true,split_words:true"`
-	ConnectionID           string        `required:"true,split_words:true"`
-	ClientID               string        `required:"true,split_words:true"`
-	Debug                  bool          `required:"true,split_words:true"`
-	Key                    string        `required:"true,split_words:true"`
-	KeyringBackend         string        `required:"true,split_words:true"`
-	OutputFormat           string        `required:"true,split_words:true"`
-	SignModeStr            string        `required:"true,split_words:true"`
-	GasAdjustment          float64       `required:"true,split_words:true"`
-	GasPrices              string        `required:"true,split_words:true"`
+	RPCAddr                string        `required:"true"  split_words:"true"`
+	ChainID                string        `required:"true"  split_words:"true"`
+	AccountPrefix          string        `required:"true"  split_words:"true"`
+	ValidatorAccountPrefix string        `required:"true"  split_words:"true"`
+	HomeDir                string        `required:"true"  split_words:"true"`
+	Timeout                time.Duration `required:"true"  split_words:"true"`
+	ConnectionID           string        `required:"true"  split_words:"true"`
+	ClientID               string        `required:"true"  split_words:"true"`
+	Debug                  bool          `required:"true"  split_words:"true"`
+	Key                    string        `required:"true"  split_words:"true"`
+	KeyringBackend         string        `required:"true"  split_words:"true"`
+	OutputFormat           string        `required:"true"  split_words:"true"`
+	SignModeStr            string        `required:"true"  split_words:"true"`
+	GasAdjustment          float64       `required:"true"  split_words:"true"`
+	GasPrices              string        `required:"true"  split_words:"true"`
 }
 
 type TxBroadcastType string
