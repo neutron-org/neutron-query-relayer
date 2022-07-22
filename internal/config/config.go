@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 )
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	NeutronChain NeutronChainConfig `yaml:"neutron-chain" env-required:"true"`
-	TargetChain  TargetChainConfig  `yaml:"target-chain" env-required:"true"`
+	NeutronChain NeutronChainConfig       `yaml:"neutron-chain" env-required:"true"`
+	TargetChain  TargetChainConfig        `yaml:"target-chain" env-required:"true"`
+	Registry     *registry.RegistryConfig `yaml:"registry" env-required:"true"`
 }
 
 type NeutronChainConfig struct {

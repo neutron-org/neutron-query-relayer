@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/types/query"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"math"
 	"strconv"
+
+	"github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -28,6 +30,7 @@ import (
 type Relayer struct {
 	proofer      Proofer
 	submitter    Submitter
+	registry     *registry.Registry
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 
@@ -36,16 +39,18 @@ type Relayer struct {
 }
 
 func NewRelayer(
-		proofer Proofer,
-		submitter Submitter,
-		targetChainId,
-		targetChainPrefix string,
-		srcChain,
-		dstChain *relayer.Chain,
+	proofer Proofer,
+	submitter Submitter,
+	registry *registry.Registry,
+	targetChainId,
+	targetChainPrefix string,
+	srcChain,
+	dstChain *relayer.Chain,
 ) Relayer {
 	return Relayer{
 		proofer:           proofer,
 		submitter:         submitter,
+		registry:          registry,
 		targetChainId:     targetChainId,
 		targetChainPrefix: targetChainPrefix,
 		targetChain:       srcChain,
@@ -58,36 +63,40 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	if err != nil {
 		return fmt.Errorf("could not filter interchain query messages: %w", err)
 	}
+	if len(messages) == 0 {
+		fmt.Printf("event has been skipped: it's not intented for us (query: %s)\n", event.Query)
+		return nil
+	}
 
 	for _, m := range messages {
-		err := r.proofMessage(ctx, m)
-		if err != nil {
+		if err = r.proofMessage(ctx, m); err != nil {
 			fmt.Printf("could not process message query_id=%d err=%s\n", m.queryId, err)
 		} else {
 			fmt.Printf("proof for query_id=%d submitted successfully\n", m.queryId)
 		}
 	}
 
-	return nil
+	// TODO: return a detailed error message here, e.g.
+	// failed to prove N of M messages: latest error: %v (just an example, could be better)
+	return err
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	fmt.Printf("extracting events:\n%+v\n", event.Events)
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return nil, nil
 	}
 
 	if len(events[zoneIdAttr]) != len(events[parametersAttr]) ||
-			len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
-			len(events[zoneIdAttr]) != len(events[typeAttr]) {
+		len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
+		len(events[zoneIdAttr]) != len(events[typeAttr]) {
 		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
 	}
 
 	messages := make([]queryEventMessage, 0, len(events[zoneIdAttr]))
 
 	for idx, zoneId := range events[zoneIdAttr] {
-		if zoneId != r.targetChainId {
+		if !(r.isTargetZone(zoneId) && r.registry.Contains(events[ownerAttr][idx])) {
 			continue
 		}
 
@@ -363,4 +372,9 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 	}
 
 	return updateMsgUnpacked.Msg, nil
+}
+
+// isTargetZone returns true if the zoneID is the relayer's target zone id.
+func (r *Relayer) isTargetZone(zoneID string) bool {
+	return r.targetChainId == zoneID
 }

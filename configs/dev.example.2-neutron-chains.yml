@@ -20,3 +20,8 @@ target-chain:
   connection-id: "connection-0"
   client-id: "07-tendermint-0"
   chain-provider-config-path: "./configs/chains/target.json"
+
+registry:
+  addresses:
+    - neutron1m9l358xunhhwds0568za49mzhvuxx9ux8xafx2
+    - neutron14xcrdjwwxtf9zr7dvaa97wy056se6r5erln9pf
