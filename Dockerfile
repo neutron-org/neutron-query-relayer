@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM golang:1.17-alpine as build
+FROM golang:1.17-alpine as builder
 
-RUN apk update && apk add openssh && apk add git
+RUN apk update && apk add openssh && apk add git && apk add gcc
 
 RUN mkdir /app
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN go build -a -o /go/bin/cosmos_query_relayer ./cmd/cosmos_query_relayer
 
 FROM alpine:3.12
 RUN apk --no-cache add ca-certificates
-COPY --from=build /go/bin/cosmos_query_relayer /bin/
+COPY --from=builder /go/bin/cosmos_query_relayer /bin/
 
 EXPOSE 8080
 
