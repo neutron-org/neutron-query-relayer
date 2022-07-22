@@ -249,10 +249,10 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		proofStart := time.Now()
 		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, resultBlocks)
 		if err != nil {
-			neutronmetrics.AddFailedProof("recipientTransactions", time.Since(proofStart).Seconds())
+			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
-		neutronmetrics.AddSuccessProof("recipientTransactions", time.Since(proofStart).Seconds())
+		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 
 	case delegationRewardsType:
 		return fmt.Errorf("could not relay not implemented query x/distribution/CalculateDelegationRewards")

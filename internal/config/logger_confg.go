@@ -7,7 +7,7 @@ import (
 
 const loggerPrefix = "LOGGER"
 
-// NewLoggerConfig  initializes a default production config w parameters, overwritten by env vars if necessarry
+// NewLoggerConfig  initializes a default production config w parameters, overwritten by env vars if present
 func NewLoggerConfig() (*zap.Config, error) {
 	loggerCfg := zap.NewProductionConfig()
 	var cfg zap.Config

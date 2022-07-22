@@ -1,12 +1,26 @@
-FROM golang:1.17
+# syntax = docker/dockerfile:1.0-experimental
+FROM golang:1.17-alpine as build
 
-
-# these ports are just copied from dev example config
-EXPOSE 16657 26657 8080
+RUN apk update && apk add openssh && apk add git
 
 RUN mkdir /app
-ADD . /app
 WORKDIR /app
 
-RUN go build -a -o cosmos_query_relayer ./cmd/cosmos_query_relayer/*.go
-CMD go run ./cmd/cosmos_query_relayer/
+RUN mkdir -p ~/.ssh && chmod 600 ~/.ssh
+RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+ENV GOPRIVATE=github.com/neutron-org/neutron
+RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+COPY . .
+RUN --mount=type=ssh go mod download
+
+RUN go build -a -o /go/bin/cosmos_query_relayer ./cmd/cosmos_query_relayer
+
+
+FROM alpine:3.12
+RUN apk --no-cache add ca-certificates
+COPY --from=build /go/bin/cosmos_query_relayer /bin/
+
+EXPOSE 8080
+
+ENTRYPOINT ["cosmos_query_relayer"]

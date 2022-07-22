@@ -8,8 +8,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// GetChain reads a chain env  and adds it to a's chains.
-func GetChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath string, debug bool) (*relayer.Chain, error) {
+// getChain reads a chain env  and adds it to a's chains.
+func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath string, debug bool) (*relayer.Chain, error) {
 	prov, err := cfg.NewProvider(
 		logger,
 		homepath,
@@ -43,10 +43,9 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relay
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
 	}
-	chain, err := GetChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
+	chain, err := getChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("could not create neutron chain: %w", err)
-
 	}
 
 	return chain, nil
@@ -66,10 +65,9 @@ func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
 	}
-	chain, err := GetChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
+	chain, err := getChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("could not create neutron chain: %w", err)
-
 	}
 
 	return chain, nil

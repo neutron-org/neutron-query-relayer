@@ -17,6 +17,7 @@ var (
 		Name: "relayer_failed_proofs",
 		Help: "The total number of failed requests (counter)",
 	})
+
 	relayerSuccessProofs = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "relayer_succeed_proofs",
 		Help: "The total number of succeed requests (counter)",
@@ -35,7 +36,7 @@ var (
 	}, []string{labelMethod, labelType})
 
 	targetChainGettersTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "target_chain_getters_timee",
+		Name:    "target_chain_getters_time",
 		Help:    "A histogram of target chain getters duration",
 		Buckets: []float64{0.5, 1, 2, 3, 5, 10, 30},
 	}, []string{labelMethod, labelType})

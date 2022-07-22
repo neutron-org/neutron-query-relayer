@@ -15,28 +15,37 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
 )
 
 func main() {
 	loggerConfig, err := config.NewLoggerConfig()
 	if err != nil {
-		fmt.Printf("couldn't initialize config: %s", err)
+		fmt.Printf("couldn't initialize logging config: %s", err)
+		os.Exit(1)
 	}
 	logger, err := loggerConfig.Build()
 	if err != nil {
-		fmt.Printf("couldn't initialize logger: %s", err)
+		fmt.Printf("couldn't initialize logger: %w", err)
+		os.Exit(1)
 	}
 	logger.Info("cosmos-query-relayer starts...")
 
 	http.Handle("/metrics", promhttp.Handler())
-	go http.ListenAndServe(":8080", nil)
+	go func() {
+		err := http.ListenAndServe(":8088", nil)
+		if err != nil {
+			logger.Error("failed to serve metrics", zap.Error(err))
+			os.Exit(1)
+		}
+	}()
 	logger.Info("metrics handler set up")
 
 	cfg, err := config.NewCosmosQueryRelayerConfig()
 	if err != nil {
 		logger.Error("cannot initialize relayer config", zap.Error(err))
 	}
-	logger.Info("initialized config: ", zap.Any("config:", cfg))
+	logger.Info("initialized config", zap.Any("config", cfg))
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
@@ -54,7 +63,7 @@ func main() {
 
 	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
 	if err != nil {
-		logger.Fatal("cannot create neutron client:", zap.Error(err))
+		logger.Fatal("cannot create neutron client", zap.Error(err))
 	}
 
 	codec := raw.MakeCodecDefault()
@@ -65,7 +74,7 @@ func main() {
 
 	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain)
 	if err != nil {
-		logger.Fatal("cannot create tx sender:", zap.Error(err))
+		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender)
@@ -95,14 +104,14 @@ func main() {
 		}
 	})
 	if err != nil {
-		logger.Fatal("error subscribing to neutron chain events:", zap.Error(err))
+		logger.Fatal("error subscribing to neutron chain events", zap.Error(err))
 	}
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
 	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load target chain from env: %s", err)
+		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
 	}
 
 	if err := targetChain.AddPath(cfg.TargetChain.ClientID, cfg.TargetChain.ConnectionID); err != nil {
@@ -116,7 +125,7 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %s", err)
+		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
 	}
 
 	if err := neutronChain.AddPath(cfg.NeutronChain.ClientID, cfg.NeutronChain.ConnectionID); err != nil {

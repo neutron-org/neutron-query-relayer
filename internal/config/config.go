@@ -12,6 +12,8 @@ type CosmosQueryRelayerConfig struct {
 	TargetChain  *TargetChainConfig  `split_words:"true"`
 }
 
+const EnvPrefix string = "RELAYER"
+
 type NeutronChainConfig struct {
 	ChainPrefix     string          `required:"true" split_words:"true"`
 	RPCAddr         string          `required:"true"  split_words:"true"`
@@ -55,7 +57,6 @@ const (
 	BroadcastTxSync   TxBroadcastType = "BroadcastTxSync"
 	BroadcastTxAsync  TxBroadcastType = "BroadcastTxAsync"
 	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
-	EnvPrefix         string          = "RELAYER" // do we need prefix? it's decreases readablility
 )
 
 func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
