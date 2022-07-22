@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/ilyakaznacheev/cleanenv v1.2.6
-	github.com/neutron-org/neutron v0.0.0-20220712080719-d388fbb47223
+	github.com/neutron-org/neutron v0.0.0-20220721114753-94f4285e5797
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
 )
@@ -155,5 +155,3 @@ require (
 )
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
-
-replace github.com/neutron-org/neutron => ../neutron

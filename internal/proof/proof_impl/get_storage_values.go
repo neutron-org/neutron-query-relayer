@@ -3,13 +3,12 @@ package proof_impl
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // GetStorageValuesWithProof gets proofs for query type = 'kv'
-func (p ProoferImpl) GetStorageValuesWithProof(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]proof.StorageValue, uint64, error) {
-	stValues := make([]proof.StorageValue, 0, len(keys))
+func (p ProoferImpl) GetStorageValuesWithProof(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
+	stValues := make([]*neutrontypes.StorageValue, 0, len(keys))
 	height := uint64(0)
 
 	for _, key := range keys {
@@ -17,7 +16,7 @@ func (p ProoferImpl) GetStorageValuesWithProof(ctx context.Context, inputHeight 
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to query tendermint proof for path=%s and key=%v: %w", key.GetPath(), key.GetKey(), err)
 		}
-		stValues = append(stValues, *value)
+		stValues = append(stValues, value)
 		height = h
 	}
 
