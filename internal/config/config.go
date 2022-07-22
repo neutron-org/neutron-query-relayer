@@ -8,45 +8,45 @@ import (
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	NeutronChain NeutronChainConfig
-	TargetChain  TargetChainConfig
+	NeutronChain *NeutronChainConfig `env:",prefix=NEUTRON_CHAIN_"`
+	TargetChain  *TargetChainConfig  `env:",prefix=TARGET_CHAIN_"`
 }
 
 type NeutronChainConfig struct {
-	ChainPrefix     string
-	RPCAddr         string
-	ChainID         string
-	GasPrices       string
-	HomeDir         string
-	SignKeyName     string
-	Timeout         time.Duration
-	GasAdjustment   float64
-	TxBroadcastType TxBroadcastType
-	ConnectionID    string
-	ClientID        string
-	Debug           bool
-	AccountPrefix   string
-	KeyringBackend  string
-	OutputFormat    string
-	SignModeStr     string
+	ChainPrefix     string          `required:"true,split_words:true"`
+	RPCAddr         string          `required:"true,split_words:true"`
+	ChainID         string          `required:"true,split_words:true"`
+	GasPrices       string          `required:"true,split_words:true"`
+	HomeDir         string          `required:"true,split_words:true"`
+	SignKeyName     string          `required:"true,split_words:true"`
+	Timeout         time.Duration   `required:"true,split_words:true"`
+	GasAdjustment   float64         `required:"true,split_words:true"`
+	TxBroadcastType TxBroadcastType `required:"true,split_words:true"`
+	ConnectionID    string          `required:"true,split_words:true"`
+	ClientID        string          `required:"true,split_words:true"`
+	Debug           bool            `required:"true,split_words:true"`
+	AccountPrefix   string          `required:"true,split_words:true"`
+	KeyringBackend  string          `required:"true,split_words:true"`
+	OutputFormat    string          `required:"true,split_words:true"`
+	SignModeStr     string          `required:"true,split_words:true"`
 }
 
 type TargetChainConfig struct {
-	RPCAddr                string
-	ChainID                string
-	AccountPrefix          string
-	ValidatorAccountPrefix string
-	HomeDir                string
-	Timeout                time.Duration
-	ConnectionID           string
-	ClientID               string
-	Debug                  bool
-	Key                    string
-	KeyringBackend         string
-	OutputFormat           string
-	SignModeStr            string
-	GasAdjustment          float64
-	GasPrices              string
+	RPCAddr                string        `required:"true,split_words:true"`
+	ChainID                string        `required:"true,split_words:true"`
+	AccountPrefix          string        `required:"true,split_words:true"`
+	ValidatorAccountPrefix string        `required:"true,split_words:true"`
+	HomeDir                string        `required:"true,split_words:true"`
+	Timeout                time.Duration `required:"true,split_words:true"`
+	ConnectionID           string        `required:"true,split_words:true"`
+	ClientID               string        `required:"true,split_words:true"`
+	Debug                  bool          `required:"true,split_words:true"`
+	Key                    string        `required:"true,split_words:true"`
+	KeyringBackend         string        `required:"true,split_words:true"`
+	OutputFormat           string        `required:"true,split_words:true"`
+	SignModeStr            string        `required:"true,split_words:true"`
+	GasAdjustment          float64       `required:"true,split_words:true"`
+	GasPrices              string        `required:"true,split_words:true"`
 }
 
 type TxBroadcastType string
@@ -55,16 +55,15 @@ const (
 	BroadcastTxSync   TxBroadcastType = "BroadcastTxSync"
 	BroadcastTxAsync  TxBroadcastType = "BroadcastTxAsync"
 	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
-	EnvPrefix         string          = "" // do we need prefix? it's decreases readableness
+	EnvPrefix         string          = "RELAYER" // do we need prefix? it's decreases readablility
 )
 
 func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
 	var cfg CosmosQueryRelayerConfig
 
-	err := envconfig.Process(EnvPrefix, cfg)
+	err := envconfig.Process(EnvPrefix, &cfg)
 	if err != nil {
 		return cfg, fmt.Errorf("could not read config from env: %w", err)
 	}
-
 	return cfg, nil
 }

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	neutronmetrics "github.com/lidofinance/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
-	neutrontypes "github.com/lidofinance/gaia-wasm-zone/x/interchainqueries/types"
+	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"math"
 	"strconv"
 	"time"
@@ -29,11 +29,11 @@ import (
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	proofer     Proofer
-	submitter   Submitter
-	targetChain *relayer.Chain
-	lidoChain   *relayer.Chain
-	logger      *zap.Logger
+	proofer      Proofer
+	submitter    Submitter
+	targetChain  *relayer.Chain
+	neutronChain *relayer.Chain
+	logger       *zap.Logger
 
 	targetChainId     string
 	targetChainPrefix string
@@ -54,7 +54,7 @@ func NewRelayer(
 		targetChainId:     targetChainId,
 		targetChainPrefix: targetChainPrefix,
 		targetChain:       srcChain,
-		lidoChain:         dstChain,
+		neutronChain:      dstChain,
 		logger:            logger,
 	}
 }
@@ -247,7 +247,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 		proofStart := time.Now()
-		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.lidoChain.PathEnd.ClientID, resultBlocks)
+		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, resultBlocks)
 		if err != nil {
 			neutronmetrics.AddFailedProof("recipientTransactions", time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
@@ -341,7 +341,7 @@ func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusS
 
 	tmHeader.TrustedHeight = bestTrustedHeight
 	neutronmetrics.AddSuccessTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
-	return provConcreteTargetChain.InjectTrustedFields(ctx, tmHeader, r.lidoChain.ChainProvider, r.lidoChain.PathEnd.ClientID)
+	return provConcreteTargetChain.InjectTrustedFields(ctx, tmHeader, r.neutronChain.ChainProvider, r.neutronChain.PathEnd.ClientID)
 }
 
 func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {

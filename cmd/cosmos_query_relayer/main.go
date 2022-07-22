@@ -36,10 +36,11 @@ func main() {
 	if err != nil {
 		logger.Error("cannot initialize relayer config", zap.Error(err))
 	}
-	logger.Info("initialized config")
+	logger.Info("initialized config: ", zap.Any("config:", cfg))
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
+	logger.Info("config: ", zap.Any("config exported", cfg))
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
 	if err != nil {
@@ -62,7 +63,7 @@ func main() {
 		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
-	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, cfg.NeutronChain)
+	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain)
 	if err != nil {
 		logger.Fatal("cannot create tx sender:", zap.Error(err))
 	}
@@ -84,7 +85,7 @@ func main() {
 		logger,
 	)
 	ctx := context.Background()
-	logger.Info("subscribing to lido chain events")
+	logger.Info("subscribing to neutron chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
 	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
@@ -94,12 +95,12 @@ func main() {
 		}
 	})
 	if err != nil {
-		logger.Fatal("error subscribing to lido chain events:", zap.Error(err))
+		logger.Fatal("error subscribing to neutron chain events:", zap.Error(err))
 	}
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetTargetChain(logger, &cfg.TargetChain)
+	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %s", err)
 	}
@@ -112,7 +113,7 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain, err = relay.GetNeutronChain(logger, &cfg.NeutronChain)
+	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %s", err)
