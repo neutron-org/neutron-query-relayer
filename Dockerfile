@@ -19,7 +19,7 @@ RUN go build -a -o /go/bin/cosmos_query_relayer ./cmd/cosmos_query_relayer
 
 
 FROM debian:buster
-RUN apt update &&  apt  install  ca-certificates -y
+RUN apt update && apt install ca-certificates -y
 ADD https://github.com/CosmWasm/wasmvm/raw/0ff9c3a666ef15b12e447e830cc32a3314325ef0/api/libwasmvm.x86_64.so /lib/libwasmvm.x86_64.so
 COPY --from=builder /go/bin/cosmos_query_relayer /bin/
 EXPOSE 8080
