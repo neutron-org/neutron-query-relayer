@@ -26,7 +26,7 @@ func main() {
 	}
 	logger, err := loggerConfig.Build()
 	if err != nil {
-		fmt.Printf("couldn't initialize logger: %w", err)
+		fmt.Printf("couldn't initialize logger: %s", err)
 		os.Exit(1)
 	}
 	logger.Info("cosmos-query-relayer starts...")
