@@ -9,7 +9,6 @@ jobs:
     
     env:
       GOPRIVATE: github.com/neutron-org/neutron
-      GH_ACCESS_TOKEN: ${{ secrets.OOPCODE_ACCESS_TOKEN }}
     
     steps:
       - name: Set up Go 1.16
