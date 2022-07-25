@@ -57,7 +57,7 @@ echo "DEMOWALLET2: $DEMOWALLET2
  make build-docker
  ```
 2. Run
- `docker run --env-file .env.example -v  $PWD/neutron/data:/data -p 9999:9999 neutron-org/cosmos-query-relayer`
+ `docker run --env-file .env.example -v $PWD/neutron/data:/data -p 9999:9999 neutron-org/cosmos-query-relayer`
 
 ### Logging
 We are using [zap.loger](https://github.com/uber-go/zap)
