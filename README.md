@@ -15,7 +15,7 @@ Relayer sees the incoming event from blockchain L and:
 Blockchain L can then verify the result for the query.
 
 # Running in development
-- export enviroment you need (e.g. `export $(grep -v '^#' .env.example | xargs) ` note: change rpc addresses to actual)
+- export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs) ` note: change rpc addresses to actual)
 - `$ make dev`
 
 For more configuration parameters see struct in internal/config/config.go
