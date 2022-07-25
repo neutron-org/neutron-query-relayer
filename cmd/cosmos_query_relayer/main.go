@@ -14,26 +14,24 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
+	"log"
 	"net/http"
-	"os"
 )
 
 func main() {
 	loggerConfig, err := config.NewLoggerConfig()
 	if err != nil {
-		fmt.Printf("couldn't initialize logging config: %s", err)
-		os.Exit(1)
+		log.Fatalf("couldn't initialize logging config: %s", err)
 	}
 	logger, err := loggerConfig.Build()
 	if err != nil {
-		fmt.Printf("couldn't initialize logger: %s", err)
-		os.Exit(1)
+		log.Fatalf("couldn't initialize logger: %s", err)
 	}
 	logger.Info("cosmos-query-relayer starts...")
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		err := http.ListenAndServe(":9090", nil)
+		err := http.ListenAndServe(":9999", nil)
 		if err != nil {
 			logger.Fatal("failed to serve metrics", zap.Error(err))
 		}
@@ -42,7 +40,7 @@ func main() {
 
 	cfg, err := config.NewCosmosQueryRelayerConfig()
 	if err != nil {
-		logger.Error("cannot initialize relayer config", zap.Error(err))
+		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
 	logger.Info("initialized config", zap.Any("config", cfg))
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on

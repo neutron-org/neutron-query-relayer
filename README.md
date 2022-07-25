@@ -15,7 +15,7 @@ Relayer sees the incoming event from blockchain L and:
 Blockchain L can then verify the result for the query.
 
 # Running in development
-- export enviroment you need (e.g. `export $(grep -v '^#' .env.example | xargs) `)
+- export enviroment you need (e.g. `export $(grep -v '^#' .env.example | xargs) ` note: change rpc addresses to actual)
 - `$ make dev`
 
 For more configuration parameters see struct in internal/config/config.go
@@ -57,12 +57,11 @@ echo "DEMOWALLET2: $DEMOWALLET2
  make build-docker
  ```
 2. Run
- ` docker run --env-file .env.example --network host -v $PWD/neutron/data:/data neutron-org/cosmos-query-relayer`
- ### If you run chains locally:
-- consider adding  `--network host` to above command
-- replace all `127.0.0.1` to `host.docker.internal` in env file or you can use `.env.example`
-
+ `docker run --env-file .env.example -v -p 9999:9999 $PWD/neutron/data:/data neutron-org/cosmos-query-relayer`
 
 ### Logging
 We are using [zap.loger](https://github.com/uber-go/zap)
 By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
+
+### If you want to run docker with local chains:
+- use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost/127.0.0.1` 
