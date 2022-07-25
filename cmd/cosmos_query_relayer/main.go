@@ -42,11 +42,10 @@ func main() {
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
-	logger.Info("initialized config", zap.Any("config", cfg))
+	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
-	logger.Info("config: ", zap.Any("config exported", cfg))
 
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
 	if err != nil {
