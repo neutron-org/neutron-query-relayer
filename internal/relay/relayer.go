@@ -69,7 +69,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		start := time.Now()
 		err := r.proofMessage(ctx, m)
 		if err != nil {
-			r.logger.Error("could not process message query_id=%d err=%s\n", zap.Uint64("query_id", m.queryId), zap.Error(err))
+			r.logger.Error("could not process message", zap.Uint64("query_id", m.queryId), zap.Error(err))
 			neutronmetrics.IncFailedProofs()
 			neutronmetrics.AddFailedRequest(m.messageType, time.Since(start).Seconds())
 		} else {
