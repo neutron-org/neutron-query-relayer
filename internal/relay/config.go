@@ -53,7 +53,7 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relay
 
 func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            cfg.Key,
+		Key:            "",
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,

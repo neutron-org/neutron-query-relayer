@@ -64,4 +64,4 @@ We are using [zap.loger](https://github.com/uber-go/zap)
 By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
 
 ### If you want to run docker with local chains:
-- use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost/127.0.0.1` 
+- use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1` 

@@ -14,7 +14,6 @@ RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
 
 COPY . .
 RUN --mount=type=ssh go mod download
-
 RUN go build -a -o /go/bin/cosmos_query_relayer ./cmd/cosmos_query_relayer
 
 
