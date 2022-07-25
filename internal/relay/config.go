@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// getChain reads a chain env  and adds it to a's chains.
+// getChain reads a chain env and adds it to a's chains.
 func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath string, debug bool) (*relayer.Chain, error) {
 	prov, err := cfg.NewProvider(
 		logger,

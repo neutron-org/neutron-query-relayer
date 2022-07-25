@@ -69,6 +69,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		start := time.Now()
 		err := r.proofMessage(ctx, m)
 		if err != nil {
+			r.logger.Error("could not process message query_id=%d err=%s\n", zap.Uint64("query_id", m.queryId), zap.Error(err))
 			neutronmetrics.IncFailedProofs()
 			neutronmetrics.AddFailedRequest(m.messageType, time.Since(start).Seconds())
 		} else {
@@ -174,7 +175,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
-		neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
+		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 	case exchangeRateType:
 		var params exchangeRateParams
 		err := json.Unmarshal(m.parameters, &params)
