@@ -15,7 +15,7 @@ Relayer sees the incoming event from blockchain L and:
 Blockchain L can then verify the result for the query.
 
 # Running in development
-- export enviroment you need (e.g.)
+- export enviroment you need (e.g. `export $(grep -v '^#' .env.example | xargs) `)
 - `$ make dev`
 
 For more configuration parameters see struct in internal/config/config.go
@@ -45,22 +45,22 @@ echo "DEMOWALLET2: $DEMOWALLET2
 `./build/neutrond tx interchainqueries register-interchain-query test-2 connection-0 x/staking/DelegatorDelegations '{"delegator": "neutron10h9stc5v6ntgeygf5xf945njqq5h32r54rf7kf"}' 1 --from demowallet1 --gas 10000000 --gas-adjustment 1.4 --gas-prices 0.5stake --broadcast-mode block --chain-id test-1 --keyring-backend test --home ./data/test-1 --node tcp://127.0.0.1:16657`
 
 ### terminal 3
-## via cli
-1. set env from env list via way you prefer
+#### via cli
+1. set env from env list via way you prefer (e.g. `export $(grep -v '^#' .env.example | xargs)` )
 2. `make dev`
 
 
-## via Docker
+#### via Docker
 
 1. Build docker image 
 ```
  make build-docker
  ```
 2. Run
- `docker run  --env-file [enviroment file]  -v  [/local/path/to/keys:/container/path/to/key(which matches env)] neutron-org/cosmos-query-relayer `
- ### if you run chains locally:
+ ` docker run --env-file .env.example --network host -v $PWD/neutron/data:/data neutron-org/cosmos-query-relayer`
+ ### If you run chains locally:
 - consider adding  `--network host` to above command
-- replace all `127.0.0.1` to `host.docker.internal` in env file
+- replace all `127.0.0.1` to `host.docker.internal` in env file or you can use `.env.example`
 
 
 ### Logging

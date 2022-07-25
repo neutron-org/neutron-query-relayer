@@ -33,10 +33,9 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		err := http.ListenAndServe(":8088", nil)
+		err := http.ListenAndServe(":9090", nil)
 		if err != nil {
-			logger.Error("failed to serve metrics", zap.Error(err))
-			os.Exit(1)
+			logger.Fatal("failed to serve metrics", zap.Error(err))
 		}
 	}()
 	logger.Info("metrics handler set up")

@@ -9,11 +9,10 @@ const loggerPrefix = "LOGGER"
 
 // NewLoggerConfig  initializes a default production config w parameters, overwritten by env vars if present
 func NewLoggerConfig() (*zap.Config, error) {
-	loggerCfg := zap.NewProductionConfig()
-	var cfg zap.Config
+	cfg := zap.NewProductionConfig()
 	err := envconfig.Process(loggerPrefix, &cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &loggerCfg, nil
+	return &cfg, nil
 }
