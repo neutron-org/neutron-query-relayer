@@ -57,10 +57,12 @@ echo "DEMOWALLET2: $DEMOWALLET2
  make build-docker
  ```
 2. Run
- `docker run -e env.list neutron-org/cosmos-query-relayer  -v  /local/path/to/keys:/container/path/to/key(which matches env) neutron-org/cosmos-query-relayer `
-consider using `--network="host"` if you run chains locally 
+ `docker run  --env-file [enviroment file]  -v  [/local/path/to/keys:/container/path/to/key(which matches env)] neutron-org/cosmos-query-relayer `
+ ### if you run chains locally:
+- consider adding  `--network host` to above command
+- replace all `127.0.0.1` to `host.docker.internal` in env file
 
 
 ### Logging
-We are using zap.loger(link)
-By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see env.list for exapmles)
+We are using [zap.loger](https://github.com/uber-go/zap)
+By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)

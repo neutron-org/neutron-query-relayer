@@ -1,7 +1,8 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM golang:1.17-alpine as builder
+FROM golang:1.17-buster as builder
 
-RUN apk update && apk add openssh && apk add git && apk add gcc
+RUN apt update
+RUN apt -y install openssh-server git
 
 RUN mkdir /app
 WORKDIR /app
@@ -17,10 +18,10 @@ RUN --mount=type=ssh go mod download
 RUN go build -a -o /go/bin/cosmos_query_relayer ./cmd/cosmos_query_relayer
 
 
-FROM alpine:3.12
-RUN apk --no-cache add ca-certificates
+FROM debian:buster
+RUN apt update &&  apt  install  ca-certificates -y
+ADD https://github.com/CosmWasm/wasmvm/raw/0ff9c3a666ef15b12e447e830cc32a3314325ef0/api/libwasmvm.x86_64.so /lib/libwasmvm.x86_64.so
 COPY --from=builder /go/bin/cosmos_query_relayer /bin/
-
 EXPOSE 8080
 
 ENTRYPOINT ["cosmos_query_relayer"]
