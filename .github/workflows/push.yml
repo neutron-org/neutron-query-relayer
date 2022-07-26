@@ -1,0 +1,27 @@
+name: Push
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    env:
+      GOPRIVATE: github.com/neutron-org/neutron
+    
+    steps:
+      - name: Set up Go 1.16
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.16
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        
+      - name: Set up private repo access
+        run: git config --global url."https://${{ secrets.OOPCODE_ACCESS_TOKEN }}:x-oauth-basic@github.com".insteadOf "https://github.com"
+        
+      - name: Test
+        run: make test
