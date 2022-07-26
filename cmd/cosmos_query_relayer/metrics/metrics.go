@@ -15,7 +15,7 @@ const (
 var (
 	relayerProofs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "relayer_proofs",
-		Help: "The total number of failed requests (counter)",
+		Help: "The total number requests (counter)",
 	}, []string{labelType})
 
 	requestTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
