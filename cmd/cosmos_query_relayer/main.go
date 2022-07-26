@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
-
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
@@ -14,61 +11,73 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	neutronapp "github.com/neutron-org/neutron/app"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
+	"log"
+	"net/http"
 )
 
-const configPathEnv = "CONFIG_PATH"
-
 func main() {
-	fmt.Println("cosmos-query-relayer starts...")
-
-	ctx := context.Background()
-	cfgPath := os.Getenv(configPathEnv)
-	cfg, err := config.NewCosmosQueryRelayerConfig(cfgPath)
+	loggerConfig, err := config.NewLoggerConfig()
 	if err != nil {
-		log.Fatalf("cannot initialize relayer config: %s", err)
+		log.Fatalf("couldn't initialize logging config: %s", err)
 	}
-	fmt.Println("initialized config")
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		log.Fatalf("couldn't initialize logger: %s", err)
+	}
+	logger.Info("cosmos-query-relayer starts...")
 
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		err := http.ListenAndServe(":9999", nil)
+		if err != nil {
+			logger.Fatal("failed to serve metrics", zap.Error(err))
+		}
+	}()
+	logger.Info("metrics handler set up")
+
+	cfg, err := config.NewCosmosQueryRelayerConfig()
+	if err != nil {
+		logger.Fatal("cannot initialize relayer config", zap.Error(err))
+	}
+	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
-	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddress, cfg.TargetChain.Timeout)
+	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
 	if err != nil {
-		log.Fatalf("could not initialize target rpc client: %s", err)
+		logger.Fatal("could not initialize target rpc client", zap.Error(err))
 	}
 
 	targetQuerier, err := proof.NewQuerier(targetClient, cfg.TargetChain.ChainID, cfg.TargetChain.ValidatorAccountPrefix)
 	if err != nil {
-		log.Fatalf("cannot connect to target chain: %s", err)
+		logger.Fatal("cannot connect to target chain", zap.Error(err))
 	}
 
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddress, cfg.NeutronChain.Timeout)
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
 	if err != nil {
-		log.Fatalf("cannot create neutron client: %s", err)
+		logger.Fatal("cannot create neutron client", zap.Error(err))
 	}
 
 	codec := raw.MakeCodecDefault()
 	keybase, err := submit.TestKeybase(cfg.NeutronChain.ChainID, cfg.NeutronChain.HomeDir)
 	if err != nil {
-		log.Fatalf("cannot initialize keybase: %s", err)
+		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
-	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, cfg.NeutronChain)
+	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain)
 	if err != nil {
-		log.Fatalf("cannot create tx sender: %s", err)
+		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
-
-	logger := zap.NewExample() // TODO: add proper logging.
-
 	neutronChain, targetChain, err := loadChains(cfg, logger)
 	if err != nil {
-		log.Fatalf("failed to loadChains: %s", err)
+		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
 	relayer := relay.NewRelayer(
@@ -78,27 +87,27 @@ func main() {
 		cfg.TargetChain.AccountPrefix,
 		targetChain,
 		neutronChain,
+		logger,
 	)
-
-	fmt.Println("subscribing to neutron chain events")
+	ctx := context.Background()
+	logger.Info("subscribing to neutron chain events")
 	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddress, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
+	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		err = relayer.Proof(ctx, event)
 		if err != nil {
-			fmt.Printf("error proofing event: %s\n", err)
+			logger.Error("error proofing event", zap.Error(err))
 		}
 	})
 	if err != nil {
-		log.Fatalf("error subscribing to neutron chain events: %s", err)
+		logger.Fatal("error subscribing to neutron chain events", zap.Error(err))
 	}
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetChainFromFile(logger, cfg.TargetChain.HomeDir,
-		cfg.TargetChain.ChainProviderConfigPath, cfg.TargetChain.Debug)
+	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to GetChainFromFile %s: %s", cfg.TargetChain.ChainProviderConfigPath, err)
+		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
 	}
 
 	if err := targetChain.AddPath(cfg.TargetChain.ClientID, cfg.TargetChain.ConnectionID); err != nil {
@@ -109,10 +118,10 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain, err = relay.GetChainFromFile(logger, cfg.NeutronChain.HomeDir,
-		cfg.NeutronChain.ChainProviderConfigPath, cfg.NeutronChain.Debug)
+	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain)
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to GetChainFromFile %s: %w", cfg.NeutronChain.ChainProviderConfigPath, err)
+		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
 	}
 
 	if err := neutronChain.AddPath(cfg.NeutronChain.ClientID, cfg.NeutronChain.ConnectionID); err != nil {

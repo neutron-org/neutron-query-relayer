@@ -2,44 +2,52 @@ package config
 
 import (
 	"fmt"
+	"github.com/kelseyhightower/envconfig"
 	"time"
-
-	"github.com/ilyakaznacheev/cleanenv"
 )
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	NeutronChain NeutronChainConfig `yaml:"neutron-chain" env-required:"true"`
-	TargetChain  TargetChainConfig  `yaml:"target-chain" env-required:"true"`
+	NeutronChain *NeutronChainConfig `split_words:"true"`
+	TargetChain  *TargetChainConfig  `split_words:"true"`
 }
 
+const EnvPrefix string = "RELAYER"
+
 type NeutronChainConfig struct {
-	ChainPrefix             string          `yaml:"chain-prefix" env-required:"true"`
-	RPCAddress              string          `yaml:"rpc-address" env-required:"true"`
-	ChainID                 string          `yaml:"chain-id" env-required:"true"`
-	GasPrices               string          `yaml:"gas-prices" env-required:"true"`
-	HomeDir                 string          `yaml:"home-dir" env-required:"true"`
-	SignKeyName             string          `yaml:"sign-key-name" env-default:"default=default"`
-	Timeout                 time.Duration   `yaml:"timeout" env-default:"10s"`
-	GasAdjustment           float64         `yaml:"gas-adjustment" env-default:"1.5"`
-	TxBroadcastType         TxBroadcastType `yaml:"tx-broadcast-type" env-default:"BroadcastTxAsync"`
-	ConnectionID            string          `yaml:"connection-id" env-default:"connection-0"`
-	ClientID                string          `yaml:"client-id" env-default:"07-tendermint-0"`
-	Debug                   bool            `yaml:"debug" env-default:"false"`
-	ChainProviderConfigPath string          `yaml:"chain-provider-config-path" env-default:"./configs/chains/neutron.json"`
+	ChainPrefix     string          `required:"true" split_words:"true"`
+	RPCAddr         string          `required:"true" split_words:"true"`
+	ChainID         string          `required:"true" split_words:"true"`
+	GasPrices       string          `required:"true" split_words:"true"`
+	HomeDir         string          `required:"true" split_words:"true"`
+	SignKeyName     string          `required:"true" split_words:"true"`
+	Timeout         time.Duration   `required:"true" split_words:"true"`
+	GasAdjustment   float64         `required:"true" split_words:"true"`
+	TxBroadcastType TxBroadcastType `required:"true" split_words:"true"`
+	ConnectionID    string          `required:"true" split_words:"true"`
+	ClientID        string          `required:"true" split_words:"true"`
+	Debug           bool            `required:"true" split_words:"true"`
+	AccountPrefix   string          `required:"true" split_words:"true"`
+	KeyringBackend  string          `required:"true" split_words:"true"`
+	OutputFormat    string          `required:"true" split_words:"true"`
+	SignModeStr     string          `required:"true" split_words:"true"`
 }
 
 type TargetChainConfig struct {
-	RPCAddress              string        `yaml:"rpc-address"`
-	ChainID                 string        `yaml:"chain-id"`
-	AccountPrefix           string        `yaml:"account-prefix"`
-	ValidatorAccountPrefix  string        `yaml:"validator-account-prefix"`
-	HomeDir                 string        `yaml:"home-dir" env-required:"true"`
-	Timeout                 time.Duration `yaml:"timeout" env-default:"10s"`
-	ConnectionID            string        `yaml:"connection-id" env-default:"connection-0"`
-	ClientID                string        `yaml:"client-id" env-default:"07-tendermint-0"`
-	Debug                   bool          `yaml:"debug" env-default:"false"`
-	ChainProviderConfigPath string        `yaml:"chain-provider-config-path" env-default:"./configs/chains/target.json"`
+	RPCAddr                string        `required:"true" split_words:"true"`
+	ChainID                string        `required:"true" split_words:"true"`
+	AccountPrefix          string        `required:"true" split_words:"true"`
+	ValidatorAccountPrefix string        `required:"true" split_words:"true"`
+	HomeDir                string        `required:"true" split_words:"true"`
+	Timeout                time.Duration `required:"true" split_words:"true"`
+	ConnectionID           string        `required:"true" split_words:"true"`
+	ClientID               string        `required:"true" split_words:"true"`
+	Debug                  bool          `required:"true" split_words:"true"`
+	KeyringBackend         string        `required:"true" split_words:"true"`
+	OutputFormat           string        `required:"true" split_words:"true"`
+	SignModeStr            string        `required:"true" split_words:"true"`
+	GasAdjustment          float64       `required:"true" split_words:"true"`
+	GasPrices              string        `required:"true" split_words:"true"`
 }
 
 type TxBroadcastType string
@@ -50,17 +58,12 @@ const (
 	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
 )
 
-func NewCosmosQueryRelayerConfig(path string) (CosmosQueryRelayerConfig, error) {
+func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
 	var cfg CosmosQueryRelayerConfig
 
-	if path == "" {
-		return cfg, fmt.Errorf("empty config path (please set CONFIG_PATH env variable)")
-	}
-
-	err := cleanenv.ReadConfig(path, &cfg)
+	err := envconfig.Process(EnvPrefix, &cfg)
 	if err != nil {
-		return cfg, fmt.Errorf("could not read config from a file: %w", err)
+		return cfg, fmt.Errorf("could not read config from env: %w", err)
 	}
-
 	return cfg, nil
 }

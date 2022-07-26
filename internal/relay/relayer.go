@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/types/query"
+	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -19,6 +21,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"go.uber.org/zap"
 )
 
 // Relayer is controller for the whole app:
@@ -30,18 +33,20 @@ type Relayer struct {
 	submitter    Submitter
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
+	logger       *zap.Logger
 
 	targetChainId     string
 	targetChainPrefix string
 }
 
 func NewRelayer(
-		proofer Proofer,
-		submitter Submitter,
-		targetChainId,
-		targetChainPrefix string,
-		srcChain,
-		dstChain *relayer.Chain,
+	proofer Proofer,
+	submitter Submitter,
+	targetChainId,
+	targetChainPrefix string,
+	srcChain,
+	dstChain *relayer.Chain,
+	logger *zap.Logger,
 ) Relayer {
 	return Relayer{
 		proofer:           proofer,
@@ -50,6 +55,7 @@ func NewRelayer(
 		targetChainPrefix: targetChainPrefix,
 		targetChain:       srcChain,
 		neutronChain:      dstChain,
+		logger:            logger,
 	}
 }
 
@@ -60,11 +66,16 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	}
 
 	for _, m := range messages {
+		start := time.Now()
 		err := r.proofMessage(ctx, m)
 		if err != nil {
-			fmt.Printf("could not process message query_id=%d err=%s\n", m.queryId, err)
+			r.logger.Error("could not process message", zap.Uint64("query_id", m.queryId), zap.Error(err))
+			neutronmetrics.IncFailedProofs()
+			neutronmetrics.AddFailedRequest(m.messageType, time.Since(start).Seconds())
 		} else {
-			fmt.Printf("proof for query_id=%d submitted successfully\n", m.queryId)
+			neutronmetrics.IncSuccessProofs()
+			neutronmetrics.AddSuccessRequest(m.messageType, time.Since(start).Seconds())
+			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 		}
 	}
 
@@ -72,15 +83,15 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	fmt.Printf("extracting events:\n%+v\n", event.Events)
+	r.logger.Info("extracting events", zap.Any("events", event.Events))
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return nil, nil
 	}
 
 	if len(events[zoneIdAttr]) != len(events[parametersAttr]) ||
-			len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
-			len(events[zoneIdAttr]) != len(events[typeAttr]) {
+		len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
+		len(events[zoneIdAttr]) != len(events[typeAttr]) {
 		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
 	}
 
@@ -94,7 +105,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		queryIdStr := events[queryIdAttr][idx]
 		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
 		if err != nil {
-			fmt.Printf("invalid query_id format (not an uint): %+v", queryId)
+			r.logger.Info("invalid query_id format (not an uint)", zap.Error(err))
 			continue
 		}
 
@@ -108,7 +119,8 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 }
 
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
-	fmt.Printf("proofMessage message_type=%s\n", m.messageType)
+
+	r.logger.Info("proofMessage message_type", zap.String("message_type", m.messageType))
 
 	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
@@ -138,27 +150,32 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
-
+		proofStart := time.Now()
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
+			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+
+		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 	case getBalanceType:
 		var params getBalanceParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
-
 		proofs, height, err := r.proofer.GetBalance(ctx, uint64(latestHeight), r.targetChainPrefix, params.Addr, params.Denom)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
+		proofStart := time.Now()
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, proofs, updateClientMsg)
 		if err != nil {
+			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 	case exchangeRateType:
 		var params exchangeRateParams
 		err := json.Unmarshal(m.parameters, &params)
@@ -176,10 +193,13 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
 
+		proofStart := time.Now()
 		err = r.submitter.SubmitProof(ctx, height, srcHeader.GetHeight().GetRevisionNumber(), m.queryId, append(supplyProofs, delegationProofs...), updateClientMsg)
 		if err != nil {
+			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 	case recipientTransactionsType:
 		var params recipientTransactionsParams
 		err := json.Unmarshal(m.parameters, &params)
@@ -227,10 +247,13 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			})
 		}
 
+		proofStart := time.Now()
 		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, resultBlocks)
 		if err != nil {
+			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 
 	case delegationRewardsType:
 		return fmt.Errorf("could not relay not implemented query x/distribution/CalculateDelegationRewards")
@@ -277,6 +300,7 @@ func (r *Relayer) getConsensusStates(ctx context.Context) ([]clienttypes.Consens
 //
 // The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
 func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusStates []clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
+	start := time.Now()
 	bestTrustedHeight := clienttypes.Height{
 		RevisionNumber: 0,
 		RevisionHeight: 0,
@@ -301,45 +325,50 @@ func (r *Relayer) getHeaderWithBestTrustedHeight(ctx context.Context, consensusS
 	// Without this hack we can't call InjectTrustedFields
 	provConcreteTargetChain, ok := r.targetChain.ChainProvider.(*cosmos.CosmosProvider)
 	if !ok {
+		neutronmetrics.AddFailedTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
 		return nil, fmt.Errorf("failed to cast ChainProvider to concrete type (cosmos.CosmosProvider)")
 	}
-
 	header, err := r.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
 	if err != nil {
+		neutronmetrics.AddFailedTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
 		return nil, err
 	}
 
 	tmHeader, ok := header.(*tmclient.Header)
 	if !ok {
+		neutronmetrics.AddFailedTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
 		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
 	}
 
 	tmHeader.TrustedHeight = bestTrustedHeight
-
+	neutronmetrics.AddSuccessTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
 	return provConcreteTargetChain.InjectTrustedFields(ctx, tmHeader, r.neutronChain.ChainProvider, r.neutronChain.PathEnd.ClientID)
 }
 
 func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {
+	start := time.Now()
 	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
 		srcHeader, err = r.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, r.neutronChain.ChainProvider, r.neutronChain.PathEnd.ClientID)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		fmt.Println(
-			"failed to GetIBCUpdateHeader:", err,
-		)
+		r.logger.Info(
+			"failed to GetIBCUpdateHeader", zap.Error(err))
 	})); err != nil {
+		neutronmetrics.AddFailedTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
 		return nil, err
 	}
-
+	neutronmetrics.AddSuccessTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
 	return srcHeader, nil
 }
 
 func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Msg, error) {
+	start := time.Now()
 	// Query IBC Update Header
 	srcHeader, err := r.getSrcChainHeader(ctx, targeth)
 	if err != nil {
+		neutronmetrics.AddFailedTargetChainGetter("GetUpdateClientMsg", time.Since(start).Seconds())
 		return nil, err
 	}
 
@@ -350,9 +379,8 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 		updateMsgRelayer, err = r.neutronChain.ChainProvider.UpdateClient(r.neutronChain.PathEnd.ClientID, srcHeader)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		fmt.Println(
-			"failed to build message:", err,
-		)
+		r.logger.Error(
+			"failed to build message", zap.Error(err))
 	})); err != nil {
 		return nil, err
 	}
@@ -361,6 +389,6 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 	if !ok {
 		return nil, errors.New("failed to cast provider.RelayerMessage to cosmos.CosmosMessage")
 	}
-
+	neutronmetrics.AddSuccessTargetChainGetter("GetUpdateClientMsg", time.Since(start).Seconds())
 	return updateMsgUnpacked.Msg, nil
 }
