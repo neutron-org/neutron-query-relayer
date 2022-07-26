@@ -2,7 +2,7 @@ package registry
 
 // RegistryConfig represents the config structure for the Registry.
 type RegistryConfig struct {
-	Addresses []string `yaml:"addresses" env-required:"true"`
+	Addresses []string
 }
 
 // New instantiates a new *Registry based on the cfg.
@@ -20,6 +20,11 @@ func New(cfg *RegistryConfig) *Registry {
 // relays only works with interchain queries registered by these addresses.
 type Registry struct {
 	addresses map[string]struct{}
+}
+
+// IsEmpty returns true if the registry addresses list is empty.
+func (r *Registry) IsEmpty() bool {
+	return len(r.addresses) == 0
 }
 
 // Contains returns true if the addr is in the registry.

@@ -107,7 +107,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 	messages := make([]queryEventMessage, 0, len(events[zoneIdAttr]))
 
 	for idx, zoneId := range events[zoneIdAttr] {
-		if !(r.isTargetZone(zoneId) && r.registry.Contains(events[ownerAttr][idx])) {
+		if !(r.isTargetZone(zoneId) && r.isWatchedAddress(events[ownerAttr][idx])) {
 			continue
 		}
 
@@ -405,4 +405,10 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 // isTargetZone returns true if the zoneID is the relayer's target zone id.
 func (r *Relayer) isTargetZone(zoneID string) bool {
 	return r.targetChainId == zoneID
+}
+
+// isWatchedAddress returns true if the address is within the registry watched addresses or there
+// are no registry watched addresses configured for the Relayer meaning all addresses are watched.
+func (r *Relayer) isWatchedAddress(address string) bool {
+	return r.registry.IsEmpty() || r.registry.Contains(address)
 }
