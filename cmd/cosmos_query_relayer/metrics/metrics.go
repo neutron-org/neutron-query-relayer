@@ -14,7 +14,7 @@ const (
 
 var (
 	relayerProofs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "relayer_failed_proofs",
+		Name: "relayer_proofs",
 		Help: "The total number of failed requests (counter)",
 	}, []string{labelType})
 
