@@ -96,7 +96,7 @@ func main() {
 	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
 		err = relayer.Proof(ctx, event)
 		if err != nil {
-			logger.Info("error proofing event", zap.Error(err))
+			logger.Error("error proofing event", zap.Error(err))
 		}
 	})
 	if err != nil {

@@ -28,7 +28,7 @@ For more configuration parameters see struct in internal/config/config.go
 ## Testing with 2 neutron-chains (easier for development)
 
 ### terminal 1
-
+we expect that both this repo and neutron will be located in one dir
 1. `git clone git@github.com:neutron-org/neutron.git`
 2. `cd neutron`
 3. `make build && make init && make start-rly`
@@ -59,11 +59,17 @@ echo "DEMOWALLET2: $DEMOWALLET2
 1. Build docker image 
 `make build-docker`
 2. Run
-`docker run --env-file .env.example -v $PWD/neutron/data:/data -p 9999:9999 neutron-org/cosmos-query-relayer`
-
+`docker run --env-file .env.example -v $PWD/../neutron/data:/data -p 9999:9999 neutron-org/cosmos-query-relayer`
+note: this command uses relative path to mount keys, run this from root path of `cosmos-query-relayer`
 ### Logging
 We are using [zap.loger](https://github.com/uber-go/zap)
 By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
 
-### If you want to run docker with local chains:
-- use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1` 
+
+##  Environment Notes
+### Running via docker
+-  with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1`
+- Note that wallet data path is in the root of docker container `RELAYER_TARGET_CHAIN_HOME_DIR=/data/test-2` `RELAYER_NEUTRON_CHAIN_HOME_DIR=/data/test-1`
+### Running without docker 
+- consider to change  `RELAYER_NEUTRON_CHAIN_RPC_ADDR` & `RELAYER_TARGET_CHAIN_RPC_ADDR` to actual rpc addresses 
+- `RELAYER_TARGET_CHAIN_HOME_DIR` `RELAYER_NEUTRON_CHAIN_HOME_DIR` also need to be changed (keys are generated in `terminal 1`)

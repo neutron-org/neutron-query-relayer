@@ -8,27 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// getChain reads a chain env and adds it to a's chains.
-func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath string, debug bool) (*relayer.Chain, error) {
-	prov, err := cfg.NewProvider(
-		logger,
-		homepath,
-		debug,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build ChainProvider for %w", err)
-	}
-
-	// Without this hack it doesn't want to work with normal home dir layout for some reason.
-	provConcrete, ok := prov.(*cosmos.CosmosProvider)
-	if !ok {
-		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
-	}
-	provConcrete.Config.KeyDirectory = homepath
-
-	return relayer.NewChain(logger, prov, debug), nil
-}
-
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
 		Key:            cfg.SignKeyName,
@@ -71,4 +50,25 @@ func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer
 	}
 
 	return chain, nil
+}
+
+// getChain reads a chain env and adds it to a's chains.
+func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath string, debug bool) (*relayer.Chain, error) {
+	prov, err := cfg.NewProvider(
+		logger,
+		homepath,
+		debug,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build ChainProvider for %w", err)
+	}
+
+	// Without this hack it doesn't want to work with normal home dir layout for some reason.
+	provConcrete, ok := prov.(*cosmos.CosmosProvider)
+	if !ok {
+		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
+	}
+	provConcrete.Config.KeyDirectory = homepath
+
+	return relayer.NewChain(logger, prov, debug), nil
 }

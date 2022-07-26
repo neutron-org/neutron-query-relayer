@@ -1,5 +1,3 @@
-# todo: proper tags
-
 dev:
 	go run ./cmd/cosmos_query_relayer/
 
