@@ -13,15 +13,10 @@ const (
 )
 
 var (
-	relayerFailedProofs = promauto.NewCounter(prometheus.CounterOpts{
+	relayerProofs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "relayer_failed_proofs",
 		Help: "The total number of failed requests (counter)",
-	})
-
-	relayerSuccessProofs = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "relayer_succeed_proofs",
-		Help: "The total number of succeed requests (counter)",
-	})
+	}, []string{labelType})
 
 	requestTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "request_time",
@@ -43,11 +38,15 @@ var (
 )
 
 func IncFailedProofs() {
-	relayerFailedProofs.Inc()
+	relayerProofs.With(prometheus.Labels{
+		labelType: typeFailed,
+	}).Inc()
 }
 
 func IncSuccessProofs() {
-	relayerSuccessProofs.Inc()
+	relayerProofs.With(prometheus.Labels{
+		labelType: typeSuccess,
+	}).Inc()
 }
 
 func AddFailedRequest(message string, dur float64) {
