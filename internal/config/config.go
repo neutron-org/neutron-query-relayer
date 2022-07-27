@@ -45,9 +45,6 @@ type TargetChainConfig struct {
 	Debug                  bool          `required:"true" split_words:"true"`
 	KeyringBackend         string        `required:"true" split_words:"true"`
 	OutputFormat           string        `required:"true" split_words:"true"`
-	SignModeStr            string        `required:"true" split_words:"true"`
-	GasAdjustment          float64       `required:"true" split_words:"true"`
-	GasPrices              string        `required:"true" split_words:"true"`
 }
 
 type TxBroadcastType string

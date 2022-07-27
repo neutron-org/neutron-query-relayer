@@ -37,12 +37,12 @@ func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,
 		KeyringBackend: cfg.KeyringBackend,
-		GasAdjustment:  cfg.GasAdjustment,
-		GasPrices:      cfg.GasPrices,
+		GasAdjustment:  0.0,
+		GasPrices:      "",
 		Debug:          cfg.Debug,
 		Timeout:        cfg.Timeout.String(),
 		OutputFormat:   cfg.OutputFormat,
-		SignModeStr:    cfg.SignModeStr,
+		SignModeStr:    "",
 	}
 	chain, err := getChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
 	if err != nil {
