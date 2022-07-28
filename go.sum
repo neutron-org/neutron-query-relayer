@@ -747,8 +747,8 @@ github.com/nats-io/nkeys v0.2.0/go.mod h1:XdZpAbhgyyODYqjTawOnIOI7VlbKSarI9Gfy1t
 github.com/nats-io/nkeys v0.3.0/go.mod h1:gvUNGjVcM2IPr5rCsRsC6Wb3Hr2CQAm08dsxtV6A5y4=
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=
 github.com/neilotoole/errgroup v0.1.5/go.mod h1:Q2nLGf+594h0CLBs/Mbg6qOr7GtqDK7C2S41udRnToE=
-github.com/neutron-org/neutron v0.0.0-20220721114753-94f4285e5797 h1:Qw11RfvWQQZg0ZZ81Ri/RVz+oGKVxDKYO3AuP8GHTHE=
-github.com/neutron-org/neutron v0.0.0-20220721114753-94f4285e5797/go.mod h1:IlE5npqRheR0UbLU30YcT9K7I/JL/Fxpgii1KiLDfhE=
+github.com/neutron-org/neutron v0.0.0-20220728075947-b0122b6cbd7a h1:NKyDrJy0EAgTnnTyQvNPuIuyZF0IJMQ07WuI/Kiqlso=
+github.com/neutron-org/neutron v0.0.0-20220728075947-b0122b6cbd7a/go.mod h1:Sf9RY8ro8A0yQn9vK4ZCST88+Xqd0n7YNohTfY4ah1s=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=

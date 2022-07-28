@@ -17,5 +17,6 @@ const (
 	queryIdAttr        = "message." + neutrontypes.AttributeKeyQueryID
 	kvKeyAttr          = "message." + neutrontypes.AttributeKeyKVQuery
 	transactionsFilter = "message." + neutrontypes.AttributeTransactionsFilterQuery
-	typeAttr           = "message." + neutrontypes.AttributeQueryType
+	typeAttr           = "message." + neutrontypes.AttributeKeyQueryType
+	ownerAttr          = "message." + neutrontypes.AttributeKeyOwner
 )

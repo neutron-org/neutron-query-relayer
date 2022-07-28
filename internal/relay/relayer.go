@@ -20,6 +20,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 )
@@ -31,6 +32,7 @@ import (
 type Relayer struct {
 	proofer      Proofer
 	submitter    Submitter
+	registry     *registry.Registry
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
@@ -42,6 +44,7 @@ type Relayer struct {
 func NewRelayer(
 	proofer Proofer,
 	submitter Submitter,
+	registry *registry.Registry,
 	targetChainId,
 	targetChainPrefix string,
 	srcChain,
@@ -51,6 +54,7 @@ func NewRelayer(
 	return Relayer{
 		proofer:           proofer,
 		submitter:         submitter,
+		registry:          registry,
 		targetChainId:     targetChainId,
 		targetChainPrefix: targetChainPrefix,
 		targetChain:       srcChain,
@@ -64,6 +68,10 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	if err != nil {
 		return fmt.Errorf("could not filter interchain query messages: %w", err)
 	}
+	if len(messages) == 0 {
+		r.logger.Info("event has been skipped: it's not intented for us", zap.String("query", event.Query))
+		return nil
+	}
 
 	for _, m := range messages {
 		start := time.Now()
@@ -73,17 +81,19 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 			neutronmetrics.IncFailedProofs()
 			neutronmetrics.AddFailedRequest(string(m.messageType), time.Since(start).Seconds())
 		} else {
+			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			neutronmetrics.IncSuccessProofs()
 			neutronmetrics.AddSuccessRequest(string(m.messageType), time.Since(start).Seconds())
 			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 		}
 	}
 
-	return nil
+	// TODO: return a detailed error message here, e.g.
+	// failed to prove N of M messages: latest error: %v (just an example, could be better)
+	return err
 }
 
 func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	r.logger.Info("extracting events", zap.Any("events", event.Events))
 	events := event.Events
 	if len(events[zoneIdAttr]) == 0 {
 		return nil, nil
@@ -99,7 +109,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 	messages := make([]queryEventMessage, 0, len(events[zoneIdAttr]))
 
 	for idx, zoneId := range events[zoneIdAttr] {
-		if zoneId != r.targetChainId {
+		if !(r.isTargetZone(zoneId) && r.isWatchedAddress(events[ownerAttr][idx])) {
 			continue
 		}
 
@@ -355,4 +365,15 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Ms
 	}
 	neutronmetrics.AddSuccessTargetChainGetter("GetUpdateClientMsg", time.Since(start).Seconds())
 	return updateMsgUnpacked.Msg, nil
+}
+
+// isTargetZone returns true if the zoneID is the relayer's target zone id.
+func (r *Relayer) isTargetZone(zoneID string) bool {
+	return r.targetChainId == zoneID
+}
+
+// isWatchedAddress returns true if the address is within the registry watched addresses or there
+// are no registry watched addresses configured for the Relayer meaning all addresses are watched.
+func (r *Relayer) isWatchedAddress(address string) bool {
+	return r.registry.IsEmpty() || r.registry.Contains(address)
 }

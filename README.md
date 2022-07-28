@@ -55,7 +55,8 @@ echo "DEMOWALLET2: $DEMOWALLET2
 
 
 #### via Docker
-
+currently `neutron` is a private repo, so you need to run `ssh-add ~/.ssh/id_rsa`
+*note*: we're going to remove this after making all our repos public
 1. Build docker image 
 `make build-docker`
 2. Run
