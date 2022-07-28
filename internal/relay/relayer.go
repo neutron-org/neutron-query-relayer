@@ -263,14 +263,14 @@ func (r *Relayer) submitProof(
 	messageType string,
 	proof []proof.StorageValue,
 ) error {
-	updateClientMsg, err := r.getUpdateClientMsg(ctx, height)
-	if err != nil {
-		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
-	}
-
 	srcHeader, err := r.getSrcChainHeader(ctx, height)
 	if err != nil {
 		return fmt.Errorf("failed to get header for height: %d: %w", height, err)
+	}
+
+	updateClientMsg, err := r.getUpdateClientMsg(ctx, srcHeader)
+	if err != nil {
+		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
 	}
 
 	st := time.Now()
@@ -383,14 +383,9 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 	return srcHeader, nil
 }
 
-func (r *Relayer) getUpdateClientMsg(ctx context.Context, targeth int64) (sdk.Msg, error) {
+func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.Header) (sdk.Msg, error) {
 	start := time.Now()
 	// Query IBC Update Header
-	srcHeader, err := r.getSrcChainHeader(ctx, targeth)
-	if err != nil {
-		neutronmetrics.AddFailedTargetChainGetter("GetUpdateClientMsg", time.Since(start).Seconds())
-		return nil, err
-	}
 
 	// Construct UpdateClient msg
 	var updateMsgRelayer provider.RelayerMessage
