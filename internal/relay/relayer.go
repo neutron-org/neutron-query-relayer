@@ -227,43 +227,41 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get consensus states: %w", err)
 		}
 
-		resultBlocks := make([]*neutrontypes.Block, 0, len(blocks))
 		for height, txs := range blocks {
-			header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
-			if err != nil {
-				return fmt.Errorf("failed to get header for src chain: %w", err)
+			for _, tx := range txs {
+				header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
+				if err != nil {
+					return fmt.Errorf("failed to get header for src chain: %w", err)
+				}
+
+				packedHeader, err := clienttypes.PackHeader(header)
+				if err != nil {
+					return fmt.Errorf("failed to pack header: %w", err)
+				}
+
+				nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height+1)
+				if err != nil {
+					return fmt.Errorf("failed to get next header for src chain: %w", err)
+				}
+
+				packedNextHeader, err := clienttypes.PackHeader(nextHeader)
+				if err != nil {
+					return fmt.Errorf("failed to pack header: %w", err)
+				}
+
+				proofStart := time.Now()
+				if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
+					Header:          packedHeader,
+					NextBlockHeader: packedNextHeader,
+					Tx:              tx,
+				}); err != nil {
+					neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
+					return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
+				}
+				neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
 			}
 
-			packedHeader, err := clienttypes.PackHeader(header)
-			if err != nil {
-				return fmt.Errorf("failed to pack header: %w", err)
-			}
-
-			nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height+1)
-			if err != nil {
-				return fmt.Errorf("failed to get next header for src chain: %w", err)
-			}
-
-			packedNextHeader, err := clienttypes.PackHeader(nextHeader)
-			if err != nil {
-				return fmt.Errorf("failed to pack header: %w", err)
-			}
-
-			resultBlocks = append(resultBlocks, &neutrontypes.Block{
-				Header:          packedHeader,
-				NextBlockHeader: packedNextHeader,
-				Txs:             txs,
-			})
 		}
-
-		proofStart := time.Now()
-		err = r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, resultBlocks)
-		if err != nil {
-			neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
-			return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-		}
-		neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
-
 	case delegationRewardsType:
 		return fmt.Errorf("could not relay not implemented query x/distribution/CalculateDelegationRewards")
 
