@@ -273,7 +273,15 @@ func (r *Relayer) submitProof(
 	}
 
 	st := time.Now()
-	if err = r.submitter.SubmitProof(ctx, uint64(height-1), srcHeader.GetHeight().GetRevisionNumber(), queryID, proof, updateClientMsg); err != nil {
+	if err = r.submitter.SubmitProof(
+		ctx,
+		uint64(height-1),
+		srcHeader.GetHeight().GetRevisionNumber(),
+		queryID,
+		r.cfg.NeutronChain.AllowKVCallbacks,
+		proof,
+		updateClientMsg,
+	); err != nil {
 		neutronmetrics.IncFailedProofs()
 		neutronmetrics.AddFailedProof(messageType, time.Since(st).Seconds())
 		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", messageType, queryID, err)
