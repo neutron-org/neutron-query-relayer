@@ -3,6 +3,7 @@ package proof
 import (
 	"context"
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/kv"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -120,5 +121,5 @@ func (q *Querier) QueryIterateTendermintProof(ctx context.Context, height int64,
 		result = append(result, *storageValue)
 	}
 
-	return result, uint64(res.Response.Height), nil
+	return result, uint64(res.Response.Height + 1), nil
 }
