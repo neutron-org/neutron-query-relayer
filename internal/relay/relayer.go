@@ -239,13 +239,16 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 					neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
 					return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 				}
+
 				neutronmetrics.IncSuccessProofs()
 				neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
-				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
-				return nil
-			}
 
+				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
+			}
 		}
+
+		return nil
+
 	case delegationRewardsType:
 		return fmt.Errorf("could not relay not implemented query %s", delegationRewardsType)
 
