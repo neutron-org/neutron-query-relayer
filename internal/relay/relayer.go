@@ -19,6 +19,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -31,36 +32,32 @@ import (
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
+	cfg          config.CosmosQueryRelayerConfig
 	proofer      Proofer
 	submitter    Submitter
 	registry     *registry.Registry
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
-
-	targetChainId     string
-	targetChainPrefix string
 }
 
 func NewRelayer(
+	cfg config.CosmosQueryRelayerConfig,
 	proofer Proofer,
 	submitter Submitter,
 	registry *registry.Registry,
-	targetChainId,
-	targetChainPrefix string,
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
 ) Relayer {
 	return Relayer{
-		proofer:           proofer,
-		submitter:         submitter,
-		registry:          registry,
-		targetChainId:     targetChainId,
-		targetChainPrefix: targetChainPrefix,
-		targetChain:       srcChain,
-		neutronChain:      dstChain,
-		logger:            logger,
+		cfg:          cfg,
+		proofer:      proofer,
+		submitter:    submitter,
+		registry:     registry,
+		targetChain:  srcChain,
+		neutronChain: dstChain,
+		logger:       logger,
 	}
 }
 
@@ -70,7 +67,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		return fmt.Errorf("could not filter interchain query messages: %w", err)
 	}
 	if len(messages) == 0 {
-		r.logger.Info("event has been skipped: it's not intented for us", zap.String("query", event.Query))
+		r.logger.Info("event has been skipped: it's not intended for us", zap.String("query", event.Query))
 		return nil
 	}
 
@@ -146,7 +143,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				m.parameters, m.queryId, err)
 		}
 
-		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
+		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.cfg.TargetChain.AccountPrefix, params.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
@@ -160,7 +157,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
 
-		proofs, height, err := r.proofer.GetBalance(ctx, uint64(latestHeight), r.targetChainPrefix, params.Addr, params.Denom)
+		proofs, height, err := r.proofer.GetBalance(ctx, uint64(latestHeight), r.cfg.TargetChain.AccountPrefix, params.Addr, params.Denom)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
@@ -179,7 +176,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
-		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.targetChainPrefix, params.Delegator)
+		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.cfg.TargetChain.AccountPrefix, params.Delegator)
 		if err != nil {
 			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
 		}
@@ -412,7 +409,7 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.
 
 // isTargetZone returns true if the zoneID is the relayer's target zone id.
 func (r *Relayer) isTargetZone(zoneID string) bool {
-	return r.targetChainId == zoneID
+	return r.targetChain.ChainID() == zoneID
 }
 
 // isWatchedAddress returns true if the address is within the registry watched addresses or there
