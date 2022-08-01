@@ -70,7 +70,7 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 		Height:           height,
 		KvResults:        res,
 		Revision:         revision,
-		AllowKVCallbacks: allowKVCallbacks,
+		AllowKvCallbacks: allowKVCallbacks,
 	}
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
