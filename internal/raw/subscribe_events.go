@@ -7,6 +7,7 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 const websocketPath = "/websocket"
@@ -36,5 +37,5 @@ func Subscribe(ctx context.Context, subscriberName string, rpcAddress string, qu
 // SubscribeQuery describes query to filter out events by module and action.
 func SubscribeQuery(zoneId string) string {
 	// TODO: add zoneId to the query when zone id passing is implemented
-	return fmt.Sprintf("message.module='%s' AND message.action='%s'", neutrontypes.ModuleName, neutrontypes.AttributeValueQuery)
+	return fmt.Sprintf("message.module='%s' AND message.action='%s' AND tm.event='%s'", neutrontypes.ModuleName, neutrontypes.AttributeValueQuery, types.EventNewBlockHeader)
 }
