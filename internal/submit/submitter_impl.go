@@ -29,7 +29,7 @@ func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, revisio
 }
 
 // SubmitTxProof submits tx query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clientID string, proof []*neutrontypes.Block) error {
+func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clientID string, proof *neutrontypes.Block) error {
 	msgs, err := si.buildTxProofMsg(queryId, clientID, proof)
 	if err != nil {
 		return fmt.Errorf("could not build tx proof msg: %w", err)
@@ -60,7 +60,7 @@ func (si *SubmitterImpl) buildProofMsg(height uint64, revision uint64, queryId u
 	return []sdk.Msg{&msg}, nil
 }
 
-func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof []*neutrontypes.Block) ([]sdk.Msg, error) {
+func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof *neutrontypes.Block) ([]sdk.Msg, error) {
 	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building tx proof msg: %w", err)
@@ -69,7 +69,7 @@ func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof 
 	queryResult := neutrontypes.QueryResult{
 		Height:    0, // NOTE: cannot use nil because it's not pointer :(
 		KvResults: nil,
-		Blocks:    proof,
+		Block:     proof,
 	}
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: clientID}
 

@@ -3,6 +3,7 @@ package proof
 import (
 	"context"
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -65,5 +66,5 @@ func (q *Querier) QueryTendermintProof(ctx context.Context, height int64, storeK
 	}
 
 	response := res.Response
-	return &neutrontypes.StorageValue{Value: response.Value, Key: key, Proof: response.ProofOps, StoragePrefix: storeKey}, uint64(response.Height), nil
+	return &neutrontypes.StorageValue{Value: response.Value, Key: key, Proof: response.ProofOps, StoragePrefix: storeKey}, uint64(response.Height + 1), nil
 }
