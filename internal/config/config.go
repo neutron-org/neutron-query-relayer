@@ -38,12 +38,10 @@ type TargetChainConfig struct {
 	ChainID                string        `required:"true" split_words:"true"`
 	AccountPrefix          string        `required:"true" split_words:"true"`
 	ValidatorAccountPrefix string        `required:"true" split_words:"true"`
-	HomeDir                string        `required:"true" split_words:"true"`
 	Timeout                time.Duration `required:"true" split_words:"true"`
 	ConnectionID           string        `required:"true" split_words:"true"`
 	ClientID               string        `required:"true" split_words:"true"`
 	Debug                  bool          `required:"true" split_words:"true"`
-	KeyringBackend         string        `required:"true" split_words:"true"`
 	OutputFormat           string        `required:"true" split_words:"true"`
 }
 
