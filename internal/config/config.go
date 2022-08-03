@@ -2,14 +2,17 @@ package config
 
 import (
 	"fmt"
-	"github.com/kelseyhightower/envconfig"
 	"time"
+
+	"github.com/kelseyhightower/envconfig"
+	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 )
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	NeutronChain *NeutronChainConfig `split_words:"true"`
-	TargetChain  *TargetChainConfig  `split_words:"true"`
+	NeutronChain *NeutronChainConfig      `split_words:"true"`
+	TargetChain  *TargetChainConfig       `split_words:"true"`
+	Registry     *registry.RegistryConfig `split_words:"true"`
 }
 
 const EnvPrefix string = "RELAYER"

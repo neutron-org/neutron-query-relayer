@@ -31,8 +31,9 @@ type exchangeRateParams struct {
 const (
 	zoneIdAttr     = "message." + neutrontypes.AttributeKeyZoneID
 	queryIdAttr    = "message." + neutrontypes.AttributeKeyQueryID
-	parametersAttr = "message." + neutrontypes.AttributeQueryData
-	typeAttr       = "message." + neutrontypes.AttributeQueryType
+	parametersAttr = "message." + neutrontypes.AttributeKeyQueryParameters
+	typeAttr       = "message." + neutrontypes.AttributeKeyQueryType
+	ownerAttr      = "message." + neutrontypes.AttributeKeyOwner
 )
 
 // types of incoming query messages

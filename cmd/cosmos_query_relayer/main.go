@@ -3,19 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+
+	"go.uber.org/zap"
+
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
 	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
+	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	neutronapp "github.com/neutron-org/neutron/app"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-	"go.uber.org/zap"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -83,24 +85,28 @@ func main() {
 	relayer := relay.NewRelayer(
 		proofFetcher,
 		proofSubmitter,
+		registry.New(cfg.Registry),
 		cfg.TargetChain.ChainID,
 		cfg.TargetChain.AccountPrefix,
 		targetChain,
 		neutronChain,
 		logger,
 	)
+
 	ctx := context.Background()
 	logger.Info("subscribing to neutron chain events")
-	// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
-	// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-	err = raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID), func(event coretypes.ResultEvent) {
-		err = relayer.Proof(ctx, event)
-		if err != nil {
-			logger.Error("error proofing event", zap.Error(err))
-		}
-	})
+	events, err := raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID))
 	if err != nil {
-		logger.Fatal("error subscribing to neutron chain events", zap.Error(err))
+		logger.Error("failed to subscribe on events", zap.Error(err))
+	}
+	logger.Info("successfully subscribed to neutron chain events\n")
+
+	for event := range events {
+		// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
+		// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
+		if err = relayer.Proof(ctx, event); err != nil {
+			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
+		}
 	}
 }
 

@@ -13,9 +13,14 @@ const (
 )
 
 var (
+	relayerRequests = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "relayer_requests",
+		Help: "The total number of requests (counter)",
+	}, []string{labelType})
+
 	relayerProofs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "relayer_proofs",
-		Help: "The total number requests (counter)",
+		Help: "The total number of proofs (counter)",
 	}, []string{labelType})
 
 	requestTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
@@ -36,6 +41,18 @@ var (
 		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 30},
 	}, []string{labelMethod, labelType})
 )
+
+func IncFailedRequests() {
+	relayerRequests.With(prometheus.Labels{
+		labelType: typeFailed,
+	}).Inc()
+}
+
+func IncSuccessRequests() {
+	relayerRequests.With(prometheus.Labels{
+		labelType: typeSuccess,
+	}).Inc()
+}
 
 func IncFailedProofs() {
 	relayerProofs.With(prometheus.Labels{
