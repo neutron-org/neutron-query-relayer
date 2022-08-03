@@ -19,8 +19,16 @@ func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
 }
 
 // SubmitProof submits query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, revision uint64, queryId uint64, proof []proof.StorageValue, updateClientMsg sdk.Msg) error {
-	msgs, err := si.buildProofMsg(height, revision, queryId, proof)
+func (si *SubmitterImpl) SubmitProof(
+	ctx context.Context,
+	height,
+	revision,
+	queryId uint64,
+	allowKVCallbacks bool,
+	proof []proof.StorageValue,
+	updateClientMsg sdk.Msg,
+) error {
+	msgs, err := si.buildProofMsg(height, revision, queryId, allowKVCallbacks, proof)
 	if err != nil {
 		return fmt.Errorf("could not build proof msg: %w", err)
 	}
@@ -40,7 +48,7 @@ func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clie
 	return si.sender.Send(ctx, msgs)
 }
 
-func (si *SubmitterImpl) buildProofMsg(height uint64, revision uint64, queryId uint64, proof []proof.StorageValue) ([]sdk.Msg, error) {
+func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKVCallbacks bool, proof []proof.StorageValue) ([]sdk.Msg, error) {
 	res := make([]*neutrontypes.StorageValue, 0, len(proof))
 	for _, item := range proof {
 		res = append(res, &neutrontypes.StorageValue{
@@ -59,9 +67,10 @@ func (si *SubmitterImpl) buildProofMsg(height uint64, revision uint64, queryId u
 	}
 
 	queryResult := neutrontypes.QueryResult{
-		Height:    height,
-		KvResults: res,
-		Revision:  revision,
+		Height:           height,
+		KvResults:        res,
+		Revision:         revision,
+		AllowKvCallbacks: allowKVCallbacks,
 	}
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
