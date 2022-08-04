@@ -17,8 +17,16 @@ func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
 }
 
 // SubmitProof submits query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitProof(ctx context.Context, height uint64, revision uint64, queryId uint64, proof []*neutrontypes.StorageValue, updateClientMsg sdk.Msg) error {
-	msgs, err := si.buildProofMsg(height, revision, queryId, proof)
+func (si *SubmitterImpl) SubmitProof(
+	ctx context.Context,
+	height,
+	revision,
+	queryId uint64,
+	allowKVCallbacks bool,
+	proof []*neutrontypes.StorageValue,
+	updateClientMsg sdk.Msg,
+) error {
+	msgs, err := si.buildProofMsg(height, revision, queryId, allowKVCallbacks, proof)
 	if err != nil {
 		return fmt.Errorf("could not build proof msg: %w", err)
 	}
@@ -38,16 +46,17 @@ func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clie
 	return si.sender.Send(ctx, msgs)
 }
 
-func (si *SubmitterImpl) buildProofMsg(height uint64, revision uint64, queryId uint64, proof []*neutrontypes.StorageValue) ([]sdk.Msg, error) {
+func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKVCallbacks bool, proof []*neutrontypes.StorageValue) ([]sdk.Msg, error) {
 	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building proof msg: %w", err)
 	}
 
 	queryResult := neutrontypes.QueryResult{
-		Height:    height,
-		KvResults: proof,
-		Revision:  revision,
+		Height:           height,
+		KvResults:        proof,
+		Revision:         revision,
+		AllowKvCallbacks: allowKVCallbacks,
 	}
 
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}

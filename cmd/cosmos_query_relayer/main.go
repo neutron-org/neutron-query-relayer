@@ -3,11 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-
-	"go.uber.org/zap"
-
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
@@ -18,6 +13,9 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	neutronapp "github.com/neutron-org/neutron/app"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
+	"log"
+	"net/http"
 )
 
 func main() {
@@ -83,11 +81,10 @@ func main() {
 	}
 
 	relayer := relay.NewRelayer(
+		cfg,
 		proofFetcher,
 		proofSubmitter,
 		registry.New(cfg.Registry),
-		cfg.TargetChain.ChainID,
-		cfg.TargetChain.AccountPrefix,
 		targetChain,
 		neutronChain,
 		logger,

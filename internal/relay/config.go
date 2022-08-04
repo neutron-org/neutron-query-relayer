@@ -36,15 +36,15 @@ func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,
-		KeyringBackend: cfg.KeyringBackend,
-		GasAdjustment:  cfg.GasAdjustment,
-		GasPrices:      cfg.GasPrices,
+		KeyringBackend: "",
+		GasAdjustment:  0.0,
+		GasPrices:      "",
 		Debug:          cfg.Debug,
 		Timeout:        cfg.Timeout.String(),
 		OutputFormat:   cfg.OutputFormat,
-		SignModeStr:    cfg.SignModeStr,
+		SignModeStr:    "",
 	}
-	chain, err := getChain(logger, provCfg, cfg.HomeDir, cfg.Debug)
+	chain, err := getChain(logger, provCfg, "", cfg.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("could not create neutron chain: %w", err)
 	}

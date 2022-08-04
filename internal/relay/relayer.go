@@ -20,6 +20,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
@@ -30,36 +31,32 @@ import (
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
+	cfg          config.CosmosQueryRelayerConfig
 	proofer      Proofer
 	submitter    Submitter
 	registry     *registry.Registry
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
-
-	targetChainId     string
-	targetChainPrefix string
 }
 
 func NewRelayer(
+	cfg config.CosmosQueryRelayerConfig,
 	proofer Proofer,
 	submitter Submitter,
 	registry *registry.Registry,
-	targetChainId,
-	targetChainPrefix string,
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
 ) Relayer {
 	return Relayer{
-		proofer:           proofer,
-		submitter:         submitter,
-		registry:          registry,
-		targetChainId:     targetChainId,
-		targetChainPrefix: targetChainPrefix,
-		targetChain:       srcChain,
-		neutronChain:      dstChain,
-		logger:            logger,
+		cfg:          cfg,
+		proofer:      proofer,
+		submitter:    submitter,
+		registry:     registry,
+		targetChain:  srcChain,
+		neutronChain: dstChain,
+		logger:       logger,
 	}
 }
 
@@ -69,7 +66,7 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		return fmt.Errorf("could not filter interchain query messages: %w", err)
 	}
 	if len(messages) == 0 {
-		r.logger.Info("event has been skipped: it's not intented for us", zap.String("query", event.Query))
+		r.logger.Info("event has been skipped: it's not intended for us", zap.String("query", event.Query))
 		return nil
 	}
 
@@ -164,7 +161,6 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.queryId, err)
 		}
 		return r.submitProof(ctx, int64(height), m.queryId, string(m.messageType), proofs)
-
 	case neutrontypes.InterchainQueryTypeTX:
 		var params recipientTransactionsParams
 		err := json.Unmarshal([]byte(m.transactionsFilter), &params)
@@ -252,7 +248,15 @@ func (r *Relayer) submitProof(
 	}
 
 	st := time.Now()
-	if err = r.submitter.SubmitProof(ctx, uint64(height-1), srcHeader.GetHeight().GetRevisionNumber(), queryID, proof, updateClientMsg); err != nil {
+	if err = r.submitter.SubmitProof(
+		ctx,
+		uint64(height-1),
+		srcHeader.GetHeight().GetRevisionNumber(),
+		queryID,
+		r.cfg.NeutronChain.AllowKVCallbacks,
+		proof,
+		updateClientMsg,
+	); err != nil {
 		neutronmetrics.IncFailedProofs()
 		neutronmetrics.AddFailedProof(messageType, time.Since(st).Seconds())
 		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", messageType, queryID, err)
@@ -388,7 +392,7 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.
 
 // isTargetZone returns true if the zoneID is the relayer's target zone id.
 func (r *Relayer) isTargetZone(zoneID string) bool {
-	return r.targetChainId == zoneID
+	return r.targetChain.ChainID() == zoneID
 }
 
 // isWatchedAddress returns true if the address is within the registry watched addresses or there
