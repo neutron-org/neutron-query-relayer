@@ -36,7 +36,7 @@ func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,
-		KeyringBackend: "",
+		KeyringBackend: "test",
 		GasAdjustment:  0.0,
 		GasPrices:      "",
 		Debug:          cfg.Debug,
