@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	dummystor "github.com/neutron-org/cosmos-query-relayer/internal/storage"
 	"math"
 	"strconv"
 	"time"
@@ -39,6 +40,7 @@ type Relayer struct {
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
+	storage      RelayerStorage
 }
 
 func NewRelayer(
@@ -50,6 +52,7 @@ func NewRelayer(
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
 ) Relayer {
+	// TODO: after storage implementation update this func
 	return Relayer{
 		cfg:          cfg,
 		proofer:      proofer,
@@ -58,6 +61,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
+		storage:      dummystor.Init(),
 	}
 }
 
@@ -136,6 +140,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 	switch m.messageType {
 	case delegatorDelegationsType:
+		err = r.checkQueryUpdate(m.queryId, latestHeight)
+		if err != nil {
+			return fmt.Errorf("error on checking previous query update with params=%s query_id=%d: %w",
+				m.parameters, m.queryId, err)
+		}
 		var params delegatorDelegationsParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
@@ -151,6 +160,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, proofs)
 
 	case getBalanceType:
+		err = r.checkQueryUpdate(m.queryId, latestHeight)
+		if err != nil {
+			return fmt.Errorf("error on checking previous query update with params=%s query_id=%d: %w",
+				m.parameters, m.queryId, err)
+		}
+
 		var params getBalanceParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
@@ -165,6 +180,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, proofs)
 
 	case exchangeRateType:
+		err = r.checkQueryUpdate(m.queryId, latestHeight)
+		if err != nil {
+			return fmt.Errorf("error on checking previous query update with params=%s query_id=%d: %w",
+				m.parameters, m.queryId, err)
+		}
+
 		var params exchangeRateParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
@@ -184,6 +205,10 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, append(supplyProofs, delegationProofs...))
 
 	case recipientTransactionsType:
+		if !r.cfg.AllowTxQueries {
+			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
+		}
+
 		var params recipientTransactionsParams
 		err := json.Unmarshal(m.parameters, &params)
 		if err != nil {
@@ -424,4 +449,13 @@ func (r *Relayer) isTargetZone(zoneID string) bool {
 // are no registry watched addresses configured for the Relayer meaning all addresses are watched.
 func (r *Relayer) isWatchedAddress(address string) bool {
 	return r.registry.IsEmpty() || r.registry.Contains(address)
+}
+
+func (r *Relayer) checkQueryUpdate(queryID uint64, currentBlock int64) error {
+	previous, ok := r.storage.GetLastUpdateBlock(queryID)
+	if !ok || previous+int64(r.cfg.KvUpdatePeriod) >= currentBlock {
+		return r.storage.SetLastUpdateBlock(queryID, currentBlock)
+	}
+
+	return fmt.Errorf("query updated too late: last updation was %d, minimal update period %d", previous, r.cfg.KvUpdatePeriod)
 }

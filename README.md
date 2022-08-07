@@ -68,6 +68,12 @@ By default, project spawns classical Production logger. so if there is a need to
 
 
 ##  Environment Notes
+### Common 
+
+- `RELAYER_ALLOW_TX_QUERIES = {bool}`  if false, relayer ignores all tx queries. Optional.
+
+- `RELAYER_KV_UPDATE_PERIOD = {uint}` minimal update period for KV queries (not less than `n` blocks). Required
+
 ### Running via docker
 -  with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1`
 - Note that wallet data path is in the root of docker container `RELAYER_TARGET_CHAIN_HOME_DIR=/data/test-2` `RELAYER_NEUTRON_CHAIN_HOME_DIR=/data/test-1`
