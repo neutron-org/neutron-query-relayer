@@ -9,14 +9,14 @@ func (s *DummyStorage) SetLastUpdateBlock(queryId uint64, block int64) error {
 	return nil
 }
 
-func (s *DummyStorage) GetLastUpdateBlock(queryID uint64) (int64, bool) {
+func (s *DummyStorage) GetLastUpdateBlock(queryID uint64) (uint64, bool) {
 	if val, ok := s.KVUpdateMap[queryID]; ok {
-		return val, true
+		return uint64(val), true
 	} else {
 		return 0, false
 	}
 }
 
-func Init() *DummyStorage {
+func NewDummyStorage() *DummyStorage {
 	return new(DummyStorage)
 }

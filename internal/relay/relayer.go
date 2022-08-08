@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	dummystor "github.com/neutron-org/cosmos-query-relayer/internal/storage"
 	"math"
 	"strconv"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
+	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
@@ -61,7 +61,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
-		storage:      dummystor.Init(),
+		storage:      storage.NewDummyStorage(),
 	}
 }
 
@@ -451,11 +451,16 @@ func (r *Relayer) isWatchedAddress(address string) bool {
 	return r.registry.IsEmpty() || r.registry.Contains(address)
 }
 
-func (r *Relayer) checkQueryUpdate(queryID uint64, currentBlock int64) error {
+func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock int64) (bool, error) {
 	previous, ok := r.storage.GetLastUpdateBlock(queryID)
-	if !ok || previous+int64(r.cfg.KvUpdatePeriod) >= currentBlock {
-		return r.storage.SetLastUpdateBlock(queryID, currentBlock)
+	if !ok || previous+r.cfg.KvUpdatePeriod >= uint64(currentBlock) {
+		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
 	}
 
-	return fmt.Errorf("query updated too late: last updation was %d, minimal update period %d", previous, r.cfg.KvUpdatePeriod)
+	return false, fmt.Errorf("query updated too late: last updation was %d, minimal update period %d", previous, r.cfg.KvUpdatePeriod)
 }
