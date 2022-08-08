@@ -1,10 +1,10 @@
 package storage
 
 type DummyStorage struct {
-	KVUpdateMap map[uint64]int64
+	KVUpdateMap map[uint64]uint64
 }
 
-func (s *DummyStorage) SetLastUpdateBlock(queryId uint64, block int64) error {
+func (s *DummyStorage) SetLastUpdateBlock(queryId uint64, block uint64) error {
 	s.KVUpdateMap[queryId] = block
 	return nil
 }

@@ -140,13 +140,13 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 	switch m.messageType {
 	case delegatorDelegationsType:
-		err = r.checkQueryUpdate(m.queryId, latestHeight)
-		if err != nil {
+		ok, err := r.isQueryOnTime(m.queryId, uint64(latestHeight))
+		if err != nil || !ok {
 			return fmt.Errorf("error on checking previous query update with params=%s query_id=%d: %w",
 				m.parameters, m.queryId, err)
 		}
 		var params delegatorDelegationsParams
-		err := json.Unmarshal(m.parameters, &params)
+		err = json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w",
 				m.parameters, m.queryId, err)
@@ -160,14 +160,14 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, proofs)
 
 	case getBalanceType:
-		err = r.checkQueryUpdate(m.queryId, latestHeight)
-		if err != nil {
+		ok, err := r.isQueryOnTime(m.queryId, uint64(latestHeight))
+		if err != nil || !ok {
 			return fmt.Errorf("error on checking previous query update with params=%s query_id=%d: %w",
 				m.parameters, m.queryId, err)
 		}
 
 		var params getBalanceParams
-		err := json.Unmarshal(m.parameters, &params)
+		err = json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
@@ -180,14 +180,14 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, proofs)
 
 	case exchangeRateType:
-		err = r.checkQueryUpdate(m.queryId, latestHeight)
-		if err != nil {
+		ok, err := r.isQueryOnTime(m.queryId, uint64(latestHeight))
+		if err != nil || !ok {
 			return fmt.Errorf("error on checking previous query update with params=%s query_id=%d: %w",
 				m.parameters, m.queryId, err)
 		}
 
 		var params exchangeRateParams
-		err := json.Unmarshal(m.parameters, &params)
+		err = json.Unmarshal(m.parameters, &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
 		}
@@ -451,9 +451,10 @@ func (r *Relayer) isWatchedAddress(address string) bool {
 	return r.registry.IsEmpty() || r.registry.Contains(address)
 }
 
-func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock int64) (bool, error) {
+//isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env
+func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
 	previous, ok := r.storage.GetLastUpdateBlock(queryID)
-	if !ok || previous+r.cfg.KvUpdatePeriod >= uint64(currentBlock) {
+	if !ok || previous+r.cfg.KvUpdatePeriod >= currentBlock {
 		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
 		if err != nil {
 			return false, err
@@ -462,5 +463,5 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock int64) (bool, error
 		return true, nil
 	}
 
-	return false, fmt.Errorf("query updated too late: last updation was %d, minimal update period %d", previous, r.cfg.KvUpdatePeriod)
+	return false, fmt.Errorf("query updated too late: last update was on block=%d, maximum update period=%d", previous, r.cfg.KvUpdatePeriod)
 }
