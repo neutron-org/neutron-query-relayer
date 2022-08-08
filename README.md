@@ -71,8 +71,8 @@ By default, project spawns classical Production logger. so if there is a need to
 ### Common 
 
 - `RELAYER_ALLOW_TX_QUERIES = {bool}`  if false, relayer ignores all tx queries. Optional.
-
 - `RELAYER_KV_UPDATE_PERIOD = {uint}` minimal update period for KV queries (not less than `n` blocks). Required
+- `RELAYER_NEUTRON_CHAIN_GAS_LIMIT = {uint}` gas limit for single response 
 
 ### Running via docker
 -  with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1`
