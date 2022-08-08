@@ -451,7 +451,7 @@ func (r *Relayer) isWatchedAddress(address string) bool {
 	return r.registry.IsEmpty() || r.registry.Contains(address)
 }
 
-//isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env
+//isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
 func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
 	previous, ok := r.storage.GetLastUpdateBlock(queryID)
 	if !ok || previous+r.cfg.KvUpdatePeriod >= currentBlock {
