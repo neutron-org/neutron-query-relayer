@@ -1,5 +1,7 @@
 package storage
 
+import "fmt"
+
 type DummyStorage struct {
 	KVUpdateMap map[uint64]uint64
 }
@@ -21,4 +23,12 @@ func NewDummyStorage() *DummyStorage {
 	s := new(DummyStorage)
 	s.KVUpdateMap = make(map[uint64]uint64)
 	return s
+}
+
+func (s *DummyStorage) GetTx(hash string, block uint64) (exists bool, err error) {
+	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
+}
+
+func (s *DummyStorage) SetTxStatus(hash string, block uint64, ok bool) (err error) {
+	return fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }
