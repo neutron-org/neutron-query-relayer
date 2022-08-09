@@ -77,11 +77,10 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		start := time.Now()
 		if err := r.proofMessage(ctx, m); err != nil {
 			r.logger.Error("could not process message", zap.Uint64("query_id", m.queryId), zap.Error(err))
-			neutronmetrics.IncFailedProofs()
+			neutronmetrics.IncFailedRequests()
 			neutronmetrics.AddFailedRequest(string(m.messageType), time.Since(start).Seconds())
 		} else {
-			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
-			neutronmetrics.IncSuccessProofs()
+			neutronmetrics.IncSuccessRequests()
 			neutronmetrics.AddSuccessRequest(string(m.messageType), time.Since(start).Seconds())
 			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 		}
@@ -130,13 +129,13 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		case neutrontypes.InterchainQueryTypeKV:
 			kvKeys, err = neutrontypes.KVKeysFromString(events[kvKeyAttr][idx])
 			if err != nil {
-				fmt.Printf("invalid kv_key attr: %v", err)
+				r.logger.Info("invalid kv_key attr", zap.Error(err))
 				continue
 			}
 		case neutrontypes.InterchainQueryTypeTX:
 			transactionsFilterValue = events[transactionsFilter][idx]
 		default:
-			fmt.Printf("unknown query_type: %s", messageType)
+			r.logger.Info("unknown query_type", zap.String("query_type", string(messageType)))
 			continue
 		}
 
@@ -159,7 +158,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 	switch m.messageType {
 	case neutrontypes.InterchainQueryTypeKV:
-		proofs, height, err := r.proofer.GetStorageValuesWithProof(ctx, uint64(latestHeight), m.kvKeys)
+		proofs, height, err := r.proofer.GetStorageValues(ctx, uint64(latestHeight), m.kvKeys)
 		if err != nil {
 			return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.queryId, err)
 		}
@@ -172,7 +171,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		blocks, err := r.proofer.SearchTransactionsWithProofs(ctx, params)
+		blocks, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}

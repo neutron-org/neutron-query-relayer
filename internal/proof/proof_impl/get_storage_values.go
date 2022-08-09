@@ -7,8 +7,8 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-// GetStorageValuesWithProof gets proofs for query type = 'kv'
-func (p ProoferImpl) GetStorageValuesWithProof(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
+// GetStorageValues gets proofs for query type = 'kv'
+func (p ProoferImpl) GetStorageValues(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
 	stValues := make([]*neutrontypes.StorageValue, 0, len(keys))
 	height := uint64(0)
 
