@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 

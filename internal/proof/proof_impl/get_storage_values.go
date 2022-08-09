@@ -3,6 +3,7 @@ package proof_impl
 import (
 	"context"
 	"fmt"
+
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 

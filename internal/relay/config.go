@@ -2,10 +2,12 @@ package relay
 
 import (
 	"fmt"
+
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 )
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {

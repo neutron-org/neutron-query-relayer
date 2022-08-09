@@ -3,12 +3,14 @@ package proof_impl
 import (
 	"context"
 	"fmt"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	"strings"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
-	"strings"
+
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var perPage = 100

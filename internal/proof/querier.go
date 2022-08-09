@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // Querier can get proofs for stored blockchain values
