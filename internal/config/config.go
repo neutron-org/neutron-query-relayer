@@ -14,7 +14,7 @@ type CosmosQueryRelayerConfig struct {
 	TargetChain    *TargetChainConfig       `split_words:"true"`
 	Registry       *registry.RegistryConfig `split_words:"true"`
 	AllowTxQueries bool                     `split_words:"true"`
-	KvUpdatePeriod uint64                   `required:"true" split_words:"true"`
+	KvUpdatePeriod uint64                   `split_words:"true" default:"0"`
 }
 
 const EnvPrefix string = "RELAYER"
@@ -24,7 +24,7 @@ type NeutronChainConfig struct {
 	RPCAddr          string          `required:"true" split_words:"true"`
 	ChainID          string          `required:"true" split_words:"true"`
 	GasPrices        string          `required:"true" split_words:"true"`
-	GasLimit         uint64          `required:"true" split_words:"true"`
+	GasLimit         uint64          `split_words:"true" default:"0"`
 	HomeDir          string          `required:"true" split_words:"true"`
 	SignKeyName      string          `required:"true" split_words:"true"`
 	Timeout          time.Duration   `required:"true" split_words:"true"`

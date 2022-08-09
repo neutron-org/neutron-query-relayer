@@ -91,7 +91,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 		return fmt.Errorf("error calculating gas: %w", err)
 	}
 
-	if gasNeeded > txs.gasLimit {
+	if txs.gasLimit > 0 && gasNeeded > txs.gasLimit {
 		return fmt.Errorf("exceeds gas limit: gas needed %d, gas limit %d", gasNeeded, txs.gasLimit)
 	}
 
