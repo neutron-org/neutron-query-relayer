@@ -79,10 +79,6 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 			r.logger.Error("could not process message", zap.Uint64("query_id", m.queryId), zap.Error(err))
 			neutronmetrics.IncFailedRequests()
 			neutronmetrics.AddFailedRequest(string(m.messageType), time.Since(start).Seconds())
-		} else {
-			neutronmetrics.IncSuccessRequests()
-			neutronmetrics.AddSuccessRequest(string(m.messageType), time.Since(start).Seconds())
-			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 		}
 	}
 
