@@ -53,6 +53,7 @@ func NewRelayer(
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
+	stor RelayerStorage,
 ) Relayer {
 	// TODO: after storage implementation update this func
 	return Relayer{
@@ -63,7 +64,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
-		storage:      storage.NewDummyStorage(),
+		storage:      stor,
 	}
 }
 
@@ -200,6 +201,16 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		for height, txs := range blocks {
 			for _, tx := range txs {
+				hash := string(tmtypes.Tx(tx.Data).Hash())
+				exists, err := r.isTxExists(hash, uint64(latestHeight))
+				if err != nil {
+					return fmt.Errorf("failed to check if transaction already exists: %w", err)
+				}
+
+				if exists {
+					return fmt.Errorf("transaction already submitted")
+				}
+
 				header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
 				if err != nil {
 					return fmt.Errorf("failed to get header for src chain: %w", err)
@@ -221,6 +232,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				}
 
 				proofStart := time.Now()
+
 				if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
 					Header:          packedHeader,
 					NextBlockHeader: packedNextHeader,
@@ -435,4 +447,12 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	}
 
 	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
+}
+
+func (r *Relayer) isTxExists(hash string, block uint64) (bool, error) {
+	exists, err := r.storage.IsTxExists(hash, block)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }

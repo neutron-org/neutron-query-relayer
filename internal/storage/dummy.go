@@ -6,6 +6,21 @@ type DummyStorage struct {
 	KVUpdateMap map[uint64]uint64
 }
 
+func (s *DummyStorage) GetTxStatusBool(hash string, block uint64) (success bool, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *DummyStorage) GetTxStatusString(hash string, block uint64) (success string, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *DummyStorage) IsTxExists(hash string, block uint64) (exists bool, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *DummyStorage) SetLastUpdateBlock(queryId uint64, block uint64) error {
 	s.KVUpdateMap[queryId] = block
 	return nil
@@ -29,6 +44,6 @@ func (s *DummyStorage) GetTx(hash string, block uint64) (exists bool, err error)
 	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }
 
-func (s *DummyStorage) SetTxStatus(hash string, block uint64, ok bool) (err error) {
+func (s *DummyStorage) SetTxStatus(hash string, block uint64, status string) (err error) {
 	return fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }

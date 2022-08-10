@@ -16,6 +16,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	neutronapp "github.com/neutron-org/neutron/app"
 )
@@ -82,6 +83,13 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
+	var stor relay.RelayerStorage
+	if cfg.DbPath != "" {
+		stor, err = storage.NewLevelDBStorage(cfg.DbPath)
+	} else {
+		stor = storage.NewDummyStorage()
+	}
+
 	relayer := relay.NewRelayer(
 		cfg,
 		proofFetcher,
@@ -90,6 +98,7 @@ func main() {
 		targetChain,
 		neutronChain,
 		logger,
+		stor,
 	)
 
 	ctx := context.Background()

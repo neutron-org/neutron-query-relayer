@@ -16,6 +16,7 @@ type CosmosQueryRelayerConfig struct {
 	Registry          *registry.RegistryConfig `split_words:"true"`
 	AllowTxQueries    bool                     `required:"true" split_words:"true"`
 	MinKvUpdatePeriod uint64                   `split_words:"true" default:"0"`
+	DbPath            string                   `split_words:"true"`
 }
 
 const EnvPrefix string = "RELAYER"
