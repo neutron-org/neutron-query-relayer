@@ -34,10 +34,12 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relay
 
 func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            "",
-		ChainID:        cfg.ChainID,
-		RPCAddr:        cfg.RPCAddr,
-		AccountPrefix:  cfg.AccountPrefix,
+		Key:           "",
+		ChainID:       cfg.ChainID,
+		RPCAddr:       cfg.RPCAddr,
+		AccountPrefix: cfg.AccountPrefix,
+		// we don't have any needs in keys for target chain
+		// but since "KeyringBackend" can't be an empty string we explicitly set it to "test" value to avoid errors
 		KeyringBackend: "test",
 		GasAdjustment:  0.0,
 		GasPrices:      "",
