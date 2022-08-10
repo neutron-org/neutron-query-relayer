@@ -2,7 +2,6 @@ package storage
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
 	"strconv"
 )
@@ -28,7 +27,7 @@ func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 }
 
 func (s *LevelDBStorage) SetLastUpdateBlock(queryId uint64, block uint64) error {
-	err := s.db.Put([]byte(strconv.FormatUint(queryId, 10)), []byte(strconv.FormatUint(block, 10)), nil)
+	err := s.db.Put(uintToBytes(queryId), uintToBytes(block), nil)
 	if err != nil {
 		return err
 	}
@@ -42,24 +41,6 @@ func (s *LevelDBStorage) GetLastUpdateBlock(queryID uint64) (block uint64, exist
 	}
 	res, err := bytesToUint(data)
 	return res, true
-}
-
-func (s *LevelDBStorage) GetTx(hash string, block uint64) (exists bool, err error) {
-	data, err := s.db.Get(uintToBytes(block), nil)
-	if err != nil {
-		return false, err
-	}
-	var txmap TxMap
-
-	err = json.Unmarshal(data, &txmap)
-	if err != nil {
-		return false, err
-	}
-	if _, ok := txmap.TXes[hash]; ok {
-		return true, nil
-	}
-
-	return false, fmt.Errorf("todo")
 }
 
 func (s *LevelDBStorage) GetTxStatusBool(hash string, block uint64) (success bool, err error) {

@@ -240,11 +240,21 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				}); err != nil {
 					neutronmetrics.IncFailedProofs()
 					neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
+
+					err = r.storage.SetTxStatus(hash, uint64(latestHeight), err.Error())
+					if err != nil {
+						return fmt.Errorf("failed to store tx: %w", err)
+					}
 					return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 				}
 
 				neutronmetrics.IncSuccessProofs()
 				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
+
+				err = r.storage.SetTxStatus(hash, uint64(latestHeight), err.Error())
+				if err != nil {
+					return fmt.Errorf("failed to store tx: %w", err)
+				}
 
 				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			}
