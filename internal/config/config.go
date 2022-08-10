@@ -13,7 +13,7 @@ type CosmosQueryRelayerConfig struct {
 	NeutronChain      *NeutronChainConfig      `split_words:"true"`
 	TargetChain       *TargetChainConfig       `split_words:"true"`
 	Registry          *registry.RegistryConfig `split_words:"true"`
-	AllowTxQueries    bool                     `split_words:"true"`
+	AllowTxQueries    bool                     `required:"true" split_words:"true"`
 	MinKvUpdatePeriod uint64                   `split_words:"true" default:"0"`
 }
 

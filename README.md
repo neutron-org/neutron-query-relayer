@@ -70,7 +70,7 @@ By default, project spawns classical Production logger. so if there is a need to
 ##  Environment Notes
 ### Common 
 
-- `RELAYER_ALLOW_TX_QUERIES = {bool}`  if false, relayer ignores all tx queries. Optional.
+- `RELAYER_ALLOW_TX_QUERIES = {bool}`  if false, relayer ignores all tx queries. Required.
 - `RELAYER_KV_UPDATE_PERIOD = {uint}` minimal update period for KV queries (not less than `n` blocks). Optional
 - `RELAYER_NEUTRON_CHAIN_GAS_LIMIT = {uint}` gas limit for a single response. Optional
 
