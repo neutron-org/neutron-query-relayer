@@ -2,9 +2,10 @@ package raw
 
 import (
 	"fmt"
+	"time"
+
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	"time"
 )
 
 const socketEndpoint = "/websocket"

@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/neutron-org/neutron v0.0.0-20220803184721-48c8b89262d4
+	github.com/neutron-org/neutron v0.0.0-20220804093032-30ac6c724e6d
 	github.com/prometheus/client_golang v1.12.1
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
@@ -120,7 +120,7 @@ require (
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d // indirect

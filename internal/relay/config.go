@@ -2,10 +2,12 @@ package relay
 
 import (
 	"fmt"
+
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 )
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
@@ -32,10 +34,12 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relay
 
 func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            "",
-		ChainID:        cfg.ChainID,
-		RPCAddr:        cfg.RPCAddr,
-		AccountPrefix:  cfg.AccountPrefix,
+		Key:           "",
+		ChainID:       cfg.ChainID,
+		RPCAddr:       cfg.RPCAddr,
+		AccountPrefix: cfg.AccountPrefix,
+		// we don't have any needs in keys for target chain
+		// but since "KeyringBackend" can't be an empty string we explicitly set it to "test" value to avoid errors
 		KeyringBackend: "test",
 		GasAdjustment:  0.0,
 		GasPrices:      "",

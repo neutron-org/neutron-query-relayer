@@ -3,7 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
+
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
@@ -12,10 +18,6 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	neutronapp "github.com/neutron-org/neutron/app"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
-	"log"
-	"net/http"
 )
 
 func main() {

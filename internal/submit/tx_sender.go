@@ -15,8 +15,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 )
 
 const (
