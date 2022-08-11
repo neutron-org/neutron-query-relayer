@@ -434,5 +434,5 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 		return true, nil
 	}
 
-	return false, fmt.Errorf("attempted to update query too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, r.cfg.MinKvUpdatePeriod)
+	return false, fmt.Errorf("attempted to update query too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
 }
