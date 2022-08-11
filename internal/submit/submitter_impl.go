@@ -3,10 +3,10 @@ package submit
 import (
 	"context"
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
+
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 // SubmitterImpl can submit proofs using `sender` as the transaction transport mechanism
@@ -25,7 +25,7 @@ func (si *SubmitterImpl) SubmitProof(
 	revision,
 	queryId uint64,
 	allowKVCallbacks bool,
-	proof []proof.StorageValue,
+	proof []*neutrontypes.StorageValue,
 	updateClientMsg sdk.Msg,
 ) error {
 	msgs, err := si.buildProofMsg(height, revision, queryId, allowKVCallbacks, proof)
@@ -48,19 +48,7 @@ func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clie
 	return si.sender.Send(ctx, msgs)
 }
 
-func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKVCallbacks bool, proof []proof.StorageValue) ([]sdk.Msg, error) {
-	res := make([]*neutrontypes.StorageValue, 0, len(proof))
-	for _, item := range proof {
-		res = append(res, &neutrontypes.StorageValue{
-			StoragePrefix: item.StoragePrefix,
-			Key:           item.Key,
-			Value:         item.Value,
-			Proof: &crypto.ProofOps{
-				Ops: item.Proofs,
-			},
-		})
-	}
-
+func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKVCallbacks bool, proof []*neutrontypes.StorageValue) ([]sdk.Msg, error) {
 	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building proof msg: %w", err)
@@ -68,10 +56,11 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 
 	queryResult := neutrontypes.QueryResult{
 		Height:           height,
-		KvResults:        res,
+		KvResults:        proof,
 		Revision:         revision,
 		AllowKvCallbacks: allowKVCallbacks,
 	}
+
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
 
 	err = msg.ValidateBasic()

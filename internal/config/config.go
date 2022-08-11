@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
+
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 )
 

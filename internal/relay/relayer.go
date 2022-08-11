@@ -10,21 +10,23 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
+
+	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/cosmos-query-relayer/internal/config"
+	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 )
 
 // Relayer is controller for the whole app:
@@ -76,10 +78,10 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 		if err := r.proofMessage(ctx, m); err != nil {
 			r.logger.Error("could not process message", zap.Uint64("query_id", m.queryId), zap.Error(err))
 			neutronmetrics.IncFailedRequests()
-			neutronmetrics.AddFailedRequest(m.messageType, time.Since(start).Seconds())
+			neutronmetrics.AddFailedRequest(string(m.messageType), time.Since(start).Seconds())
 		} else {
 			neutronmetrics.IncSuccessRequests()
-			neutronmetrics.AddSuccessRequest(m.messageType, time.Since(start).Seconds())
+			neutronmetrics.AddSuccessRequest(string(m.messageType), time.Since(start).Seconds())
 		}
 	}
 
@@ -94,7 +96,8 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 		return nil, nil
 	}
 
-	if len(events[zoneIdAttr]) != len(events[parametersAttr]) ||
+	if len(events[zoneIdAttr]) != len(events[kvKeyAttr]) ||
+		len(events[zoneIdAttr]) != len(events[transactionsFilter]) ||
 		len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
 		len(events[zoneIdAttr]) != len(events[typeAttr]) {
 		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
@@ -114,17 +117,35 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 			continue
 		}
 
-		messageType := events[typeAttr][idx]
-		parameters := events[parametersAttr][idx]
+		var (
+			kvKeys                  neutrontypes.KVKeys
+			transactionsFilterValue string
+		)
 
-		messages = append(messages, queryEventMessage{queryId: queryId, messageType: messageType, parameters: []byte(parameters)})
+		messageType := neutrontypes.InterchainQueryType(events[typeAttr][idx])
+
+		switch messageType {
+		case neutrontypes.InterchainQueryTypeKV:
+			kvKeys, err = neutrontypes.KVKeysFromString(events[kvKeyAttr][idx])
+			if err != nil {
+				r.logger.Info("invalid kv_key attr", zap.Error(err))
+				continue
+			}
+		case neutrontypes.InterchainQueryTypeTX:
+			transactionsFilterValue = events[transactionsFilter][idx]
+		default:
+			r.logger.Info("unknown query_type", zap.String("query_type", string(messageType)))
+			continue
+		}
+
+		messages = append(messages, queryEventMessage{queryId: queryId, messageType: messageType, kvKeys: kvKeys, transactionsFilter: transactionsFilterValue})
 	}
 
 	return messages, nil
 }
 
 func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
-	r.logger.Debug("proofMessage", zap.String("message_type", m.messageType))
+	r.logger.Debug("proofMessage", zap.String("message_type", string(m.messageType)))
 
 	// TODO:
 	// 1. move message handling logic from switch section to dedicated methods
@@ -135,63 +156,21 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	}
 
 	switch m.messageType {
-	case delegatorDelegationsType:
-		var params delegatorDelegationsParams
-		err := json.Unmarshal(m.parameters, &params)
+	case neutrontypes.InterchainQueryTypeKV:
+		proofs, height, err := r.proofer.GetStorageValues(ctx, uint64(latestHeight), m.kvKeys)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for GetDelegatorDelegations with params=%s query_id=%d: %w",
-				m.parameters, m.queryId, err)
+			return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.queryId, err)
 		}
-
-		proofs, height, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.cfg.TargetChain.AccountPrefix, params.Delegator)
-		if err != nil {
-			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
-		}
-
-		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, proofs)
-
-	case getBalanceType:
-		var params getBalanceParams
-		err := json.Unmarshal(m.parameters, &params)
-		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
-		}
-
-		proofs, height, err := r.proofer.GetBalance(ctx, uint64(latestHeight), r.cfg.TargetChain.AccountPrefix, params.Addr, params.Denom)
-		if err != nil {
-			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-		}
-
-		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, proofs)
-
-	case exchangeRateType:
-		var params exchangeRateParams
-		err := json.Unmarshal(m.parameters, &params)
-		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w", m.messageType, m.parameters, m.queryId, err)
-		}
-
-		supplyProofs, height, err := r.proofer.GetSupply(ctx, uint64(latestHeight), params.Denom)
-		if err != nil {
-			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-		}
-
-		delegationProofs, _, err := r.proofer.GetDelegatorDelegations(ctx, uint64(latestHeight), r.cfg.TargetChain.AccountPrefix, params.Delegator)
-		if err != nil {
-			return fmt.Errorf("could not get proof for GetDelegatorDelegations with query_id=%d: %w", m.queryId, err)
-		}
-
-		return r.submitProof(ctx, int64(height), m.queryId, m.messageType, append(supplyProofs, delegationProofs...))
-
-	case recipientTransactionsType:
+		return r.submitProof(ctx, int64(height), m.queryId, string(m.messageType), proofs)
+	case neutrontypes.InterchainQueryTypeTX:
 		var params recipientTransactionsParams
-		err := json.Unmarshal(m.parameters, &params)
+		err := json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
-			return fmt.Errorf("could not unmarshal parameters for %s with params=%s query_id=%d: %w",
-				m.messageType, m.parameters, m.queryId, err)
+			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
+				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		blocks, err := r.proofer.RecipientTransactions(ctx, params)
+		blocks, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
@@ -233,25 +212,22 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 					Tx:              tx,
 				}); err != nil {
 					neutronmetrics.IncFailedProofs()
-					neutronmetrics.AddFailedProof(m.messageType, time.Since(proofStart).Seconds())
+					neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
 					return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 				}
 
 				neutronmetrics.IncSuccessProofs()
-				neutronmetrics.AddSuccessProof(m.messageType, time.Since(proofStart).Seconds())
+				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
 
 				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			}
 		}
-
 		return nil
-
-	case delegationRewardsType:
-		return fmt.Errorf("could not relay not implemented query %s", delegationRewardsType)
 
 	default:
 		return fmt.Errorf("unknown query messageType=%s", m.messageType)
 	}
+
 }
 
 // submitProof submits the proof for the given query on the given height and tracks the result.
@@ -260,7 +236,7 @@ func (r *Relayer) submitProof(
 	height int64,
 	queryID uint64,
 	messageType string,
-	proof []proof.StorageValue,
+	proof []*neutrontypes.StorageValue,
 ) error {
 	srcHeader, err := r.getSrcChainHeader(ctx, height)
 	if err != nil {

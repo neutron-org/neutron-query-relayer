@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 const websocketPath = "/websocket"
