@@ -453,7 +453,7 @@ func (r *Relayer) isWatchedAddress(address string) bool {
 
 //isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
 func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
-	// if didn't set in config
+	// if it wasn't set in config
 	if r.cfg.MinKvUpdatePeriod == 0 {
 		return true, nil
 	}

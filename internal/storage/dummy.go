@@ -11,12 +11,14 @@ func (s *DummyStorage) SetLastUpdateBlock(queryId uint64, block uint64) error {
 
 func (s *DummyStorage) GetLastUpdateBlock(queryID uint64) (uint64, bool) {
 	if val, ok := s.KVUpdateMap[queryID]; ok {
-		return uint64(val), true
+		return val, true
 	} else {
 		return 0, false
 	}
 }
 
 func NewDummyStorage() *DummyStorage {
-	return new(DummyStorage)
+	s := new(DummyStorage)
+	s.KVUpdateMap = make(map[uint64]uint64)
+	return s
 }
