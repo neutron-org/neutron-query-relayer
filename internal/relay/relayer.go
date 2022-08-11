@@ -165,10 +165,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		if err != nil || !ok {
 			return fmt.Errorf("error on checking previous query update with query_id=%d: %w", m.queryId, err)
 		}
+
 		proofs, height, err := r.proofer.GetStorageValues(ctx, uint64(latestHeight), m.kvKeys)
 		if err != nil {
 			return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.queryId, err)
 		}
+
 		return r.submitProof(ctx, int64(height), m.queryId, string(m.messageType), proofs)
 	case neutrontypes.InterchainQueryTypeTX:
 		if !r.cfg.AllowTxQueries {
@@ -186,6 +188,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+
 		if len(blocks) == 0 {
 			return nil
 		}
@@ -414,7 +417,7 @@ func (r *Relayer) isWatchedAddress(address string) bool {
 	return r.registry.IsEmpty() || r.registry.Contains(address)
 }
 
-//isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
+// isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
 func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
 	// if it wasn't set in config
 	if r.cfg.MinKvUpdatePeriod == 0 {
@@ -422,7 +425,7 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	}
 
 	previous, ok := r.storage.GetLastUpdateBlock(queryID)
-	if !ok || previous+r.cfg.MinKvUpdatePeriod >= currentBlock {
+	if !ok || previous+r.cfg.MinKvUpdatePeriod <= currentBlock {
 		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
 		if err != nil {
 			return false, err
@@ -431,5 +434,5 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 		return true, nil
 	}
 
-	return false, fmt.Errorf("query updated too late: last update was on block=%d, maximum update period=%d", previous, r.cfg.MinKvUpdatePeriod)
+	return false, fmt.Errorf("attempted to update query too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, r.cfg.MinKvUpdatePeriod)
 }
