@@ -42,7 +42,7 @@ var (
 	}, []string{labelMethod, labelType})
 
 	submittedTxCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "submitted txs (tx query)",
+		Name: "submitted_txs",
 		Help: "The total number of submitted txs (counter)",
 	}, []string{labelType})
 )

@@ -190,7 +190,8 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get query last height from storage: %w", err)
 		}
 
-		params["tx.height"] = fmt.Sprintf(">%d", queryLastHeight)
+		// add filter by tx.height (tx.height>n)
+		params["tx.height"] = fmt.Sprintf("%d", queryLastHeight)
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
