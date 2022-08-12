@@ -23,6 +23,7 @@ func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 	if err != nil {
 		return &LevelDBStorage{db: database}, err
 	}
+
 	return &LevelDBStorage{db: database}, nil
 }
 
@@ -34,6 +35,7 @@ func (s *LevelDBStorage) SetLastUpdateBlock(queryId uint64, block uint64) error 
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -42,6 +44,7 @@ func (s *LevelDBStorage) GetLastUpdateBlock(queryID uint64) (block uint64, exist
 	if err != nil {
 		return 0, false
 	}
+
 	res, err := bytesToUint(data)
 	return res, true
 }
@@ -57,6 +60,7 @@ func (s *LevelDBStorage) GetTxStatusBool(hash string, block uint64) (success boo
 	if err != nil {
 		return false, err
 	}
+
 	if v, ok := txmap[hash]; ok {
 		if v == Success {
 			return true, nil
@@ -97,12 +101,14 @@ func (s *LevelDBStorage) GetTxStatusString(hash string, block uint64) (success s
 	if err != nil {
 		return "", err
 	}
+
 	var txmap TxMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {
 		return "", err
 	}
+
 	if v, ok := txmap[hash]; ok {
 		return v, nil
 	}
@@ -121,6 +127,7 @@ func (s *LevelDBStorage) IsTxExists(hash string, block uint64) (exists bool, err
 	if err != nil {
 		return false, err
 	}
+
 	if _, ok := txmap[hash]; ok {
 		return true, nil
 	} else {
@@ -137,5 +144,6 @@ func bytesToUint(bytes []byte) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return num, nil
 }

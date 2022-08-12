@@ -464,5 +464,6 @@ func (r *Relayer) isTxExists(hash string, block uint64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return exists, nil
 }
