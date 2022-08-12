@@ -16,6 +16,7 @@ import (
 var perPage = 100
 
 const orderBy = "desc"
+const txHeight = "tx.height"
 
 func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	cp := new(crypto.Proof)
@@ -93,6 +94,9 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 func queryFromParams(params map[string]string) string {
 	queryParamsList := make([]string, 0, len(params))
 	for key, value := range params {
+		if key == txHeight {
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>='%s'", key, value))
+		}
 		queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
 	}
 	return strings.Join(queryParamsList, " AND ")
