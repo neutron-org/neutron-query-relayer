@@ -178,8 +178,14 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
 		}
 
+		queryExists, err := r.isTxQueryExists(m.queryId)
+		if err != nil {
+			return fmt.Errorf("could not se for %s with params=%s query_id=%d: %w",
+				m.messageType, m.transactionsFilter, m.queryId, err)
+		}
+
 		var params recipientTransactionsParams
-		err := json.Unmarshal([]byte(m.transactionsFilter), &params)
+		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
@@ -202,13 +208,15 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		for height, txs := range blocks {
 			for _, tx := range txs {
 				hash := string(tmtypes.Tx(tx.Data).Hash())
-				exists, err := r.isTxExists(hash, uint64(latestHeight))
-				if err != nil {
-					return fmt.Errorf("failed to check if transaction already exists: %w", err)
-				}
+				if queryExists {
+					txExists, err := r.isTxExists(m.queryId, hash)
+					if err != nil {
+						return fmt.Errorf("failed to check if transaction already exists: %w", err)
+					}
 
-				if exists {
-					return fmt.Errorf("transaction already submitted")
+					if txExists {
+						return fmt.Errorf("transaction already submitted")
+					}
 				}
 
 				header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
@@ -241,7 +249,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 					neutronmetrics.IncFailedProofs()
 					neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-					err = r.storage.SetTxStatus(hash, uint64(latestHeight), err.Error())
+					err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), 0)
 					if err != nil {
 						return fmt.Errorf("failed to store tx: %w", err)
 					}
@@ -251,13 +259,18 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				neutronmetrics.IncSuccessProofs()
 				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-				err = r.storage.SetTxStatus(hash, uint64(latestHeight), err.Error())
+				err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), 0)
 				if err != nil {
 					return fmt.Errorf("failed to store tx: %w", err)
 				}
 
 				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			}
+		}
+
+		err = r.storage.SetLastHeight(m.queryId, uint64(latestHeight))
+		if err != nil {
+			return fmt.Errorf("failed to save last height of query: %w", err)
 		}
 		return nil
 
@@ -459,8 +472,17 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
 }
 
-func (r *Relayer) isTxExists(hash string, block uint64) (bool, error) {
-	exists, err := r.storage.IsTxExists(hash, block)
+func (r *Relayer) isTxExists(queryID uint64, hash string) (bool, error) {
+	exists, err := r.storage.IsTxExists(queryID, hash)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func (r *Relayer) isTxQueryExists(queryID uint64) (bool, error) {
+	exists, err := r.storage.IsQueryExists(queryID)
 	if err != nil {
 		return false, err
 	}

@@ -4,8 +4,10 @@ package relay
 type RelayerStorage interface {
 	SetLastUpdateBlock(queryId uint64, block uint64) error
 	GetLastUpdateBlock(queryID uint64) (block uint64, exists bool)
-	SetTxStatus(hash string, block uint64, status string) (err error)
-	GetTxStatusBool(hash string, block uint64) (success bool, err error)
-	GetTxStatusString(hash string, block uint64) (success string, err error)
-	IsTxExists(hash string, block uint64) (exists bool, err error)
+	SetTxStatus(queryID uint64, hash string, status string, block uint64) (err error)
+	GetTxStatusBool(queryID uint64, hash string) (success bool, err error)
+	GetTxStatusString(queryID uint64, hash string) (success string, err error)
+	IsTxExists(queryID uint64, hash string) (exists bool, err error)
+	IsQueryExists(queryID uint64) (exists bool, err error)
+	SetLastHeight(queryID uint64, block uint64) error
 }

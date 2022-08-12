@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
 	"strconv"
 	"sync"
@@ -16,7 +17,11 @@ const (
 	Success string = "success"
 )
 
-type TxMap map[string]string
+type QueryMap struct {
+	// map [block height]->(map[hash]->status)
+	txStatuses map[uint64]map[string]string
+	lastHeight uint64
+}
 
 func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 	database, err := leveldb.OpenFile(path, nil)
@@ -49,19 +54,19 @@ func (s *LevelDBStorage) GetLastUpdateBlock(queryID uint64) (block uint64, exist
 	return res, true
 }
 
-func (s *LevelDBStorage) GetTxStatusBool(hash string, block uint64) (success bool, err error) {
-	data, err := s.db.Get(uintToBytes(block), nil)
+func (s *LevelDBStorage) GetTxStatusBool(queryID uint64, hash string) (success bool, err error) {
+	data, err := s.db.Get(uintToBytes(queryID), nil)
 	if err != nil {
 		return false, err
 	}
-	var txmap TxMap
+	var txmap QueryMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {
 		return false, err
 	}
 
-	if v, ok := txmap[hash]; ok {
+	if v, ok := txmap.txStatuses[txmap.lastHeight][hash]; ok {
 		if v == Success {
 			return true, nil
 		} else {
@@ -72,23 +77,26 @@ func (s *LevelDBStorage) GetTxStatusBool(hash string, block uint64) (success boo
 	return false, err
 }
 
-func (s *LevelDBStorage) SetTxStatus(hash string, block uint64, status string) (err error) {
+func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, status string, block uint64) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
-	data, err := s.db.Get(uintToBytes(block), nil)
+	data, err := s.db.Get(uintToBytes(queryID), nil)
 
-	var txmap TxMap
+	var queryMap QueryMap
 
-	err = json.Unmarshal(data, &txmap)
+	err = json.Unmarshal(data, &queryMap)
 	if err != nil {
 		return err
 	}
 
-	txmap[hash] = status
-	txsBytes, err := json.Marshal(txmap)
+	queryMap.txStatuses[block][hash] = status
+	txsBytes, err := json.Marshal(queryMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshall queryMap: %w", err)
+	}
 
-	err = s.db.Put(uintToBytes(block), txsBytes, nil)
+	err = s.db.Put(uintToBytes(queryID), txsBytes, nil)
 
 	if err != nil {
 		return err
@@ -96,43 +104,87 @@ func (s *LevelDBStorage) SetTxStatus(hash string, block uint64, status string) (
 	return nil
 }
 
-func (s *LevelDBStorage) GetTxStatusString(hash string, block uint64) (success string, err error) {
-	data, err := s.db.Get(uintToBytes(block), nil)
+func (s *LevelDBStorage) GetTxStatusString(queryID uint64, hash string) (success string, err error) {
+	data, err := s.db.Get(uintToBytes(queryID), nil)
 	if err != nil {
 		return "", err
 	}
 
-	var txmap TxMap
+	var txmap QueryMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {
 		return "", err
 	}
 
-	if v, ok := txmap[hash]; ok {
+	if v, ok := txmap.txStatuses[txmap.lastHeight][hash]; ok {
 		return v, nil
 	}
 
 	return "", err
 }
 
-func (s *LevelDBStorage) IsTxExists(hash string, block uint64) (exists bool, err error) {
-	data, err := s.db.Get(uintToBytes(block), nil)
+func (s *LevelDBStorage) IsTxExists(queryID uint64, hash string) (exists bool, err error) {
+	data, err := s.db.Get(uintToBytes(queryID), nil)
 	if err != nil {
 		return false, err
 	}
-	var txmap TxMap
+	var queryMap QueryMap
 
-	err = json.Unmarshal(data, &txmap)
+	err = json.Unmarshal(data, &queryMap)
 	if err != nil {
 		return false, err
 	}
 
-	if _, ok := txmap[hash]; ok {
+	if _, ok := queryMap.txStatuses[queryMap.lastHeight][hash]; ok {
 		return true, nil
 	} else {
 		return false, nil
 	}
+}
+
+func (s *LevelDBStorage) SetLastHeight(queryID uint64, block uint64) error {
+	s.Lock()
+	defer s.Unlock()
+
+	data, err := s.db.Get(uintToBytes(queryID), nil)
+	if err != nil {
+		return err
+	}
+	var queryMap QueryMap
+
+	err = json.Unmarshal(data, &queryMap)
+	if err != nil {
+		return err
+	}
+
+	queryMap.lastHeight = block
+
+	txsBytes, err := json.Marshal(queryMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshall queryMap: %w", err)
+	}
+
+	err = s.db.Put(uintToBytes(queryID), txsBytes, nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *LevelDBStorage) IsQueryExists(queryID uint64) (exists bool, err error) {
+	exists, err = s.db.Has(uintToBytes(queryID), nil)
+	if !exists {
+		txmap := QueryMap{txStatuses: make(map[uint64]map[string]string), lastHeight: 0}
+		txmapBytes, err := json.Marshal(txmap)
+		if err != nil {
+			return false, fmt.Errorf("failed to marshall txmap: %w", err)
+		}
+		err = s.db.Put(uintToBytes(queryID), txmapBytes, nil)
+	}
+	return
 }
 
 func uintToBytes(uint642 uint64) []byte {
