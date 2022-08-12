@@ -27,7 +27,7 @@ import (
 
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // Relayer is controller for the whole app:

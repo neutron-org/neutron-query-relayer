@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"github.com/syndtr/goleveldb/leveldb"
 	"strconv"
+	"sync"
 )
 
 type LevelDBStorage struct {
+	sync.Mutex
 	db *leveldb.DB
 }
 
@@ -14,19 +16,20 @@ const (
 	Success string = "success"
 )
 
-type TxMap struct {
-	TXes map[string]string
-}
+type TxMap map[string]string
 
 func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 	database, err := leveldb.OpenFile(path, nil)
 	if err != nil {
-		return &LevelDBStorage{nil}, err
+		return &LevelDBStorage{db: database}, err
 	}
 	return &LevelDBStorage{db: database}, nil
 }
 
 func (s *LevelDBStorage) SetLastUpdateBlock(queryId uint64, block uint64) error {
+	s.Lock()
+	defer s.Unlock()
+
 	err := s.db.Put(uintToBytes(queryId), uintToBytes(block), nil)
 	if err != nil {
 		return err
@@ -48,7 +51,7 @@ func (s *LevelDBStorage) GetTxStatusBool(hash string, block uint64) (success boo
 	if err != nil {
 		return false, err
 	}
-	var txmap map[string]string
+	var txmap TxMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {
@@ -66,9 +69,12 @@ func (s *LevelDBStorage) GetTxStatusBool(hash string, block uint64) (success boo
 }
 
 func (s *LevelDBStorage) SetTxStatus(hash string, block uint64, status string) (err error) {
+	s.Lock()
+	defer s.Unlock()
+
 	data, err := s.db.Get(uintToBytes(block), nil)
 
-	var txmap = make(map[string]string)
+	var txmap TxMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {
@@ -91,7 +97,7 @@ func (s *LevelDBStorage) GetTxStatusString(hash string, block uint64) (success s
 	if err != nil {
 		return "", err
 	}
-	var txmap map[string]string
+	var txmap TxMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {
@@ -109,7 +115,7 @@ func (s *LevelDBStorage) IsTxExists(hash string, block uint64) (exists bool, err
 	if err != nil {
 		return false, err
 	}
-	var txmap map[string]string
+	var txmap TxMap
 
 	err = json.Unmarshal(data, &txmap)
 	if err != nil {

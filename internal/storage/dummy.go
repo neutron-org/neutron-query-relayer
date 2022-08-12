@@ -7,18 +7,15 @@ type DummyStorage struct {
 }
 
 func (s *DummyStorage) GetTxStatusBool(hash string, block uint64) (success bool, err error) {
-	//TODO implement me
-	panic("implement me")
+	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }
 
 func (s *DummyStorage) GetTxStatusString(hash string, block uint64) (success string, err error) {
-	//TODO implement me
-	panic("implement me")
+	return "", fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }
 
 func (s *DummyStorage) IsTxExists(hash string, block uint64) (exists bool, err error) {
-	//TODO implement me
-	panic("implement me")
+	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }
 
 func (s *DummyStorage) SetLastUpdateBlock(queryId uint64, block uint64) error {

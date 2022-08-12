@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -85,7 +86,11 @@ func main() {
 
 	var stor relay.RelayerStorage
 	if cfg.DbPath != "" {
-		stor, err = storage.NewLevelDBStorage(cfg.DbPath)
+		path, err := filepath.Abs(cfg.DbPath)
+		if err != nil {
+			logger.Fatal("cannot initialize db: incorrect path", zap.Error(err))
+		}
+		stor, err = storage.NewLevelDBStorage(path)
 	} else {
 		stor = storage.NewDummyStorage()
 	}
