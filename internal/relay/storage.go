@@ -9,5 +9,6 @@ type RelayerStorage interface {
 	GetTxStatusString(queryID uint64, hash string) (success string, err error)
 	IsTxExists(queryID uint64, hash string) (exists bool, err error)
 	IsQueryExists(queryID uint64) (exists bool, err error)
+	GetLastHeight(queryID uint64) (block uint64, err error)
 	SetLastHeight(queryID uint64, block uint64) error
 }

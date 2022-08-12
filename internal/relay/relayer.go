@@ -185,6 +185,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 		var params recipientTransactionsParams
+		queryLastHeight, err := r.storage.GetLastHeight(m.queryId)
+		if err != nil {
+			return fmt.Errorf("failed to get query last height from storage: %w", err)
+		}
+
+		params["tx.height"] = fmt.Sprintf(">%d", queryLastHeight)
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
@@ -249,7 +255,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 					neutronmetrics.IncFailedProofs()
 					neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-					err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), 0)
+					err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), uint64(latestHeight))
 					if err != nil {
 						return fmt.Errorf("failed to store tx: %w", err)
 					}
@@ -259,7 +265,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				neutronmetrics.IncSuccessProofs()
 				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-				err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), 0)
+				err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), uint64(latestHeight))
 				if err != nil {
 					return fmt.Errorf("failed to store tx: %w", err)
 				}

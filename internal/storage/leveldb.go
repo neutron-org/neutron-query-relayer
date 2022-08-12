@@ -143,6 +143,21 @@ func (s *LevelDBStorage) IsTxExists(queryID uint64, hash string) (exists bool, e
 	}
 }
 
+func (s *LevelDBStorage) GetLastHeight(queryID uint64) (block uint64, err error) {
+	data, err := s.db.Get(uintToBytes(queryID), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var queryMap QueryMap
+	err = json.Unmarshal(data, &queryMap)
+	if err != nil {
+		return 0, err
+	}
+
+	return queryMap.lastHeight, nil
+}
+
 func (s *LevelDBStorage) SetLastHeight(queryID uint64, block uint64) error {
 	s.Lock()
 	defer s.Unlock()
@@ -151,22 +166,20 @@ func (s *LevelDBStorage) SetLastHeight(queryID uint64, block uint64) error {
 	if err != nil {
 		return err
 	}
-	var queryMap QueryMap
 
+	var queryMap QueryMap
 	err = json.Unmarshal(data, &queryMap)
 	if err != nil {
 		return err
 	}
 
 	queryMap.lastHeight = block
-
 	txsBytes, err := json.Marshal(queryMap)
 	if err != nil {
 		return fmt.Errorf("failed to marshall queryMap: %w", err)
 	}
 
 	err = s.db.Put(uintToBytes(queryID), txsBytes, nil)
-
 	if err != nil {
 		return err
 	}
@@ -182,6 +195,7 @@ func (s *LevelDBStorage) IsQueryExists(queryID uint64) (exists bool, err error) 
 		if err != nil {
 			return false, fmt.Errorf("failed to marshall txmap: %w", err)
 		}
+
 		err = s.db.Put(uintToBytes(queryID), txmapBytes, nil)
 	}
 	return
