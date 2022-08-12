@@ -34,6 +34,7 @@ type TxSender struct {
 	addressPrefix   string
 	signKeyName     string
 	gasPrices       string
+	gasLimit        uint64
 	txBroadcastType config.TxBroadcastType
 }
 
@@ -65,6 +66,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		addressPrefix:   cfg.ChainPrefix,
 		signKeyName:     cfg.SignKeyName,
 		gasPrices:       cfg.GasPrices,
+		gasLimit:        cfg.GasLimit,
 		txBroadcastType: cfg.TxBroadcastType,
 	}, nil
 }
@@ -88,6 +90,10 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
 	if err != nil {
 		return fmt.Errorf("error calculating gas: %w", err)
+	}
+
+	if txs.gasLimit > 0 && gasNeeded > txs.gasLimit {
+		return fmt.Errorf("exceeds gas limit: gas needed %d, gas limit %d", gasNeeded, txs.gasLimit)
 	}
 
 	txf = txf.

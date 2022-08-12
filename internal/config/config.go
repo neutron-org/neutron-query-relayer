@@ -11,9 +11,11 @@ import (
 
 // CosmosQueryRelayerConfig describes configuration of the app
 type CosmosQueryRelayerConfig struct {
-	NeutronChain *NeutronChainConfig      `split_words:"true"`
-	TargetChain  *TargetChainConfig       `split_words:"true"`
-	Registry     *registry.RegistryConfig `split_words:"true"`
+	NeutronChain      *NeutronChainConfig      `split_words:"true"`
+	TargetChain       *TargetChainConfig       `split_words:"true"`
+	Registry          *registry.RegistryConfig `split_words:"true"`
+	AllowTxQueries    bool                     `required:"true" split_words:"true"`
+	MinKvUpdatePeriod uint64                   `split_words:"true" default:"0"`
 }
 
 const EnvPrefix string = "RELAYER"
@@ -23,6 +25,7 @@ type NeutronChainConfig struct {
 	RPCAddr          string          `required:"true" split_words:"true"`
 	ChainID          string          `required:"true" split_words:"true"`
 	GasPrices        string          `required:"true" split_words:"true"`
+	GasLimit         uint64          `split_words:"true" default:"0"`
 	HomeDir          string          `required:"true" split_words:"true"`
 	SignKeyName      string          `required:"true" split_words:"true"`
 	Timeout          time.Duration   `required:"true" split_words:"true"`

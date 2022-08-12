@@ -27,6 +27,7 @@ import (
 
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
+	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
 )
 
 // Relayer is controller for the whole app:
@@ -41,6 +42,7 @@ type Relayer struct {
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
+	storage      RelayerStorage
 }
 
 func NewRelayer(
@@ -52,6 +54,7 @@ func NewRelayer(
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
 ) Relayer {
+	// TODO: after storage implementation update this func
 	return Relayer{
 		cfg:          cfg,
 		proofer:      proofer,
@@ -60,6 +63,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
+		storage:      storage.NewDummyStorage(),
 	}
 }
 
@@ -157,12 +161,22 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 	switch m.messageType {
 	case neutrontypes.InterchainQueryTypeKV:
+		ok, err := r.isQueryOnTime(m.queryId, uint64(latestHeight))
+		if err != nil || !ok {
+			return fmt.Errorf("error on checking previous query update with query_id=%d: %w", m.queryId, err)
+		}
+
 		proofs, height, err := r.proofer.GetStorageValues(ctx, uint64(latestHeight), m.kvKeys)
 		if err != nil {
 			return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.queryId, err)
 		}
+
 		return r.submitProof(ctx, int64(height), m.queryId, string(m.messageType), proofs)
 	case neutrontypes.InterchainQueryTypeTX:
+		if !r.cfg.AllowTxQueries {
+			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
+		}
+
 		var params recipientTransactionsParams
 		err := json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
@@ -174,6 +188,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
+
 		if len(blocks) == 0 {
 			return nil
 		}
@@ -400,4 +415,24 @@ func (r *Relayer) isTargetZone(zoneID string) bool {
 // are no registry watched addresses configured for the Relayer meaning all addresses are watched.
 func (r *Relayer) isWatchedAddress(address string) bool {
 	return r.registry.IsEmpty() || r.registry.Contains(address)
+}
+
+// isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
+func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
+	// if it wasn't set in config
+	if r.cfg.MinKvUpdatePeriod == 0 {
+		return true, nil
+	}
+
+	previous, ok := r.storage.GetLastUpdateBlock(queryID)
+	if !ok || previous+r.cfg.MinKvUpdatePeriod <= currentBlock {
+		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
 }
