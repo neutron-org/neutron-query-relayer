@@ -6,6 +6,22 @@ type DummyStorage struct {
 	KVUpdateMap map[uint64]uint64
 }
 
+func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string, block uint64) (err error) {
+	return fmt.Errorf("error: can't use dummy storage with allowed tx queries")
+}
+
+func (s *DummyStorage) IsQueryExists(queryID uint64) (exists bool, err error) {
+	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
+}
+
+func (s *DummyStorage) GetLastHeight(queryID uint64) (block uint64, err error) {
+	return 0, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
+}
+
+func (s *DummyStorage) SetLastHeight(queryID uint64, block uint64) error {
+	return fmt.Errorf("error: can't use dummy storage with allowed tx queries")
+}
+
 func (s *DummyStorage) GetTxStatusBool(queryID uint64, hash string) (success bool, err error) {
 	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }
@@ -39,8 +55,4 @@ func NewDummyStorage() *DummyStorage {
 
 func (s *DummyStorage) GetTx(hash string, block uint64) (exists bool, err error) {
 	return false, fmt.Errorf("error: can't use dummy storage with allowed tx queries")
-}
-
-func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
-	return fmt.Errorf("error: can't use dummy storage with allowed tx queries")
 }

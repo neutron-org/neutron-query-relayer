@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-	"path/filepath"
-
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
@@ -85,12 +86,16 @@ func main() {
 	}
 
 	var stor relay.RelayerStorage
+
+	if cfg.AllowTxQueries && cfg.DbPath == "" {
+		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+	}
+
 	if cfg.DbPath != "" {
-		path, err := filepath.Abs(cfg.DbPath)
+		stor, err = storage.NewLevelDBStorage(cfg.DbPath)
 		if err != nil {
-			logger.Fatal("cannot initialize db: incorrect path", zap.Error(err))
+			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
 		}
-		stor, err = storage.NewLevelDBStorage(path)
 	} else {
 		stor = storage.NewDummyStorage()
 	}
@@ -113,6 +118,20 @@ func main() {
 		logger.Error("failed to subscribe on events", zap.Error(err))
 	}
 	logger.Info("successfully subscribed to neutron chain events\n")
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case event := <-events:
+		// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
+		// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
+		if err = relayer.Proof(ctx, event); err != nil {
+			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
+		}
+	case <-sigs:
+		logger.Info("relayer has been gracefully shitdowned")
+	}
 
 	for event := range events {
 		// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
