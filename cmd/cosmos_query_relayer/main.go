@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
@@ -130,7 +131,8 @@ func main() {
 			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
 		}
 	case <-sigs:
-		logger.Info("relayer has been gracefully shitdowned")
+		logger.Info("relayer has been gracefully shutdown")
+		os.Exit(1)
 	}
 
 	for event := range events {

@@ -3,9 +3,10 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/syndtr/goleveldb/leveldb"
 	"strconv"
 	"sync"
+
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 type LevelDBStorage struct {
