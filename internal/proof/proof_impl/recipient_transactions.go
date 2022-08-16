@@ -96,8 +96,10 @@ func queryFromParams(params map[string]string) string {
 	for key, value := range params {
 		if key == txHeight {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>'%s'", key, value))
+		} else {
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
 		}
-		queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
+
 	}
 	return strings.Join(queryParamsList, " AND ")
 }
