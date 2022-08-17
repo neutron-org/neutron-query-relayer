@@ -38,9 +38,9 @@ see test-2/config/genesis.json for $VAL2 value
 
 1. Create delegation from demowallet2 to val2 on test-2 chain
 ```
-VAL2=neutronvaloper1qnk2n4nlkpw9xfqntladh74w6ujtulwnqshepx`
+VAL2=neutronvaloper1qnk2n4nlkpw9xfqntladh74w6ujtulwnqshepx
 DEMOWALLET2=$(neutrond keys show demowallet2 -a --keyring-backend test --home ./data/test-2)
-echo "DEMOWALLET2: $DEMOWALLET2
+echo "DEMOWALLET2: $DEMOWALLET2"
 ./build/neutrond tx staking delegate $VAL2 1stake --from demowallet2 --keyring-backend test --home ./data/test-2 --chain-id=test-2 -y
 ```
 2. Register interchain query
