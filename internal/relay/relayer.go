@@ -180,7 +180,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		queryExists, err := r.isTxQueryExists(m.queryId)
 		if err != nil {
-			return fmt.Errorf("could not se for %s with params=%s query_id=%d: %w",
+			return fmt.Errorf("could check if query exists: %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
@@ -266,7 +266,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				neutronmetrics.IncSuccessProofs()
 				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-				err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), uint64(latestHeight))
+				err = r.storage.SetTxStatus(m.queryId, hash, Success, uint64(latestHeight))
 				if err != nil {
 					return fmt.Errorf("failed to store tx: %w", err)
 				}
@@ -466,9 +466,13 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 		return true, nil
 	}
 
-	previous, ok := r.storage.GetLastUpdateBlock(queryID)
+	previous, ok, err := r.storage.GetLastUpdateBlock(queryID)
+	if err != nil {
+		return false, err
+	}
+
 	if !ok || previous+r.cfg.MinKvUpdatePeriod <= currentBlock {
-		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
+		err := r.storage.SetLastHeight(queryID, currentBlock)
 		if err != nil {
 			return false, err
 		}
