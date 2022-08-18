@@ -16,7 +16,9 @@ import (
 var perPage = 100
 
 const orderBy = "desc"
-const txHeight = "tx.height"
+
+// TxHeight describes tendermint filter by tx.height that we use to get only actual txs
+const TxHeight = "tx.height"
 
 func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	cp := new(crypto.Proof)
@@ -94,7 +96,7 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 func queryFromParams(params map[string]string) string {
 	queryParamsList := make([]string, 0, len(params))
 	for key, value := range params {
-		if key == txHeight {
+		if key == TxHeight {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>'%s'", key, value))
 		} else {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))

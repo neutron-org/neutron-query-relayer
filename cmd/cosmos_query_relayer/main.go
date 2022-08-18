@@ -86,19 +86,19 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
-	var stor relay.RelayerStorage
+	var st relay.Storage
 
 	if cfg.AllowTxQueries && cfg.DbPath == "" {
 		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
 	}
 
 	if cfg.DbPath != "" {
-		stor, err = storage.NewLevelDBStorage(cfg.DbPath)
+		st, err = storage.NewLevelDBStorage(cfg.DbPath)
 		if err != nil {
 			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
 		}
 	} else {
-		stor = storage.NewDummyStorage()
+		st = storage.NewDummyStorage()
 	}
 
 	relayer := relay.NewRelayer(
@@ -109,7 +109,7 @@ func main() {
 		targetChain,
 		neutronChain,
 		logger,
-		stor,
+		st,
 	)
 
 	ctx := context.Background()
@@ -132,7 +132,11 @@ func main() {
 		}
 	case <-sigs:
 		logger.Info("relayer has been gracefully shutdown")
-		os.Exit(1)
+		err := relayer.CloseDb()
+		if err != nil {
+			logger.Error("failed to graceful shutdown", zap.Error(err))
+		}
+		os.Exit(0)
 	}
 
 	for event := range events {

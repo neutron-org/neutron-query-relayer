@@ -11,6 +11,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
 
 	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -42,7 +43,7 @@ type Relayer struct {
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
-	storage      RelayerStorage
+	storage      Storage
 }
 
 func NewRelayer(
@@ -53,7 +54,7 @@ func NewRelayer(
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
-	stor RelayerStorage,
+	stor Storage,
 ) Relayer {
 	// TODO: after storage implementation update this func
 	return Relayer{
@@ -178,20 +179,20 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
 		}
 
-		queryExists, err := r.isTxQueryExists(m.queryId)
+		queryExists, err := r.storage.IsQueryExists(m.queryId)
 		if err != nil {
-			return fmt.Errorf("could check if query exists: %s with params=%s query_id=%d: %w",
+			return fmt.Errorf("could not check if query exists: %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
 		var params recipientTransactionsParams
-		queryLastHeight, err := r.storage.GetLastHeight(m.queryId)
+		queryLastHeight, _, err := r.storage.GetLastUpdateBlock(m.queryId)
 		if err != nil {
 			return fmt.Errorf("failed to get query last height from storage: %w", err)
 		}
 
 		// add filter by tx.height (tx.height>n)
-		params["tx.height"] = fmt.Sprintf("%d", queryLastHeight)
+		params[proof_impl.TxHeight] = fmt.Sprintf("%d", queryLastHeight)
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
@@ -216,7 +217,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			for _, tx := range txs {
 				hash := string(tmtypes.Tx(tx.Data).Hash())
 				if queryExists {
-					txExists, err := r.isTxExists(m.queryId, hash)
+					txExists, err := r.storage.IsTxExists(m.queryId, hash)
 					if err != nil {
 						return fmt.Errorf("failed to check if transaction already exists: %w", err)
 					}
@@ -275,7 +276,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			}
 		}
 
-		err = r.storage.SetLastHeight(m.queryId, uint64(latestHeight))
+		err = r.storage.SetLastUpdateBlock(m.queryId, uint64(latestHeight))
 		if err != nil {
 			return fmt.Errorf("failed to save last height of query: %w", err)
 		}
@@ -472,7 +473,7 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	}
 
 	if !ok || previous+r.cfg.MinKvUpdatePeriod <= currentBlock {
-		err := r.storage.SetLastHeight(queryID, currentBlock)
+		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
 		if err != nil {
 			return false, err
 		}
@@ -483,20 +484,11 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
 }
 
-func (r *Relayer) isTxExists(queryID uint64, hash string) (bool, error) {
-	exists, err := r.storage.IsTxExists(queryID, hash)
+func (r *Relayer) CloseDb() error {
+	err := r.storage.Close()
 	if err != nil {
-		return false, err
+		return fmt.Errorf("couldn't close relayer's storage: %w", err)
 	}
 
-	return exists, nil
-}
-
-func (r *Relayer) isTxQueryExists(queryID uint64) (bool, error) {
-	exists, err := r.storage.IsQueryExists(queryID)
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
+	return nil
 }

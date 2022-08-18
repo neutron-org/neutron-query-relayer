@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -15,14 +16,10 @@ type LevelDBStorage struct {
 	db *leveldb.DB
 }
 
-const (
-	Success string = "success"
-)
-
 func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 	database, err := leveldb.OpenFile(path, nil)
 	if err != nil {
-		return &LevelDBStorage{db: database}, err
+		return nil, err
 	}
 
 	return &LevelDBStorage{db: database}, nil
@@ -35,32 +32,18 @@ func (s *LevelDBStorage) GetLastUpdateBlock(queryID uint64) (block uint64, exist
 
 	data, err := s.db.Get(uintToBytes(queryID), nil)
 	if err != nil {
-		return 0, false, err
+		if err == leveldb.ErrNotFound {
+			return 0, false, nil
+		}
+		return 0, false, fmt.Errorf("failed to get last update block: %w", err)
 	}
 
 	res, err := bytesToUint(data)
 	if err != nil {
-		return 0, false, err
+		return 0, false, fmt.Errorf("failed to get last update block: %w", err)
 	}
 
-	return res, true, err
-}
-
-// GetTxStatusBool returns boolean status of processed tx
-func (s *LevelDBStorage) GetTxStatusBool(queryID uint64, hash string) (success bool, err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	data, err := s.db.Get(constructKey(queryID, hash), nil)
-	if err != nil {
-		return false, err
-	}
-
-	if string(data) == Success {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	return res, true, nil
 }
 
 // SetTxStatus sets status for given tx
@@ -71,29 +54,29 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, status string,
 	// save tx status
 	err = s.db.Put(constructKey(queryID, hash), []byte(status), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to set tx status: %w", err)
 	}
 
 	// update last processed block
 	err = s.db.Put(uintToBytes(queryID), uintToBytes(block), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to set tx status: %w", err)
 	}
 
 	return
 }
 
-// GetTxStatusString returns either "Success" for successfully processed tx or resulting error if tx failed
-func (s *LevelDBStorage) GetTxStatusString(queryID uint64, hash string) (status string, err error) {
+// GetTxStatus returns either "Success" for successfully processed tx or resulting error if tx failed
+func (s *LevelDBStorage) GetTxStatus(queryID uint64, hash string) (status string, err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	data, err := s.db.Get(constructKey(queryID, hash), nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get tx status: %w", err)
 	}
 
-	return string(data), err
+	return string(data), nil
 }
 
 // IsTxExists returns if tx has been processed
@@ -103,31 +86,14 @@ func (s *LevelDBStorage) IsTxExists(queryID uint64, hash string) (exists bool, e
 
 	exists, err = s.db.Has(constructKey(queryID, hash), nil)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check if tx exists: %w", err)
 	}
 
-	return
+	return exists, nil
 }
 
-// GetLastHeight returns last processed block to given query
-func (s *LevelDBStorage) GetLastHeight(queryID uint64) (block uint64, err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	data, err := s.db.Get(uintToBytes(queryID), nil)
-	if err != nil {
-		return 0, err
-	}
-
-	val, err := bytesToUint(data)
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
-}
-
-// SetLastHeight sets last processed block to given query
-func (s *LevelDBStorage) SetLastHeight(queryID uint64, block uint64) error {
+// SetLastUpdateBlock SetLastHeight sets last processed block to given query
+func (s *LevelDBStorage) SetLastUpdateBlock(queryID uint64, block uint64) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -145,10 +111,24 @@ func (s *LevelDBStorage) IsQueryExists(queryID uint64) (exists bool, err error) 
 	defer s.Unlock()
 
 	exists, err = s.db.Has(uintToBytes(queryID), nil)
+	if err != nil {
+		return false, fmt.Errorf("failed check if query with queryID=%d exists in db: %w", queryID, err)
+	}
 	if !exists {
 		err = s.db.Put(uintToBytes(queryID), uintToBytes(0), nil)
+		if err != nil {
+			return false, fmt.Errorf("failed initialize query w queryID=%d in db with last heigt = 0: %w", queryID, err)
+		}
 	}
 	return
+}
+
+func (s *LevelDBStorage) Close() error {
+	err := s.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close db: %w", err)
+	}
+	return nil
 }
 
 func uintToBytes(num uint64) []byte {

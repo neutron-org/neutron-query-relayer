@@ -14,21 +14,9 @@ func (s *DummyStorage) IsQueryExists(queryID uint64) (exists bool, err error) {
 	return false, fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
 }
 
-func (s *DummyStorage) GetLastHeight(queryID uint64) (block uint64, err error) {
-	return 0, fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
-}
-
-func (s *DummyStorage) SetLastHeight(queryID uint64, block uint64) error {
+func (s *DummyStorage) SetLastUpdateBlock(queryID uint64, block uint64) error {
 	s.KVUpdateMap[queryID] = block
 	return nil
-}
-
-func (s *DummyStorage) GetTxStatusBool(queryID uint64, hash string) (success bool, err error) {
-	return false, fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
-}
-
-func (s *DummyStorage) GetTxStatusString(queryID uint64, hash string) (success string, err error) {
-	return "", fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
 }
 
 func (s *DummyStorage) IsTxExists(queryID uint64, hash string) (exists bool, err error) {
@@ -43,12 +31,12 @@ func (s *DummyStorage) GetLastUpdateBlock(queryID uint64) (uint64, bool, error) 
 	}
 }
 
+func (s *DummyStorage) Close() error {
+	return fmt.Errorf("error: can't interact with db using dummy storage")
+}
+
 func NewDummyStorage() *DummyStorage {
 	s := new(DummyStorage)
 	s.KVUpdateMap = make(map[uint64]uint64)
 	return s
-}
-
-func (s *DummyStorage) GetTx(hash string, block uint64) (exists bool, err error) {
-	return false, fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
 }
