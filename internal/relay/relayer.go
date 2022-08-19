@@ -174,10 +174,10 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		return r.submitProof(ctx, int64(height), m.queryId, string(m.messageType), proofs)
 	case neutrontypes.InterchainQueryTypeTX:
 		if !r.cfg.AllowTxQueries {
-			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
+			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuration", m.messageType, m.queryId)
 		}
 
-		var params recipientTransactionsParams
+		var params RecipientTransactionsParams
 		err := json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
