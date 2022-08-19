@@ -250,7 +250,6 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				}
 
 				proofStart := time.Now()
-
 				if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
 					Header:          packedHeader,
 					NextBlockHeader: packedNextHeader,
@@ -500,6 +499,7 @@ func (r *Relayer) initializeQuery(queryID uint64) error {
 	_, _, err := r.storage.GetLastUpdateBlock(queryID)
 	if err == leveldb.ErrNotFound {
 		err = r.storage.SetLastUpdateBlock(queryID, 0)
+		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("failed to check query: %w", err)
