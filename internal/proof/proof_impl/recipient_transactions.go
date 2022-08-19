@@ -3,8 +3,10 @@ package proof_impl
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
+	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -16,9 +18,6 @@ import (
 var perPage = 100
 
 const orderBy = "desc"
-
-// TxHeight describes tendermint filter by tx.height that we use to get only actual txs
-const TxHeight = "tx.height"
 
 func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	cp := new(crypto.Proof)
@@ -33,7 +32,7 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*neutrontypes.TxValue, error) {
+func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*neutrontypes.TxValue, []uint64, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
@@ -41,7 +40,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
-			return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
+			return nil, nil, fmt.Errorf("could not query new transactions to proof: %w", err)
 		}
 
 		if len(searchResult.Txs) == 0 {
@@ -51,7 +50,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 		for _, tx := range searchResult.Txs {
 			deliveryProof, deliveryResult, err := p.proofDelivery(ctx, tx.Height, tx.Index)
 			if err != nil {
-				return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
+				return nil, nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
 			}
 
 			txProof := neutrontypes.TxValue{
@@ -73,7 +72,16 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 		page += 1
 	}
 
-	return blocks, nil
+	keys := make([]uint64, len(blocks))
+
+	i := 0
+	for k := range blocks {
+		keys[i] = k
+		i++
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	return blocks, keys, nil
 }
 
 // proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
@@ -96,7 +104,7 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 func queryFromParams(params map[string]string) string {
 	queryParamsList := make([]string, 0, len(params))
 	for key, value := range params {
-		if key == TxHeight {
+		if key == relay.TxHeight {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>'%s'", key, value))
 		} else {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))

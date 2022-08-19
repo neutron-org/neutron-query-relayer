@@ -105,24 +105,6 @@ func (s *LevelDBStorage) SetLastUpdateBlock(queryID uint64, block uint64) error 
 	return nil
 }
 
-// IsQueryExists returns if query exists, also if not - last processed block to 0
-func (s *LevelDBStorage) IsQueryExists(queryID uint64) (exists bool, err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	exists, err = s.db.Has(uintToBytes(queryID), nil)
-	if err != nil {
-		return false, fmt.Errorf("failed check if query with queryID=%d exists in db: %w", queryID, err)
-	}
-	if !exists {
-		err = s.db.Put(uintToBytes(queryID), uintToBytes(0), nil)
-		if err != nil {
-			return false, fmt.Errorf("failed initialize query w queryID=%d in db with last heigt = 0: %w", queryID, err)
-		}
-	}
-	return
-}
-
 func (s *LevelDBStorage) Close() error {
 	err := s.Close()
 	if err != nil {

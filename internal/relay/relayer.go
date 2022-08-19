@@ -11,7 +11,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
+	"github.com/syndtr/goleveldb/leveldb"
 
 	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -30,6 +30,9 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
+
+// TxHeight describes tendermint filter by tx.height that we use to get only actual txs
+const TxHeight = "tx.height"
 
 // Relayer is controller for the whole app:
 // 1. takes events from Neutron chain
@@ -179,9 +182,9 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
 		}
 
-		queryExists, err := r.storage.IsQueryExists(m.queryId)
+		err := r.initializeQuery(m.queryId)
 		if err != nil {
-			return fmt.Errorf("could not check if query exists: %s with params=%s query_id=%d: %w",
+			return fmt.Errorf("could not initialize query: %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
@@ -192,14 +195,14 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 		// add filter by tx.height (tx.height>n)
-		params[proof_impl.TxHeight] = fmt.Sprintf("%d", queryLastHeight)
+		params[TxHeight] = fmt.Sprintf("%d", queryLastHeight)
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		blocks, err := r.proofer.SearchTransactions(ctx, params)
+		blocks, keys, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
@@ -213,18 +216,17 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get consensus states: %w", err)
 		}
 
-		for height, txs := range blocks {
-			for _, tx := range txs {
+		for _, height := range keys {
+			for _, tx := range blocks[height] {
 				hash := string(tmtypes.Tx(tx.Data).Hash())
-				if queryExists {
-					txExists, err := r.storage.IsTxExists(m.queryId, hash)
-					if err != nil {
-						return fmt.Errorf("failed to check if transaction already exists: %w", err)
-					}
+				txExists, err := r.storage.IsTxExists(m.queryId, hash)
+				if err != nil {
+					return fmt.Errorf("failed to check if transaction already exists: %w", err)
+				}
 
-					if txExists {
-						return fmt.Errorf("transaction already submitted")
-					}
+				if txExists {
+					r.logger.Debug("transaction already submitted", zap.Uint64("query_id", m.queryId), zap.String("hash", hash))
+					continue
 				}
 
 				header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
@@ -274,11 +276,11 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			}
-		}
+			err = r.storage.SetLastUpdateBlock(m.queryId, height)
+			if err != nil {
+				return fmt.Errorf("failed to save last height of query: %w", err)
+			}
 
-		err = r.storage.SetLastUpdateBlock(m.queryId, uint64(latestHeight))
-		if err != nil {
-			return fmt.Errorf("failed to save last height of query: %w", err)
 		}
 		return nil
 
@@ -490,5 +492,17 @@ func (r *Relayer) CloseDb() error {
 		return fmt.Errorf("couldn't close relayer's storage: %w", err)
 	}
 
+	return nil
+}
+
+// returns no err if query exists in storage, also initializes query with block = 0  if not exists yet
+func (r *Relayer) initializeQuery(queryID uint64) error {
+	_, _, err := r.storage.GetLastUpdateBlock(queryID)
+	if err == leveldb.ErrNotFound {
+		err = r.storage.SetLastUpdateBlock(queryID, 0)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check query: %w", err)
+	}
 	return nil
 }
