@@ -82,6 +82,8 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
+	consensusManager := relay.NewConsensusManager(neutronChain, targetChain)
+
 	relayer := relay.NewRelayer(
 		cfg,
 		proofFetcher,
@@ -89,6 +91,7 @@ func main() {
 		registry.New(cfg.Registry),
 		targetChain,
 		neutronChain,
+		consensusManager,
 		logger,
 	)
 

@@ -20,6 +20,7 @@ Blockchain L can then verify the result for the query.
 
 For more configuration parameters see struct in internal/config/config.go
 
+# TODO: add link to integration tests. Because we cannot do it now (cmd line from neutron deleted ability to register query, now available only from contracts)
 # Testing
 
 ## Run unit tests
