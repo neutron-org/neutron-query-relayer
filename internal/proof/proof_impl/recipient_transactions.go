@@ -3,7 +3,6 @@ package proof_impl
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
@@ -32,15 +31,15 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) (map[uint64][]*neutrontypes.TxValue, []uint64, error) {
+func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) ([]relay.TransactionSlice, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
-	blocks := make(map[uint64][]*neutrontypes.TxValue, 0)
+	txs := make([]relay.TransactionSlice, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
-			return nil, nil, fmt.Errorf("could not query new transactions to proof: %w", err)
+			return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
 		}
 
 		if len(searchResult.Txs) == 0 {
@@ -50,7 +49,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 		for _, tx := range searchResult.Txs {
 			deliveryProof, deliveryResult, err := p.proofDelivery(ctx, tx.Height, tx.Index)
 			if err != nil {
-				return nil, nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
+				return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
 			}
 
 			txProof := neutrontypes.TxValue{
@@ -60,9 +59,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 				Data:           tx.Tx,
 			}
 
-			txs := blocks[uint64(tx.Height)]
-			txs = append(txs, &txProof)
-			blocks[uint64(tx.Height)] = txs
+			txs = append(txs, relay.TransactionSlice{Tx: &txProof, Height: uint64(tx.Height)})
 		}
 
 		if page*perPage >= searchResult.TotalCount {
@@ -72,16 +69,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 		page += 1
 	}
 
-	keys := make([]uint64, len(blocks))
-
-	i := 0
-	for k := range blocks {
-		keys[i] = k
-		i++
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-
-	return blocks, keys, nil
+	return txs, nil
 }
 
 // proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'

@@ -197,12 +197,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		blocks, keys, err := r.proofer.SearchTransactions(ctx, params)
+		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
-		if len(blocks) == 0 {
+		if len(txs) == 0 {
 			return nil
 		}
 
@@ -211,70 +211,77 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get consensus states: %w", err)
 		}
 
-		for _, height := range keys {
-			for _, tx := range blocks[height] {
-				hash := string(tmtypes.Tx(tx.Data).Hash())
-				txExists, err := r.storage.TxExists(m.queryId, hash)
+		// always process first searched tx due it could be the last tx in its block
+		lastProcessedHeight := txs[0].Height
+		for _, txStruct := range txs {
+			// we don't update last query height until full block is processed
+			// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
+			// so until all 3 txs from block 100 has been proofed & sent last query height will remain 0
+			// and only starting from block 101 last query height will be set to 100
+			if txStruct.Height > lastProcessedHeight {
+				err = r.storage.SetLastQueryHeight(m.queryId, lastProcessedHeight)
 				if err != nil {
-					return fmt.Errorf("failed to check if transaction already exists: %w", err)
+					return fmt.Errorf("failed to save last height of query: %w", err)
 				}
+			}
+			lastProcessedHeight = txStruct.Height
 
-				if txExists {
-					r.logger.Debug("transaction already submitted", zap.Uint64("query_id", m.queryId), zap.String("hash", hash))
-					continue
-				}
+			hash := string(tmtypes.Tx(txStruct.Tx.Data).Hash())
+			txExists, err := r.storage.TxExists(m.queryId, hash)
+			if err != nil {
+				return fmt.Errorf("failed to check if transaction already exists: %w", err)
+			}
 
-				header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
-				if err != nil {
-					return fmt.Errorf("failed to get header for src chain: %w", err)
-				}
+			if txExists {
+				r.logger.Debug("transaction already submitted", zap.Uint64("query_id", m.queryId), zap.String("hash", hash))
+				continue
+			}
 
-				packedHeader, err := clienttypes.PackHeader(header)
-				if err != nil {
-					return fmt.Errorf("failed to pack header: %w", err)
-				}
+			header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, txStruct.Height)
+			if err != nil {
+				return fmt.Errorf("failed to get header for src chain: %w", err)
+			}
 
-				nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height+1)
-				if err != nil {
-					return fmt.Errorf("failed to get next header for src chain: %w", err)
-				}
+			packedHeader, err := clienttypes.PackHeader(header)
+			if err != nil {
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
 
-				packedNextHeader, err := clienttypes.PackHeader(nextHeader)
-				if err != nil {
-					return fmt.Errorf("failed to pack header: %w", err)
-				}
+			nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, txStruct.Height+1)
+			if err != nil {
+				return fmt.Errorf("failed to get next header for src chain: %w", err)
+			}
 
-				proofStart := time.Now()
-				if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
-					Header:          packedHeader,
-					NextBlockHeader: packedNextHeader,
-					Tx:              tx,
-				}); err != nil {
-					neutronmetrics.IncFailedProofs()
-					neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
+			packedNextHeader, err := clienttypes.PackHeader(nextHeader)
+			if err != nil {
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
 
-					err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), uint64(latestHeight))
-					if err != nil {
-						return fmt.Errorf("failed to store tx: %w", err)
-					}
-					return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-				}
+			proofStart := time.Now()
+			if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
+				Header:          packedHeader,
+				NextBlockHeader: packedNextHeader,
+				Tx:              txStruct.Tx,
+			}); err != nil {
+				neutronmetrics.IncFailedProofs()
+				neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-				neutronmetrics.IncSuccessProofs()
-				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
-
-				err = r.storage.SetTxStatus(m.queryId, hash, Success, uint64(latestHeight))
+				err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), uint64(latestHeight))
 				if err != nil {
 					return fmt.Errorf("failed to store tx: %w", err)
 				}
-
-				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
+				return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 			}
-			err = r.storage.SetLastQueryHeight(m.queryId, height)
+
+			neutronmetrics.IncSuccessProofs()
+			neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
+
+			err = r.storage.SetTxStatus(m.queryId, hash, Success, uint64(latestHeight))
 			if err != nil {
-				return fmt.Errorf("failed to save last height of query: %w", err)
+				return fmt.Errorf("failed to store tx: %w", err)
 			}
 
+			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 		}
 		return nil
 
