@@ -25,8 +25,8 @@ func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 	return &LevelDBStorage{db: database}, nil
 }
 
-// GetLastUpdateBlock returns last update block for KV query
-func (s *LevelDBStorage) GetLastUpdateBlock(queryID uint64) (block uint64, exists bool, err error) {
+// GetLastQueryHeight returns last update block for KV query
+func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, exists bool, err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -35,12 +35,12 @@ func (s *LevelDBStorage) GetLastUpdateBlock(queryID uint64) (block uint64, exist
 		if err == leveldb.ErrNotFound {
 			return 0, false, nil
 		}
-		return 0, false, fmt.Errorf("failed to get last update block: %w", err)
+		return 0, false, fmt.Errorf("failed to get last query height, error while getting data from db: %w", err)
 	}
 
 	res, err := bytesToUint(data)
 	if err != nil {
-		return 0, false, fmt.Errorf("failed to get last update block: %w", err)
+		return 0, false, fmt.Errorf("failed to get last query height, err converting bytest to uint  : %w", err)
 	}
 
 	return res, true, nil
@@ -66,21 +66,8 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, status string,
 	return
 }
 
-// GetTxStatus returns either "Success" for successfully processed tx or resulting error if tx failed
-func (s *LevelDBStorage) GetTxStatus(queryID uint64, hash string) (status string, err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	data, err := s.db.Get(constructKey(queryID, hash), nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to get tx status: %w", err)
-	}
-
-	return string(data), nil
-}
-
-// IsTxExists returns if tx has been processed
-func (s *LevelDBStorage) IsTxExists(queryID uint64, hash string) (exists bool, err error) {
+// TxExists returns if tx has been processed
+func (s *LevelDBStorage) TxExists(queryID uint64, hash string) (exists bool, err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -92,8 +79,8 @@ func (s *LevelDBStorage) IsTxExists(queryID uint64, hash string) (exists bool, e
 	return exists, nil
 }
 
-// SetLastUpdateBlock SetLastHeight sets last processed block to given query
-func (s *LevelDBStorage) SetLastUpdateBlock(queryID uint64, block uint64) error {
+// SetLastQueryHeight sets last processed block to given query
+func (s *LevelDBStorage) SetLastQueryHeight(queryID uint64, block uint64) error {
 	s.Lock()
 	defer s.Unlock()
 

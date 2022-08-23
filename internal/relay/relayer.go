@@ -57,7 +57,7 @@ func NewRelayer(
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
-	stor Storage,
+	st Storage,
 ) Relayer {
 	// TODO: after storage implementation update this func
 	return Relayer{
@@ -68,7 +68,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
-		storage:      stor,
+		storage:      st,
 	}
 }
 
@@ -182,18 +182,13 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
 		}
 
-		err := r.initializeQuery(m.queryId)
+		queryLastHeight, err := r.initializeQuery(m.queryId)
 		if err != nil {
 			return fmt.Errorf("could not initialize query: %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
 		var params recipientTransactionsParams
-		queryLastHeight, _, err := r.storage.GetLastUpdateBlock(m.queryId)
-		if err != nil {
-			return fmt.Errorf("failed to get query last height from storage: %w", err)
-		}
-
 		// add filter by tx.height (tx.height>n)
 		params[TxHeight] = fmt.Sprintf("%d", queryLastHeight)
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
@@ -219,7 +214,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		for _, height := range keys {
 			for _, tx := range blocks[height] {
 				hash := string(tmtypes.Tx(tx.Data).Hash())
-				txExists, err := r.storage.IsTxExists(m.queryId, hash)
+				txExists, err := r.storage.TxExists(m.queryId, hash)
 				if err != nil {
 					return fmt.Errorf("failed to check if transaction already exists: %w", err)
 				}
@@ -275,7 +270,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			}
-			err = r.storage.SetLastUpdateBlock(m.queryId, height)
+			err = r.storage.SetLastQueryHeight(m.queryId, height)
 			if err != nil {
 				return fmt.Errorf("failed to save last height of query: %w", err)
 			}
@@ -468,13 +463,13 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 		return true, nil
 	}
 
-	previous, ok, err := r.storage.GetLastUpdateBlock(queryID)
+	previous, ok, err := r.storage.GetLastQueryHeight(queryID)
 	if err != nil {
 		return false, err
 	}
 
 	if !ok || previous+r.cfg.MinKvUpdatePeriod <= currentBlock {
-		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
+		err := r.storage.SetLastQueryHeight(queryID, currentBlock)
 		if err != nil {
 			return false, err
 		}
@@ -485,7 +480,7 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
 }
 
-func (r *Relayer) CloseDb() error {
+func (r *Relayer) CloseStorage() error {
 	err := r.storage.Close()
 	if err != nil {
 		return fmt.Errorf("couldn't close relayer's storage: %w", err)
@@ -494,15 +489,18 @@ func (r *Relayer) CloseDb() error {
 	return nil
 }
 
-// returns no err if query exists in storage, also initializes query with block = 0  if not exists yet
-func (r *Relayer) initializeQuery(queryID uint64) error {
-	_, _, err := r.storage.GetLastUpdateBlock(queryID)
+// initializeQuery returns last query height & no err if query exists in storage, also initializes query with height = 0  if not exists yet
+func (r *Relayer) initializeQuery(queryID uint64) (uint64, error) {
+	height, _, err := r.storage.GetLastQueryHeight(queryID)
 	if err == leveldb.ErrNotFound {
-		err = r.storage.SetLastUpdateBlock(queryID, 0)
-		return nil
+		err = r.storage.SetLastQueryHeight(queryID, 0)
+		if err != nil {
+			return 0, fmt.Errorf("initializeQuery failed to init query in storage with 0 height: %w", err)
+		}
+		return 0, nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed to check query: %w", err)
+		return 0, fmt.Errorf("initializeQuery failed to check query in storage: %w", err)
 	}
-	return nil
+	return height, nil
 }

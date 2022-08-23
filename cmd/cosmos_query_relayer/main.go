@@ -88,12 +88,12 @@ func main() {
 
 	var st relay.Storage
 
-	if cfg.AllowTxQueries && cfg.DbPath == "" {
+	if cfg.AllowTxQueries && cfg.StoragePath == "" {
 		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
 	}
 
-	if cfg.DbPath != "" {
-		st, err = storage.NewLevelDBStorage(cfg.DbPath)
+	if cfg.StoragePath != "" {
+		st, err = storage.NewLevelDBStorage(cfg.StoragePath)
 		if err != nil {
 			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
 		}
@@ -131,10 +131,10 @@ func main() {
 			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
 		}
 	case <-sigs:
-		logger.Info("relayer has been gracefully shutdown")
-		err := relayer.CloseDb()
+		logger.Info("relayer gracefully shutting down...")
+		err := relayer.CloseStorage()
 		if err != nil {
-			logger.Error("failed to graceful shutdown", zap.Error(err))
+			logger.Error("failed to gracefully shut down", zap.Error(err))
 		}
 		os.Exit(0)
 	}
