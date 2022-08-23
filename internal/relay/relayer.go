@@ -213,7 +213,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		// always process first searched tx due it could be the last tx in its block
 		lastProcessedHeight := txs[0].Height
-		for _, txStruct := range txs {
+		for i, txStruct := range txs {
 			// we don't update last query height until full block is processed
 			// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
 			// so until all 3 txs from block 100 has been proofed & sent last query height will remain 0
@@ -266,7 +266,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				neutronmetrics.IncFailedProofs()
 				neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-				err = r.storage.SetTxStatus(m.queryId, hash, err.Error(), uint64(latestHeight))
+				err = r.storage.SetTxStatus(m.queryId, hash, err.Error())
 				if err != nil {
 					return fmt.Errorf("failed to store tx: %w", err)
 				}
@@ -276,12 +276,19 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			neutronmetrics.IncSuccessProofs()
 			neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-			err = r.storage.SetTxStatus(m.queryId, hash, Success, uint64(latestHeight))
+			err = r.storage.SetTxStatus(m.queryId, hash, Success)
 			if err != nil {
 				return fmt.Errorf("failed to store tx: %w", err)
 			}
 
 			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
+
+			if i == len(txs)-1 {
+				err = r.storage.SetLastQueryHeight(m.queryId, max(lastProcessedHeight, uint64(latestHeight)))
+				if err != nil {
+					return fmt.Errorf("failed to save last height of query: %w", err)
+				}
+			}
 		}
 		return nil
 
@@ -510,4 +517,11 @@ func (r *Relayer) initializeQuery(queryID uint64) (uint64, error) {
 		return 0, fmt.Errorf("initializeQuery failed to check query in storage: %w", err)
 	}
 	return height, nil
+}
+
+func max(x, y uint64) uint64 {
+	if x < y {
+		return y
+	}
+	return x
 }

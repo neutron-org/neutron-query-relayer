@@ -138,14 +138,6 @@ func main() {
 		}
 		os.Exit(0)
 	}
-
-	for event := range events {
-		// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
-		// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-		if err = relayer.Proof(ctx, event); err != nil {
-			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
-		}
-	}
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {

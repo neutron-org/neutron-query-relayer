@@ -40,7 +40,7 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, exist
 
 	res, err := bytesToUint(data)
 	if err != nil {
-		return 0, false, fmt.Errorf("failed to get last query height, err converting bytest to uint  : %w", err)
+		return 0, false, fmt.Errorf("failed to get last query height, err converting bytest to uint: %w", err)
 	}
 
 	return res, true, nil
