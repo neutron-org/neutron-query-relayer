@@ -6,7 +6,7 @@ type DummyStorage struct {
 	KVUpdateMap map[uint64]uint64
 }
 
-func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string, block uint64) (err error) {
+func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
 	return fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
 }
 

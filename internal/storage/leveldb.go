@@ -47,18 +47,12 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, exist
 }
 
 // SetTxStatus sets status for given tx
-func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, status string, block uint64) (err error) {
+func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	// save tx status
 	err = s.db.Put(constructKey(queryID, hash), []byte(status), nil)
-	if err != nil {
-		return fmt.Errorf("failed to set tx status: %w", err)
-	}
-
-	// update last processed block
-	err = s.db.Put(uintToBytes(queryID), uintToBytes(block), nil)
 	if err != nil {
 		return fmt.Errorf("failed to set tx status: %w", err)
 	}
