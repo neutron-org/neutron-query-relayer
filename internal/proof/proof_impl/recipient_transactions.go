@@ -16,7 +16,7 @@ import (
 
 var perPage = 100
 
-const orderBy = "desc"
+const orderBy = "asc"
 
 func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	cp := new(crypto.Proof)
@@ -31,11 +31,11 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) ([]relay.TransactionSlice, error) {
+func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) ([]relay.Transaction, error) {
 	query := queryFromParams(queryParams)
 	page := 1 // NOTE: page index starts from 1
 
-	txs := make([]relay.TransactionSlice, 0)
+	txs := make([]relay.Transaction, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
@@ -59,7 +59,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[str
 				Data:           tx.Tx,
 			}
 
-			txs = append(txs, relay.TransactionSlice{Tx: &txProof, Height: uint64(tx.Height)})
+			txs = append(txs, relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
 		}
 
 		if page*perPage >= searchResult.TotalCount {

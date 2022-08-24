@@ -6,8 +6,8 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-// TransactionSlice represents single searched tx with height
-type TransactionSlice struct {
+// Transaction represents single searched tx with height
+type Transaction struct {
 	Tx     *neutrontypes.TxValue
 	Height uint64
 }
@@ -15,5 +15,5 @@ type TransactionSlice struct {
 // Proofer can obtain proofs for different kinds of queries we need answers to
 type Proofer interface {
 	GetStorageValues(context.Context, uint64, neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error)
-	SearchTransactions(context.Context, map[string]string) (txs []TransactionSlice, err error)
+	SearchTransactions(context.Context, map[string]string) (txs []Transaction, err error)
 }

@@ -7,7 +7,7 @@ type DummyStorage struct {
 }
 
 func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
-	return fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
+	return fmt.Errorf("txExists is not yet implemented for DummyStorage")
 }
 
 func (s *DummyStorage) SetLastQueryHeight(queryID uint64, block uint64) error {
@@ -16,7 +16,7 @@ func (s *DummyStorage) SetLastQueryHeight(queryID uint64, block uint64) error {
 }
 
 func (s *DummyStorage) TxExists(queryID uint64, hash string) (exists bool, err error) {
-	return false, fmt.Errorf("error: can't use dummy storage with non-allowed tx queries")
+	return false, fmt.Errorf("TxExists is not yet implemented for DummyStorages")
 }
 
 func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) {
@@ -28,7 +28,7 @@ func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) 
 }
 
 func (s *DummyStorage) Close() error {
-	return fmt.Errorf("error: can't interact with db using dummy storage")
+	return nil
 }
 
 func NewDummyStorage() *DummyStorage {

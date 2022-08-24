@@ -182,7 +182,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuraion", m.messageType, m.queryId)
 		}
 
-		queryLastHeight, err := r.initializeQuery(m.queryId)
+		queryLastHeight, err := r.getLastQueryHeight(m.queryId)
 		if err != nil {
 			return fmt.Errorf("could not initialize query: %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
@@ -504,17 +504,17 @@ func (r *Relayer) CloseStorage() error {
 }
 
 // initializeQuery returns last query height & no err if query exists in storage, also initializes query with height = 0  if not exists yet
-func (r *Relayer) initializeQuery(queryID uint64) (uint64, error) {
+func (r *Relayer) getLastQueryHeight(queryID uint64) (uint64, error) {
 	height, _, err := r.storage.GetLastQueryHeight(queryID)
 	if err == leveldb.ErrNotFound {
 		err = r.storage.SetLastQueryHeight(queryID, 0)
 		if err != nil {
-			return 0, fmt.Errorf("initializeQuery failed to init query in storage with 0 height: %w", err)
+			return 0, fmt.Errorf("getLastQueryHeight failed to init query in storage with 0 height: %w", err)
 		}
 		return 0, nil
 	}
 	if err != nil {
-		return 0, fmt.Errorf("initializeQuery failed to check query in storage: %w", err)
+		return 0, fmt.Errorf("getLastQueryHeight failed to check query in storage: %w", err)
 	}
 	return height, nil
 }
