@@ -123,7 +123,7 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	for range events {
+	for {
 		select {
 		case event := <-events:
 			// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
