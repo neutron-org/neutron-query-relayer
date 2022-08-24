@@ -128,12 +128,12 @@ func main() {
 		case event, ok := <-events:
 			// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
 			// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-			if ok {
-				if err = relayer.Proof(ctx, event); err != nil {
-					logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
-				}
-			} else {
-				logger.Info("subscribed to neutron chain event channel has been closed")
+			if !ok {
+				logger.Error("subscribed to neutron chain event channel has been closed")
+				os.Exit(1)
+			}
+			if err = relayer.Proof(ctx, event); err != nil {
+				logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
 			}
 
 		case <-sigs:
