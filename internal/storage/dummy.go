@@ -7,7 +7,7 @@ type DummyStorage struct {
 }
 
 func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
-	return fmt.Errorf("txExists is not yet implemented for DummyStorage")
+	return fmt.Errorf("SetTxStatus is not yet implemented for DummyStorage")
 }
 
 func (s *DummyStorage) SetLastQueryHeight(queryID uint64, block uint64) error {
