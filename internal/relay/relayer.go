@@ -213,10 +213,10 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		// always process first searched tx due it could be the last tx in its block
 		lastProcessedHeight := txs[0].Height
-		for i, txStruct := range txs {
+		for _, txStruct := range txs {
 			// we don't update last query height until full block is processed
 			// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
-			// so until all 3 txs from block 100 has been proofed & sent last query height will remain 0
+			// so until all 3 txs from block 100 has been proofed & sent, last query height will remain 0
 			// and only starting from block 101 last query height will be set to 100
 			if txStruct.Height > lastProcessedHeight {
 				err = r.storage.SetLastQueryHeight(m.queryId, lastProcessedHeight)
@@ -283,13 +283,12 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 
-			if i == len(txs)-1 {
-				err = r.storage.SetLastQueryHeight(m.queryId, max(lastProcessedHeight, uint64(latestHeight)))
-				if err != nil {
-					return fmt.Errorf("failed to save last height of query: %w", err)
-				}
-			}
 		}
+		err = r.storage.SetLastQueryHeight(m.queryId, max(lastProcessedHeight, uint64(latestHeight)))
+		if err != nil {
+			return fmt.Errorf("failed to save last height of query: %w", err)
+		}
+
 		return nil
 
 	default:
