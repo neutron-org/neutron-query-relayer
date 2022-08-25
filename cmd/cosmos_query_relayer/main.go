@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
+	"github.com/neutron-org/cosmos-query-relayer/internal/subscriber"
 	neutronapp "github.com/neutron-org/neutron/app"
 )
 
@@ -82,30 +82,28 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
+	subscriber, err := subscriber.NewSubscriber(
+		cfg.NeutronChain.RPCAddr,
+		cfg.TargetChain.ChainID,
+		registry.New(cfg.Registry),
+		logger,
+	)
+	if err != nil {
+		logger.Fatal("failed to init subscriber", zap.Error(err))
+	}
+
 	relayer := relay.NewRelayer(
 		cfg,
 		proofFetcher,
 		proofSubmitter,
-		registry.New(cfg.Registry),
 		targetChain,
 		neutronChain,
+		subscriber,
 		logger,
 	)
 
-	ctx := context.Background()
-	logger.Info("subscribing to neutron chain events")
-	events, err := raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID))
-	if err != nil {
-		logger.Error("failed to subscribe on events", zap.Error(err))
-	}
-	logger.Info("successfully subscribed to neutron chain events\n")
-
-	for event := range events {
-		// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
-		// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-		if err = relayer.Proof(ctx, event); err != nil {
-			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
-		}
+	if err := relayer.Run(); err != nil {
+		logger.Fatal("error running relayer", zap.Error(err))
 	}
 }
 
