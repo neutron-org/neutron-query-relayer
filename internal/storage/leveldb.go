@@ -35,12 +35,12 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, exist
 		if err == leveldb.ErrNotFound {
 			return 0, false, nil
 		}
-		return 0, false, fmt.Errorf("failed to get last query height, error while getting data from db: %w", err)
+		return 0, false, fmt.Errorf("failed getting data from db: %w", err)
 	}
 
 	res, err := bytesToUint(data)
 	if err != nil {
-		return 0, false, fmt.Errorf("failed to get last query height, err converting bytest to uint: %w", err)
+		return 0, false, fmt.Errorf("failed converting bytest to uint: %w", err)
 	}
 
 	return res, true, nil
@@ -67,7 +67,7 @@ func (s *LevelDBStorage) TxExists(queryID uint64, hash string) (exists bool, err
 
 	exists, err = s.db.Has(constructKey(queryID, hash), nil)
 	if err != nil {
-		return false, fmt.Errorf("failed to check if tx exists: %w", err)
+		return false, fmt.Errorf("failed to get if storage has key: %w", err)
 	}
 
 	return exists, nil
