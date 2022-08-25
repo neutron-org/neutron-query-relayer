@@ -31,8 +31,11 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams map[string]string) ([]relay.Transaction, error) {
-	query := queryFromParams(queryParams)
+func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.RecipientTransactionsParams) ([]relay.Transaction, error) {
+	query, err := queryFromParams(queryParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not compose query: %v", err)
+	}
 	page := 1 // NOTE: page index starts from 1
 
 	txs := make([]relay.Transaction, 0)
@@ -88,16 +91,37 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
-// queryFromParams creates query from params like `key1=value1 AND key2=value2 AND ...`
-func queryFromParams(params map[string]string) string {
+// queryFromParams creates query from params like `key1=value1 AND key2>value2 AND ...`
+func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
-	for key, value := range params {
-		if key == relay.TxHeight {
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>'%s'", key, value))
-		} else {
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
+	for _, row := range params {
+		sign, err := getOpSign(row.Op)
+		if err != nil {
+			return "", err
 		}
-
+		switch r := row.Value.(type) {
+		case string:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s'%s'", row.Field, sign, r))
+		case float64:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r)))
+		}
 	}
-	return strings.Join(queryParamsList, " AND ")
+	return strings.Join(queryParamsList, " AND "), nil
+}
+
+func getOpSign(op string) (string, error) {
+	switch strings.ToLower(op) {
+	case "eq":
+		return "=", nil
+	case "gt":
+		return ">", nil
+	case "gte":
+		return ">=", nil
+	case "lt":
+		return "<", nil
+	case "lte":
+		return "<=", nil
+	default:
+		return "", fmt.Errorf("unsupported operator %s", op)
+	}
 }
