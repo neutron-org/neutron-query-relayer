@@ -189,13 +189,18 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 		var params RecipientTransactionsParams
-		// add filter by tx.height (tx.height>n)
-		params[TxHeight] = fmt.Sprintf("%d", queryLastHeight)
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
+
+		// add filter by tx.height (tx.height>n)
+		params = append(params, struct {
+			Field string
+			Op    string
+			Value interface{}
+		}{Field: TxHeight, Op: "gt", Value: fmt.Sprintf("%d", queryLastHeight)})
 
 		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
