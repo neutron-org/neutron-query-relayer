@@ -82,7 +82,7 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
-	consensusManager := relay.NewConsensusManager(neutronChain, targetChain)
+	consensusManager := relay.NewConsensusManager(neutronChain, targetChain, logger)
 
 	relayer := relay.NewRelayer(
 		cfg,

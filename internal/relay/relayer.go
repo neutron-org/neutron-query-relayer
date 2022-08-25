@@ -13,7 +13,6 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
@@ -192,37 +191,26 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return nil
 		}
 
-		consensusStates, err := r.consensusManager.GetConsensusStates(ctx)
+		err = r.consensusManager.UpdateConsensusStates(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to get consensus states: %w", err)
+			return fmt.Errorf("failed to update consensus states: %w", err)
 		}
 
 		for height, txs := range blocks {
-			header, err := r.consensusManager.GetHeaderWithBestTrustedHeight(ctx, consensusStates, height)
+			header, err := r.consensusManager.GetPackedHeaderWithBestTrustedHeight(ctx, height)
 			if err != nil {
-				return fmt.Errorf("failed to get header for src chain: %w", err)
+				return fmt.Errorf("could not get trusted header for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 			}
-
-			packedHeader, err := clienttypes.PackHeader(header)
+			nextHeader, err := r.consensusManager.GetPackedHeaderWithBestTrustedHeight(ctx, height+1)
 			if err != nil {
-				return fmt.Errorf("failed to pack header: %w", err)
-			}
-
-			nextHeader, err := r.consensusManager.GetHeaderWithBestTrustedHeight(ctx, consensusStates, height+1)
-			if err != nil {
-				return fmt.Errorf("failed to get next header for src chain: %w", err)
-			}
-
-			packedNextHeader, err := clienttypes.PackHeader(nextHeader)
-			if err != nil {
-				return fmt.Errorf("failed to pack header: %w", err)
+				return fmt.Errorf("could not get next trusted header for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 			}
 
 			for _, tx := range txs {
 				proofStart := time.Now()
 				if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
-					Header:          packedHeader,
-					NextBlockHeader: packedNextHeader,
+					Header:          header,
+					NextBlockHeader: nextHeader,
 					Tx:              tx,
 				}); err != nil {
 					relayermetrics.IncFailedProofs()
