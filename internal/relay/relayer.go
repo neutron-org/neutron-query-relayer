@@ -269,7 +269,7 @@ func (r *Relayer) submitProof(
 		uint64(height-1),
 		srcHeader.GetHeight().GetRevisionNumber(),
 		queryID,
-		r.cfg.NeutronChain.AllowKVCallbacks,
+		r.cfg.AllowKVCallbacks,
 		proof,
 		updateClientMsg,
 	); err != nil {
