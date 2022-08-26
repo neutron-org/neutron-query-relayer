@@ -104,7 +104,6 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 	if err != nil {
 		return fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
-
 	switch txs.txBroadcastType {
 	case config.BroadcastTxSync:
 		res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
