@@ -200,7 +200,7 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			Field string
 			Op    string
 			Value interface{}
-		}{Field: TxHeight, Op: "gt", Value: fmt.Sprintf("%d", queryLastHeight)})
+		}{Field: TxHeight, Op: "gt", Value: queryLastHeight})
 
 		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {

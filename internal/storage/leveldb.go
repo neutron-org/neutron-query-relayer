@@ -87,7 +87,7 @@ func (s *LevelDBStorage) SetLastQueryHeight(queryID uint64, block uint64) error 
 }
 
 func (s *LevelDBStorage) Close() error {
-	err := s.Close()
+	err := s.db.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close db: %w", err)
 	}

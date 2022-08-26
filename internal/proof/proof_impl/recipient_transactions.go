@@ -104,6 +104,8 @@ func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s'%s'", row.Field, sign, r))
 		case float64:
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r)))
+		case uint64:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, r))
 		}
 	}
 	return strings.Join(queryParamsList, " AND "), nil
