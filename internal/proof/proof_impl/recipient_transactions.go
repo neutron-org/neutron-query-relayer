@@ -91,7 +91,7 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
-// queryFromParams creates query from params like `key1=value1 AND key2>value2 AND ...`
+// queryFromParams creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
 func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {
