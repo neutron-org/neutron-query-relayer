@@ -11,17 +11,18 @@ import (
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"github.com/emirpasic/gods/maps/treemap"
+	"github.com/emirpasic/gods/utils"
 	relayermetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	"go.uber.org/zap"
+	"strings"
 	"time"
 )
 
 // How many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
-const consensusPageSize = 100
+const consensusPageSize = 5
 
 // ConsensusManager manages the consensus state
 // TODO: only GetHeaderWithBestTrustedHeight should be public
-// GetConsensusStates results should probably be cached
 type ConsensusManager struct {
 	consensusStates *treemap.Map
 	neutronChain    *relayer.Chain
@@ -31,7 +32,7 @@ type ConsensusManager struct {
 
 func NewConsensusManager(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) ConsensusManager {
 	return ConsensusManager{
-		consensusStates: treemap.NewWithIntComparator(),
+		consensusStates: treemap.NewWith(utils.UInt64Comparator),
 		neutronChain:    neutronChain,
 		targetChain:     targetChain,
 		logger:          logger,
@@ -48,40 +49,63 @@ func (cm *ConsensusManager) UpdateConsensusStates(ctx context.Context) error {
 	qc := clienttypes.NewQueryClient(provConcreteNeutronChain)
 
 	nextKey := make([]byte, 0)
+	//nextOffset := uint64(0)
 	var res []clienttypes.ConsensusStateWithHeight
 
 	for {
 		consensusStatesResponse, err := qc.ConsensusStates(ctx, &clienttypes.QueryConsensusStatesRequest{
 			ClientId: cm.neutronChain.ClientID(),
 			Pagination: &query.PageRequest{
-				Key:        nextKey,
+				Key: nextKey,
+				//Offset:     nextOffset,
 				Limit:      consensusPageSize,
 				Reverse:    true,
-				CountTotal: true,
+				CountTotal: false,
 			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to get consensus states for client ID %s: %w", cm.neutronChain.ClientID(), err)
 		}
 
-		for _, s := range consensusStatesResponse.ConsensusStates {
-			cm.logger.Error("consensus state", zap.Uint64("height", s.GetHeight().GetRevisionHeight()))
+		if len(consensusStatesResponse.ConsensusStates) == 0 {
+			cm.logger.Info("!!!!!!!!!! key end")
+			break
 		}
+
+		// === TO DEBUG ===
+		stCs := make([]string, 0)
+		for _, c := range consensusStatesResponse.GetConsensusStates() {
+			stCs = append(stCs, fmt.Sprintf("%d", c.Height.RevisionHeight))
+		}
+		cm.logger.Info("Consensus states page",
+			zap.Int("asked_page_size", consensusPageSize),
+			zap.Int("real_page_size", len(stCs)),
+			zap.Uint64("total", consensusStatesResponse.Pagination.Total),
+			zap.String("state_heights", strings.Join(stCs, ",")))
+		// ================
 
 		res = append(res, consensusStatesResponse.ConsensusStates...)
 		for _, cs := range consensusStatesResponse.ConsensusStates {
 			cm.consensusStates.Put(cs.Height.RevisionHeight, cs)
 		}
 
-		// TODO: if element present, stop processing and return, because they are already in here
+		// TODO: if element present in cm.consensusStates, stop processing and return, because they are already in here
 
 		nextKey = consensusStatesResponse.GetPagination().NextKey
+		cm.logger.Info("next_key", zap.String("key", fmt.Sprintf("%v", nextKey)))
+
+		//nextOffset = nextOffset + consensusPageSize
 
 		// no more elements left to query
 		// TODO: check if this is working and correct
-		if nextKey == nil || len(nextKey) <= 0 {
+		if nextKey == nil || len(nextKey) == 0 {
+			cm.logger.Info("!!!!!!!!!! key end")
 			break
 		}
+
+		//if (nextOffset > ) {
+
+		//}
 	}
 
 	return nil
@@ -113,6 +137,14 @@ func (cm *ConsensusManager) GetConsensusStates(ctx context.Context) ([]clienttyp
 		if err != nil {
 			return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", cm.neutronChain.ClientID(), err)
 		}
+
+		// === TO DEBUG ===
+		stCs := make([]string, 0)
+		for _, c := range consensusStatesResponse.GetConsensusStates() {
+			stCs = append(stCs, fmt.Sprintf("%d", c.Height.RevisionHeight))
+		}
+		cm.logger.Info("Consensus states page", zap.Int("page_size", consensusPageSize), zap.String("state_heights", strings.Join(stCs, ",")))
+		// ================
 
 		for _, s := range consensusStatesResponse.ConsensusStates {
 			cm.logger.Error("failed to loadChains", zap.Uint64("height", s.GetHeight().GetRevisionHeight()))
