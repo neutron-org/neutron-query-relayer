@@ -89,7 +89,7 @@ func main() {
 	var store relay.Storage
 
 	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+		logger.Fatal("path to relayer's storage must be set, please refer to the README.md for more information about env variables")
 	}
 
 	if cfg.StoragePath != "" {
