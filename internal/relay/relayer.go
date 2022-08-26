@@ -11,6 +11,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/syndtr/goleveldb/leveldb"
 
 	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -27,8 +28,11 @@ import (
 
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
+
+// TxHeight describes tendermint filter by tx.height that we use to get only actual txs
+const TxHeight = "tx.height"
 
 // Relayer is controller for the whole app:
 // 1. takes events from Neutron chain
@@ -42,7 +46,7 @@ type Relayer struct {
 	targetChain  *relayer.Chain
 	neutronChain *relayer.Chain
 	logger       *zap.Logger
-	storage      RelayerStorage
+	storage      Storage
 }
 
 func NewRelayer(
@@ -53,6 +57,7 @@ func NewRelayer(
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
+	store Storage,
 ) Relayer {
 	// TODO: after storage implementation update this func
 	return Relayer{
@@ -63,7 +68,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
-		storage:      storage.NewDummyStorage(),
+		storage:      store,
 	}
 }
 
@@ -177,19 +182,32 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuration", m.messageType, m.queryId)
 		}
 
+		queryLastHeight, err := r.getLastQueryHeight(m.queryId)
+		if err != nil {
+			return fmt.Errorf("could not get last query height: %s with params=%s query_id=%d: %w",
+				m.messageType, m.transactionsFilter, m.queryId, err)
+		}
+
 		var params RecipientTransactionsParams
-		err := json.Unmarshal([]byte(m.transactionsFilter), &params)
+		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		blocks, err := r.proofer.SearchTransactions(ctx, params)
+		// add filter by tx.height (tx.height>n)
+		params = append(params, struct {
+			Field string
+			Op    string
+			Value interface{}
+		}{Field: TxHeight, Op: "gt", Value: queryLastHeight})
+
+		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 		}
 
-		if len(blocks) == 0 {
+		if len(txs) == 0 {
 			return nil
 		}
 
@@ -198,45 +216,84 @@ func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return fmt.Errorf("failed to get consensus states: %w", err)
 		}
 
-		for height, txs := range blocks {
-			for _, tx := range txs {
-				header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height)
+		// always process first searched tx due it could be the last tx in its block
+		lastProcessedHeight := txs[0].Height
+		for _, txStruct := range txs {
+			// we don't update last query height until full block is processed
+			// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
+			// so until all 3 txs from block 100 has been proofed & sent, last query height will remain 0
+			// and only starting from block 101 last query height will be set to 100
+			if txStruct.Height > lastProcessedHeight {
+				err = r.storage.SetLastQueryHeight(m.queryId, lastProcessedHeight)
 				if err != nil {
-					return fmt.Errorf("failed to get header for src chain: %w", err)
+					return fmt.Errorf("failed to save last height of query: %w", err)
 				}
-
-				packedHeader, err := clienttypes.PackHeader(header)
-				if err != nil {
-					return fmt.Errorf("failed to pack header: %w", err)
-				}
-
-				nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, height+1)
-				if err != nil {
-					return fmt.Errorf("failed to get next header for src chain: %w", err)
-				}
-
-				packedNextHeader, err := clienttypes.PackHeader(nextHeader)
-				if err != nil {
-					return fmt.Errorf("failed to pack header: %w", err)
-				}
-
-				proofStart := time.Now()
-				if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
-					Header:          packedHeader,
-					NextBlockHeader: packedNextHeader,
-					Tx:              tx,
-				}); err != nil {
-					neutronmetrics.IncFailedProofs()
-					neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
-					return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-				}
-
-				neutronmetrics.IncSuccessProofs()
-				neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
-
-				r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
 			}
+			lastProcessedHeight = txStruct.Height
+
+			hash := string(tmtypes.Tx(txStruct.Tx.Data).Hash())
+			txExists, err := r.storage.TxExists(m.queryId, hash)
+			if err != nil {
+				return fmt.Errorf("failed to check if transaction already exists: %w", err)
+			}
+
+			if txExists {
+				r.logger.Debug("transaction already submitted", zap.Uint64("query_id", m.queryId), zap.String("hash", hash))
+				continue
+			}
+
+			header, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, txStruct.Height)
+			if err != nil {
+				return fmt.Errorf("failed to get header for src chain: %w", err)
+			}
+
+			packedHeader, err := clienttypes.PackHeader(header)
+			if err != nil {
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
+
+			nextHeader, err := r.getHeaderWithBestTrustedHeight(ctx, consensusStates, txStruct.Height+1)
+			if err != nil {
+				return fmt.Errorf("failed to get next header for src chain: %w", err)
+			}
+
+			packedNextHeader, err := clienttypes.PackHeader(nextHeader)
+			if err != nil {
+				return fmt.Errorf("failed to pack header: %w", err)
+			}
+
+			proofStart := time.Now()
+			if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
+				Header:          packedHeader,
+				NextBlockHeader: packedNextHeader,
+				Tx:              txStruct.Tx,
+			}); err != nil {
+				neutronmetrics.IncFailedProofs()
+				neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
+
+				err = r.storage.SetTxStatus(m.queryId, hash, err.Error())
+				if err != nil {
+					return fmt.Errorf("failed to store tx: %w", err)
+				}
+				return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
+			}
+
+			neutronmetrics.IncSuccessProofs()
+			neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
+
+			err = r.storage.SetTxStatus(m.queryId, hash, Success)
+			if err != nil {
+				return fmt.Errorf("failed to store tx: %w", err)
+			}
+
+			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
+
 		}
+		err = r.storage.SetLastQueryHeight(m.queryId, max(lastProcessedHeight, uint64(latestHeight)))
+		if err != nil {
+			return fmt.Errorf("failed to save last height of query: %w", err)
+		}
+
 		return nil
 
 	default:
@@ -424,9 +481,13 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 		return true, nil
 	}
 
-	previous, ok := r.storage.GetLastUpdateBlock(queryID)
+	previous, ok, err := r.storage.GetLastQueryHeight(queryID)
+	if err != nil {
+		return false, err
+	}
+
 	if !ok || previous+r.cfg.MinKvUpdatePeriod <= currentBlock {
-		err := r.storage.SetLastUpdateBlock(queryID, currentBlock)
+		err := r.storage.SetLastQueryHeight(queryID, currentBlock)
 		if err != nil {
 			return false, err
 		}
@@ -435,4 +496,36 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	}
 
 	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
+}
+
+func (r *Relayer) CloseStorage() error {
+	err := r.storage.Close()
+	if err != nil {
+		return fmt.Errorf("couldn't close relayer's storage: %w", err)
+	}
+
+	return nil
+}
+
+// getLastQueryHeight returns last query height & no err if query exists in storage, also initializes query with height = 0  if not exists yet
+func (r *Relayer) getLastQueryHeight(queryID uint64) (uint64, error) {
+	height, _, err := r.storage.GetLastQueryHeight(queryID)
+	if err == leveldb.ErrNotFound {
+		err = r.storage.SetLastQueryHeight(queryID, 0)
+		if err != nil {
+			return 0, fmt.Errorf("failed to set a 0 last height for an unitilialised query: %w", err)
+		}
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("failed to check query in storage: %w", err)
+	}
+	return height, nil
+}
+
+func max(x, y uint64) uint64 {
+	if x < y {
+		return y
+	}
+	return x
 }

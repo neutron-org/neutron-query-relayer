@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -16,6 +19,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	neutronapp "github.com/neutron-org/neutron/app"
 )
@@ -82,6 +86,21 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
+	var store relay.Storage
+
+	if cfg.AllowTxQueries && cfg.StoragePath == "" {
+		logger.Fatal("path to relayer's storage must be set, please refer to the README.md for more information about env variables")
+	}
+
+	if cfg.StoragePath != "" {
+		store, err = storage.NewLevelDBStorage(cfg.StoragePath)
+		if err != nil {
+			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
+		}
+	} else {
+		store = storage.NewDummyStorage()
+	}
+
 	relayer := relay.NewRelayer(
 		cfg,
 		proofFetcher,
@@ -90,6 +109,7 @@ func main() {
 		targetChain,
 		neutronChain,
 		logger,
+		store,
 	)
 
 	ctx := context.Background()
@@ -100,12 +120,32 @@ func main() {
 	}
 	logger.Info("successfully subscribed to neutron chain events\n")
 
-	for event := range events {
-		// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
-		// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-		if err = relayer.Proof(ctx, event); err != nil {
-			logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	for {
+		select {
+		case event, ok := <-events:
+			// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
+			// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
+			if !ok {
+				logger.Error("subscribed to neutron chain event channel has been closed")
+				os.Exit(1)
+			}
+			if err = relayer.Proof(ctx, event); err != nil {
+				logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
+			}
+
+		case <-sigs:
+			logger.Info("relayer gracefully shutting down...")
+			err := relayer.CloseStorage()
+			if err != nil {
+				logger.Error("failed to gracefully shut down", zap.Error(err))
+				os.Exit(1)
+			}
+			os.Exit(0)
 		}
+
 	}
 }
 

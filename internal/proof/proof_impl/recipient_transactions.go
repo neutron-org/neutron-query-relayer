@@ -16,7 +16,7 @@ import (
 
 var perPage = 100
 
-const orderBy = "desc"
+const orderBy = "asc"
 
 func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	cp := new(crypto.Proof)
@@ -31,15 +31,14 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.RecipientTransactionsParams) (map[uint64][]*neutrontypes.TxValue, error) {
+func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.RecipientTransactionsParams) ([]relay.Transaction, error) {
 	query, err := queryFromParams(queryParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not compose query: %v", err)
 	}
-
 	page := 1 // NOTE: page index starts from 1
 
-	blocks := make(map[uint64][]*neutrontypes.TxValue, 0)
+	txs := make([]relay.Transaction, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
@@ -63,9 +62,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.R
 				Data:           tx.Tx,
 			}
 
-			txs := blocks[uint64(tx.Height)]
-			txs = append(txs, &txProof)
-			blocks[uint64(tx.Height)] = txs
+			txs = append(txs, relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
 		}
 
 		if page*perPage >= searchResult.TotalCount {
@@ -75,7 +72,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.R
 		page += 1
 	}
 
-	return blocks, nil
+	return txs, nil
 }
 
 // proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
@@ -94,7 +91,7 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
-// queryFromParams creates query from params like `key1=value1 AND key2>value2 AND ...`
+// queryFromParams creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
 func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {
@@ -107,6 +104,8 @@ func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s'%s'", row.Field, sign, r))
 		case float64:
 			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r)))
+		case uint64:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, r))
 		}
 	}
 	return strings.Join(queryParamsList, " AND "), nil
