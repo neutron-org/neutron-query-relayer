@@ -26,6 +26,7 @@ go.work
 keys
 
 cmd/cosmos_query_relayer/test.go
+storage
 /cosmos_query_relayer
 
 .env
