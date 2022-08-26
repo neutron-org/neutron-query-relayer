@@ -57,7 +57,7 @@ func NewRelayer(
 	srcChain,
 	dstChain *relayer.Chain,
 	logger *zap.Logger,
-	st Storage,
+	store Storage,
 ) Relayer {
 	// TODO: after storage implementation update this func
 	return Relayer{
@@ -68,7 +68,7 @@ func NewRelayer(
 		targetChain:  srcChain,
 		neutronChain: dstChain,
 		logger:       logger,
-		storage:      st,
+		storage:      store,
 	}
 }
 

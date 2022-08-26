@@ -86,19 +86,19 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
-	var st relay.Storage
+	var store relay.Storage
 
 	if cfg.AllowTxQueries && cfg.StoragePath == "" {
 		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
 	}
 
 	if cfg.StoragePath != "" {
-		st, err = storage.NewLevelDBStorage(cfg.StoragePath)
+		store, err = storage.NewLevelDBStorage(cfg.StoragePath)
 		if err != nil {
 			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
 		}
 	} else {
-		st = storage.NewDummyStorage()
+		store = storage.NewDummyStorage()
 	}
 
 	relayer := relay.NewRelayer(
@@ -109,7 +109,7 @@ func main() {
 		targetChain,
 		neutronChain,
 		logger,
-		st,
+		store,
 	)
 
 	ctx := context.Background()
