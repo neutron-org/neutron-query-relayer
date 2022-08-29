@@ -21,8 +21,8 @@ const (
 	// kvKeyAttr is the key of the Neutron's custom message event's attribute that contains the KV
 	// values for the incoming KV ICQ.
 	kvKeyAttr = "message." + types.AttributeKeyKVQuery
-	// transactionsFilter is the key of the Neutron's custom message event's attribute that contains
-	// the transaction filter value for the incoming TX ICQ.
+	// transactionsFilterAttr is the key of the Neutron's custom message event's attribute that
+	// contains the transaction filter value for the incoming TX ICQ.
 	transactionsFilterAttr = "message." + types.AttributeTransactionsFilterQuery
 	// typeAttr is the key of the Neutron's custom message event's attribute that contains the type
 	// of the incoming ICQ.
