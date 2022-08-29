@@ -155,7 +155,6 @@ func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 	if err != nil {
 		return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.QueryId, err)
 	}
-
 	return r.submitProof(ctx, int64(height), m.QueryId, neutrontypes.InterchainQueryTypeKV, proofs)
 }
 
