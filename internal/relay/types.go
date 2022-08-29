@@ -9,12 +9,6 @@ type queryEventMessage struct {
 	transactionsFilter string
 }
 
-type RecipientTransactionsParams []struct {
-	Field string
-	Op    string
-	Value interface{}
-}
-
 // types of keys for parsing incoming events
 const (
 	zoneIdAttr         = "message." + neutrontypes.AttributeKeyZoneID

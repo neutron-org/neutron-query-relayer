@@ -31,7 +31,7 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.RecipientTransactionsParams) ([]relay.Transaction, error) {
+func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams []neutrontypes.FilterItem) ([]relay.Transaction, error) {
 	query, err := queryFromParams(queryParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not compose query: %v", err)
@@ -92,7 +92,7 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 }
 
 // queryFromParams creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
-func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
+func queryFromParams(params []neutrontypes.FilterItem) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {
 		sign, err := getOpSign(row.Op)

@@ -187,7 +187,7 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		var params RecipientTransactionsParams
+		var params []neutrontypes.FilterItem
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",

@@ -75,7 +75,7 @@ func (cm *ConsensusManager) UpdateConsensusStates(ctx context.Context) error {
 		// === TO DEBUG ===
 		stCs := make([]string, 0)
 		for _, c := range consensusStatesResponse.GetConsensusStates() {
-			stCs = append(stCs, fmt.Sprintf("%d", c.Height.RevisionHeight))
+			stCs = append(stCs, fmt.Sprintf("%d-%d", c.Height.RevisionNumber, c.Height.RevisionHeight))
 		}
 		cm.logger.Info("Consensus states page",
 			zap.Int("asked_page_size", consensusPageSize),
@@ -198,6 +198,8 @@ func (cm *ConsensusManager) GetHeaderWithBestTrustedHeight(ctx context.Context, 
 	}
 
 	bestTrustedHeight = closestCs.(clienttypes.ConsensusStateWithHeight).Height
+
+	cm.logger.Debug("Found closest cs", zap.Uint64("height", closestCs.(clienttypes.ConsensusStateWithHeight).Height.RevisionHeight))
 
 	cm.logger.Error("Found best trusted height", zap.Uint64("height", bestTrustedHeight.RevisionHeight))
 
