@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,6 +18,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	"github.com/neutron-org/cosmos-query-relayer/internal/subscriber"
 	neutronapp "github.com/neutron-org/neutron/app"
@@ -82,6 +86,21 @@ func main() {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
+	var store relay.Storage
+
+	if cfg.AllowTxQueries && cfg.StoragePath == "" {
+		logger.Fatal("path to relayer's storage must be set, please refer to the README.md for more information about env variables")
+	}
+
+	if cfg.StoragePath != "" {
+		store, err = storage.NewLevelDBStorage(cfg.StoragePath)
+		if err != nil {
+			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
+		}
+	} else {
+		store = storage.NewDummyStorage()
+	}
+
 	subscriber, err := subscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.TargetChain.ChainID,
@@ -100,11 +119,31 @@ func main() {
 		neutronChain,
 		subscriber,
 		logger,
+		store,
 	)
 
-	if err := relayer.Run(); err != nil {
-		logger.Fatal("error running relayer", zap.Error(err))
+	errChan := make(chan error)
+	go func() {
+		if err := relayer.Run(); err != nil {
+			errChan <- fmt.Errorf("error running relayer: %w", err)
+		}
+	}()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	exitCode := 0
+	select {
+	case <-sigs:
+	case err := <-errChan:
+		logger.Error(err.Error())
+		exitCode = 1
 	}
+	logger.Info("relayer gracefully shutting down...")
+	if err := relayer.Stop(); err != nil {
+		logger.Error("failed to gracefully shut down", zap.Error(err))
+		exitCode = 1
+	}
+	os.Exit(exitCode)
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {

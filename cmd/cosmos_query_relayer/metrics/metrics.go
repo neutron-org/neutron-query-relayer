@@ -40,6 +40,11 @@ var (
 		Help:    "A histogram of target chain getters duration",
 		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 30},
 	}, []string{labelMethod, labelType})
+
+	submittedTxCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "submitted_txs",
+		Help: "The total number of submitted txs (counter)",
+	}, []string{labelType})
 )
 
 func IncFailedRequests() {
@@ -106,4 +111,16 @@ func AddSuccessTargetChainGetter(message string, dur float64) {
 		labelMethod: message,
 		labelType:   typeSuccess,
 	}).Observe(dur)
+}
+
+func IncSuccessTxSubmit() {
+	relayerRequests.With(prometheus.Labels{
+		labelType: typeSuccess,
+	}).Inc()
+}
+
+func IncFailedTxSubmit() {
+	relayerProofs.With(prometheus.Labels{
+		labelType: typeFailed,
+	}).Inc()
 }
