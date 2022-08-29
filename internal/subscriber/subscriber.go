@@ -20,8 +20,7 @@ func NewSubscriber(rpcAddress, targetChainID string, registry *registry.Registry
 	if err != nil {
 		return nil, fmt.Errorf("could not create new tendermint client: %w", err)
 	}
-	err = client.Start()
-	if err != nil {
+	if err = client.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint client: %w", err)
 	}
 	return &Subscriber{
@@ -60,8 +59,6 @@ func (s *Subscriber) Subscribe(ctx context.Context) (<-chan *relay.MessageKV, <-
 	unsubscribe := func() {
 		_ = s.client.Unsubscribe(context.Background(), subscriberName, subscribeQuery)
 		_ = s.client.Stop()
-		close(kvChan)
-		close(txChan)
 		s.logger.Debug("subscriber has been stopped")
 	}
 	go func() {
