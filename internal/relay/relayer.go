@@ -210,27 +210,22 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			return nil
 		}
 
-		err = r.consensusManager.UpdateConsensusStates(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to update consensus states: %w", err)
-		}
-
 		// always process first searched tx due it could be the last tx in its block
 		lastProcessedHeight := txs[0].Height
-		for _, txStruct := range txs {
+		for _, txItem := range txs {
 			// we don't update last query height until full block is processed
 			// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
 			// so until all 3 txs from block 100 has been proofed & sent, last query height will remain 0
 			// and only starting from block 101 last query height will be set to 100
-			if txStruct.Height > lastProcessedHeight {
+			if txItem.Height > lastProcessedHeight {
 				err = r.storage.SetLastQueryHeight(m.queryId, lastProcessedHeight)
 				if err != nil {
 					return fmt.Errorf("failed to save last height of query: %w", err)
 				}
 			}
-			lastProcessedHeight = txStruct.Height
+			lastProcessedHeight = txItem.Height
 
-			hash := string(tmtypes.Tx(txStruct.Tx.Data).Hash())
+			hash := string(tmtypes.Tx(txItem.Tx.Data).Hash())
 			txExists, err := r.storage.TxExists(m.queryId, hash)
 			if err != nil {
 				return fmt.Errorf("failed to check if transaction already exists: %w", err)
@@ -241,20 +236,19 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				continue
 			}
 
-			header, err := r.consensusManager.GetPackedHeaderWithBestTrustedHeight(ctx, txStruct.Height)
+			header, nextHeader, err := r.consensusManager.GetPackedHeadersWithTrustedHeight(ctx, txItem.Height)
 			if err != nil {
-				return fmt.Errorf("could not get trusted header for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-			}
-			nextHeader, err := r.consensusManager.GetPackedHeaderWithBestTrustedHeight(ctx, txStruct.Height+1)
-			if err != nil {
-				return fmt.Errorf("could not get next trusted header for %s with query_id=%d: %w", m.messageType, m.queryId, err)
+				// probably tried to get headers for a transaction that is too old, since we could not find any
+				// this should not be a reason to stop submitting proofs for other transactions
+				r.logger.Info("could not get headers with trusted height for tx", zap.Error(err), zap.Uint64("query_id", m.queryId), zap.String("hash", hash), zap.Uint64("height", txItem.Height))
+				continue
 			}
 
 			proofStart := time.Now()
 			if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
 				Header:          header,
 				NextBlockHeader: nextHeader,
-				Tx:              txStruct.Tx,
+				Tx:              txItem.Tx,
 			}); err != nil {
 				neutronmetrics.IncFailedProofs()
 				neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
@@ -308,7 +302,7 @@ func (r *Relayer) submitProof(
 		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
 	}
 
-	st := time.Now()
+	start := time.Now()
 	if err = r.submitter.SubmitProof(
 		ctx,
 		uint64(height-1),
@@ -319,11 +313,11 @@ func (r *Relayer) submitProof(
 		updateClientMsg,
 	); err != nil {
 		neutronmetrics.IncFailedProofs()
-		neutronmetrics.AddFailedProof(messageType, time.Since(st).Seconds())
+		neutronmetrics.AddFailedProof(messageType, time.Since(start).Seconds())
 		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", messageType, queryID, err)
 	}
 	neutronmetrics.IncSuccessProofs()
-	neutronmetrics.AddSuccessProof(messageType, time.Since(st).Seconds())
+	neutronmetrics.AddSuccessProof(messageType, time.Since(start).Seconds())
 	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
 	return nil
 }
@@ -348,7 +342,6 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 
 func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.Header) (sdk.Msg, error) {
 	start := time.Now()
-	// Query IBC Update Header
 
 	// Construct UpdateClient msg
 	var updateMsgRelayer provider.RelayerMessage

@@ -30,7 +30,6 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 }
 
 // SearchTransactions gets proofs for query type = 'tx'
-// (NOTE: there is no such query function in cosmos-sdk)
 func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams []neutrontypes.FilterItem) ([]relay.Transaction, error) {
 	query, err := queryFromParams(queryParams)
 	if err != nil {
@@ -99,14 +98,20 @@ func queryFromParams(params []neutrontypes.FilterItem) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		var attribute string
 		switch r := row.Value.(type) {
 		case string:
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s'%s'", row.Field, sign, r))
+			attribute = fmt.Sprintf("%s%s'%s'", row.Field, sign, r)
 		case float64:
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r)))
+			attribute = fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r))
 		case uint64:
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, r))
+			attribute = fmt.Sprintf("%s%s%d", row.Field, sign, r)
+		default:
+			return "", fmt.Errorf("unsupported row.Value type")
 		}
+
+		queryParamsList = append(queryParamsList, attribute)
 	}
 	return strings.Join(queryParamsList, " AND "), nil
 }
