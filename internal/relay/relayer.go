@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -44,8 +43,6 @@ type Relayer struct {
 	subscriber   Subscriber
 	logger       *zap.Logger
 	storage      Storage
-	mu           *sync.Mutex        // mu prevents relayer stopping in the middle of submission
-	cancel       context.CancelFunc // cancel is called on Stop() to stop relayer's execution
 }
 
 func NewRelayer(
@@ -57,9 +54,8 @@ func NewRelayer(
 	subscriber Subscriber,
 	logger *zap.Logger,
 	store Storage,
-) Relayer {
-	// TODO: after storage implementation update this func
-	return Relayer{
+) *Relayer {
+	return &Relayer{
 		cfg:          cfg,
 		proofer:      proofer,
 		submitter:    submitter,
@@ -68,19 +64,15 @@ func NewRelayer(
 		subscriber:   subscriber,
 		logger:       logger,
 		storage:      store,
-		mu:           &sync.Mutex{},
 	}
 }
 
 // Run starts the relaying process: subscribes on the incoming interchain query messages from the
 // Neutron and performs the queries by interacting with the target chain and submitting them to
 // the Neutron chain.
-func (r *Relayer) Run() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	r.cancel = cancel
-
+func (r *Relayer) Run(ctx context.Context) error {
 	r.logger.Info("subscribing to neutron chain events...")
-	kvChan, txChan, err := r.subscriber.Subscribe(ctx)
+	kvChan, txChan, err := r.subscriber.Subscribe()
 	if err != nil {
 		return fmt.Errorf("failed to subscribe to neutron events: %w", err)
 	}
@@ -93,25 +85,17 @@ func (r *Relayer) Run() error {
 		var err error
 		select {
 		case msg := <-kvChan:
-			func() {
-				r.mu.Lock()
-				defer r.mu.Unlock()
-				start = time.Now()
-				queryType = neutrontypes.InterchainQueryTypeKV
-				queryID = msg.QueryId
-				err = r.processMessageKV(context.Background(), msg)
-			}()
+			start = time.Now()
+			queryType = neutrontypes.InterchainQueryTypeKV
+			queryID = msg.QueryId
+			err = r.processMessageKV(context.Background(), msg)
 		case msg := <-txChan:
-			func() {
-				r.mu.Lock()
-				defer r.mu.Unlock()
-				start = time.Now()
-				queryType = neutrontypes.InterchainQueryTypeTX
-				queryID = msg.QueryId
-				err = r.processMessageTX(context.Background(), msg)
-			}()
+			start = time.Now()
+			queryType = neutrontypes.InterchainQueryTypeTX
+			queryID = msg.QueryId
+			err = r.processMessageTX(context.Background(), msg)
 		case <-ctx.Done():
-			return nil
+			return r.stop()
 		}
 		if err != nil {
 			r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
@@ -124,14 +108,25 @@ func (r *Relayer) Run() error {
 	}
 }
 
-// Stop stops the relayer.
-func (r *Relayer) Stop() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.cancel()
-	err := r.storage.Close()
-	if err != nil {
-		return fmt.Errorf("couldn't close relayer's storage: %w", err)
+// stop finishes execution of relayer's auxiliary entities.
+func (r *Relayer) stop() error {
+	var failed bool
+	if err := r.storage.Close(); err != nil {
+		r.logger.Error("failed to close relayer's storage", zap.Error(err))
+		failed = true
+	} else {
+		r.logger.Info("relayer's storage has been closed")
+	}
+
+	if err := r.subscriber.Unsubscribe(); err != nil {
+		r.logger.Error("failed to unsubscribe", zap.Error(err))
+		failed = true
+	} else {
+		r.logger.Info("subscriber has been stopped")
+	}
+
+	if failed {
+		return fmt.Errorf("error occurred while stopping relayer, see recent logs for more info")
 	}
 	return nil
 }

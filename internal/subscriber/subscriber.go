@@ -41,31 +41,27 @@ type Subscriber struct {
 	targetChainID string
 	registry      *registry.Registry
 	logger        *zap.Logger
+	subCancel     context.CancelFunc // subCancel controls subscriber event handling loop
 }
 
 // Subscribe subscribes on chain's events, transforms them to KV and TX messages and sends to
-// the corresponding channels. The subscriber can be stopped by closing the context.
-func (s *Subscriber) Subscribe(ctx context.Context) (<-chan *relay.MessageKV, <-chan *relay.MessageTX, error) {
-	subscriberName := s.subscriberName()
-	subscribeQuery := s.subscribeQuery()
-	events, err := s.client.Subscribe(ctx, subscriberName, subscribeQuery)
+// the corresponding channels. The subscriber can be stopped by closing the context. Message
+// channels are never closed to prevent listeners from seeing an erroneous message.
+func (s *Subscriber) Subscribe() (<-chan *relay.MessageKV, <-chan *relay.MessageTX, error) {
+	events, err := s.client.Subscribe(context.Background(), s.subscriberName(), s.subscribeQuery())
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not subscribe to events: %w", err)
 	}
-	s.logger.Debug("subscriber has subscribed on neutron events", zap.String("query", subscribeQuery))
+	s.logger.Debug("subscriber has subscribed on neutron events", zap.String("query", s.subscribeQuery()))
 
+	subCtx, subCancel := context.WithCancel(context.Background())
+	s.subCancel = subCancel
 	kvChan := make(chan *relay.MessageKV)
 	txChan := make(chan *relay.MessageTX)
-	unsubscribe := func() {
-		_ = s.client.Unsubscribe(context.Background(), subscriberName, subscribeQuery)
-		_ = s.client.Stop()
-		s.logger.Debug("subscriber has been stopped")
-	}
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
-				unsubscribe()
+			case <-subCtx.Done():
 				return
 			case event := <-events:
 				s.logger.Debug("received an event from Neutron")
@@ -87,16 +83,14 @@ func (s *Subscriber) Subscribe(ctx context.Context) (<-chan *relay.MessageKV, <-
 						select {
 						case kvChan <- buildMessageKV(msg):
 							s.logger.Debug("a KV message sent from subscriber to consumer")
-						case <-ctx.Done():
-							unsubscribe()
+						case <-subCtx.Done():
 							return
 						}
 					case neutrontypes.InterchainQueryTypeTX:
 						select {
 						case txChan <- buildMessageTX(msg):
 							s.logger.Debug("a TX message sent from subscriber to consumer")
-						case <-ctx.Done():
-							unsubscribe()
+						case <-subCtx.Done():
 							return
 						}
 					}
@@ -105,6 +99,18 @@ func (s *Subscriber) Subscribe(ctx context.Context) (<-chan *relay.MessageKV, <-
 		}
 	}()
 	return kvChan, txChan, nil
+}
+
+// Unsubscribe stops subscription and closes the subscriber client.
+func (s *Subscriber) Unsubscribe() error {
+	s.subCancel()
+	if err := s.client.Unsubscribe(context.Background(), s.subscriberName(), s.subscribeQuery()); err != nil {
+		return err
+	}
+	if err := s.client.Stop(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // subscribeQuery returns the subscriber name.
