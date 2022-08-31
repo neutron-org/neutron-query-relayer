@@ -4,4 +4,4 @@ while ! curl -f node:1317/blocks/1 >/dev/null 2>&1; do
   sleep 1
 done
 echo "Start relayer"
-cosmos_query_relayer
+neutron_query_relayer
