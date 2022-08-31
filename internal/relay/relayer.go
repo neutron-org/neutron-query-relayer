@@ -200,7 +200,7 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 			Op    string
 			Value interface{}
 		}{Field: TxHeight, Op: "gt", Value: queryLastHeight})
-
+		// TODO: not search for old transactions we cannot prove? (not within trusted period)
 		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
@@ -253,9 +253,9 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				neutronmetrics.IncFailedProofs()
 				neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
 
-				err = r.storage.SetTxStatus(m.queryId, hash, err.Error())
-				if err != nil {
-					return fmt.Errorf("failed to store tx: %w", err)
+				setErr := r.storage.SetTxStatus(m.queryId, hash, err.Error())
+				if setErr != nil {
+					return fmt.Errorf("failed to store tx: %w", setErr)
 				}
 				return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
 			}

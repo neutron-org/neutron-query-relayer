@@ -117,9 +117,8 @@ func (cm *ConsensusManager) getHeaderWithTrustedHeight(ctx context.Context, suit
 }
 
 // getConsensusStateWithTrustedHeight tries to find any consensusState within trusted period with a height <= supplied height
-// returned consensus state will be trusted since ibc-go prunes all expired consensus states (that are not within trusted period)
-// To do this, it simply iterates over all consensus states.
-// Note that we cannot optimize this due to consensus states being stored in a tree with *STRING* key `RevisionNumber-RevisionHeight`
+// To do this, it simply iterates over all consensus states and checks each that it's within trusted period AND <= supplied_height
+// Note that we cannot optimize this search due to consensus states being stored in a tree with *STRING* key `RevisionNumber-RevisionHeight`
 //
 // Arguments:
 // `ctx` - context
@@ -165,7 +164,39 @@ func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Conte
 
 		res = append(res, consensusStatesResponse.ConsensusStates...)
 		for _, item := range consensusStatesResponse.ConsensusStates {
-			if height >= item.Height.RevisionHeight {
+			unpackedItem, ok := item.ConsensusState.GetCachedValue().(ibcexported.ConsensusState)
+			if !ok {
+				return nil, fmt.Errorf("could not unpack consensus state from Any value")
+			}
+
+			consensusTimestamp := time.Unix(0, int64(unpackedItem.GetTimestamp()))
+			now := time.Now()
+			trustingPeriod, err := time.ParseDuration("2m")
+			if err != nil {
+				panic("incorrect trusting period string: " + err.Error())
+			}
+			// NOTE: need to use some margin period, because we need consensusState to be valid until we approve it on the chain
+			submissionMarginPeriod, err := time.ParseDuration("0m")
+			if err != nil {
+				panic("incorrect margin trusting period string")
+			}
+
+			olderThanCurrentHeight := height >= item.Height.RevisionHeight
+			notExpired := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(now)
+
+			// TODO: delete after test that all is ok
+			// === TO DEBUG ===
+			if !notExpired {
+				cm.logger.Info("Expired consensus state",
+					zap.Uint64("cs_height", item.Height.RevisionHeight))
+			}
+			if !olderThanCurrentHeight {
+				cm.logger.Info("Too young consensus state",
+					zap.Uint64("cs_height", item.Height.RevisionHeight))
+			}
+			// ==================
+
+			if olderThanCurrentHeight && notExpired {
 				cm.logger.Info("Found suitable consensus state",
 					zap.Uint64("height", item.Height.RevisionHeight))
 				return &item, nil
@@ -191,6 +222,7 @@ func InjectTrustedFields(ctx context.Context, targetProvider provider.ChainProvi
 		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
 	}
 
+	// inject TrustedHeight
 	tmHeader.TrustedHeight = suitableConsensusState.Height
 
 	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
