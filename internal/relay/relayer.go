@@ -80,7 +80,7 @@ func (r *Relayer) Run(ctx context.Context) error {
 
 	for {
 		var start time.Time
-		var queryType string
+		var queryType neutrontypes.InterchainQueryType
 		var queryID uint64
 		var err error
 		select {
@@ -100,10 +100,10 @@ func (r *Relayer) Run(ctx context.Context) error {
 		if err != nil {
 			r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
 			neutronmetrics.IncFailedRequests()
-			neutronmetrics.AddFailedRequest(queryType, time.Since(start).Seconds())
+			neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
 		} else {
 			neutronmetrics.IncSuccessRequests()
-			neutronmetrics.AddSuccessRequest(queryType, time.Since(start).Seconds())
+			neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
 		}
 	}
 }
@@ -150,7 +150,7 @@ func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 	if err != nil {
 		return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.QueryId, err)
 	}
-	return r.submitProof(ctx, int64(height), m.QueryId, neutrontypes.InterchainQueryTypeKV, proofs)
+	return r.submitProof(ctx, int64(height), m.QueryId, proofs)
 }
 
 // processMessageTX handles an incoming TX interchain query message. It fetches proven transactions
@@ -245,7 +245,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 			Tx:              tx.Tx,
 		}); err != nil {
 			neutronmetrics.IncFailedProofs()
-			neutronmetrics.AddFailedProof(neutrontypes.InterchainQueryTypeTX, time.Since(proofStart).Seconds())
+			neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 
 			err = r.storage.SetTxStatus(m.QueryId, hash, err.Error())
 			if err != nil {
@@ -254,7 +254,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 			return fmt.Errorf("could not submit proof: %w", err)
 		}
 		neutronmetrics.IncSuccessProofs()
-		neutronmetrics.AddSuccessProof(neutrontypes.InterchainQueryTypeTX, time.Since(proofStart).Seconds())
+		neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 
 		err = r.storage.SetTxStatus(m.QueryId, hash, Success)
 		if err != nil {
@@ -274,7 +274,6 @@ func (r *Relayer) submitProof(
 	ctx context.Context,
 	height int64,
 	queryID uint64,
-	messageType string,
 	proof []*neutrontypes.StorageValue,
 ) error {
 	srcHeader, err := r.getSrcChainHeader(ctx, height)
@@ -298,11 +297,11 @@ func (r *Relayer) submitProof(
 		updateClientMsg,
 	); err != nil {
 		neutronmetrics.IncFailedProofs()
-		neutronmetrics.AddFailedProof(messageType, time.Since(st).Seconds())
-		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", messageType, queryID, err)
+		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(st).Seconds())
+		return fmt.Errorf("could not submit proof: %w", err)
 	}
 	neutronmetrics.IncSuccessProofs()
-	neutronmetrics.AddSuccessProof(messageType, time.Since(st).Seconds())
+	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(st).Seconds())
 	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
 	return nil
 }

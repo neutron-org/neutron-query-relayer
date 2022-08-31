@@ -10,7 +10,7 @@ require (
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/neutron-org/neutron v0.0.0-20220829081006-146c46a110b0
+	github.com/neutron-org/neutron v0.0.0-20220831141623-eec4691f29ec
 	github.com/prometheus/client_golang v1.12.1
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.21.0
@@ -25,7 +25,7 @@ require (
 	github.com/CosmWasm/wasmvm v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/Workiva/go-datastructures v1.0.53 // indirect
-	github.com/armon/go-metrics v0.3.11 // indirect
+	github.com/armon/go-metrics v0.4.0 // indirect
 	github.com/avast/retry-go v2.6.0+incompatible // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
@@ -145,7 +145,7 @@ require (
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
-	google.golang.org/genproto v0.0.0-20220805133916-01dd62135a58 // indirect
+	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
 	google.golang.org/grpc v1.48.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
