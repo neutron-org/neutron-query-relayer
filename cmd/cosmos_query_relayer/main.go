@@ -24,6 +24,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
 	"github.com/neutron-org/cosmos-query-relayer/internal/subscriber"
 	neutronapp "github.com/neutron-org/neutron/app"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 func main() {
@@ -103,10 +104,15 @@ func main() {
 		store = storage.NewDummyStorage()
 	}
 
+	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
+	if cfg.AllowTxQueries {
+		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
+	}
 	subscriber, err := subscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.TargetChain.ChainID,
 		registry.New(cfg.Registry),
+		watchedMsgTypes,
 		logger,
 	)
 	if err != nil {

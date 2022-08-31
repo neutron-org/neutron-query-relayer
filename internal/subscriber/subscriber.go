@@ -15,7 +15,13 @@ import (
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
-func NewSubscriber(rpcAddress, targetChainID string, registry *registry.Registry, logger *zap.Logger) (*Subscriber, error) {
+func NewSubscriber(
+	rpcAddress string,
+	targetChainID string,
+	registry *registry.Registry,
+	watchedTypes []neutrontypes.InterchainQueryType,
+	logger *zap.Logger,
+) (*Subscriber, error) {
 	client, err := http.New(rpcAddress, "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("could not create new tendermint client: %w", err)
@@ -23,24 +29,30 @@ func NewSubscriber(rpcAddress, targetChainID string, registry *registry.Registry
 	if err = client.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint client: %w", err)
 	}
+	watchedTypesMap := make(map[neutrontypes.InterchainQueryType]struct{})
+	for _, queryType := range watchedTypes {
+		watchedTypesMap[queryType] = struct{}{}
+	}
 	return &Subscriber{
 		client:        client,
 		rpcAddress:    rpcAddress,
 		targetChainID: targetChainID,
 		registry:      registry,
 		logger:        logger,
+		watchedTypes:  watchedTypesMap,
 	}, nil
 }
 
 // Subscriber is responsible for subscribing on chain's ICQ events. It parses incoming events,
-// filters them in accordance with the Registry configuration, and provides a stream of split
-// to KV and TX messages.
+// filters them in accordance with the Registry configuration and watchedTypes, and provides a
+// stream of split to KV and TX messages.
 type Subscriber struct {
 	client        *http.HTTP
 	rpcAddress    string
 	targetChainID string
 	registry      *registry.Registry
 	logger        *zap.Logger
+	watchedTypes  map[neutrontypes.InterchainQueryType]struct{}
 	subCancel     context.CancelFunc // subCancel controls subscriber event handling loop
 }
 
@@ -52,7 +64,7 @@ func (s *Subscriber) Subscribe() (<-chan *relay.MessageKV, <-chan *relay.Message
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not subscribe to events: %w", err)
 	}
-	s.logger.Debug("subscriber has subscribed on neutron events", zap.String("query", s.subscribeQuery()))
+	s.logger.Debug("subscriber has subscribed to neutron events", zap.String("query", s.subscribeQuery()))
 
 	subCtx, subCancel := context.WithCancel(context.Background())
 	s.subCancel = subCancel
@@ -77,6 +89,15 @@ func (s *Subscriber) Subscribe() (<-chan *relay.MessageKV, <-chan *relay.Message
 
 				s.logger.Debug("handling event from Neutron", zap.Int("messages", len(msgs)))
 				for _, msg := range msgs {
+					if !s.isWatchedMsgType(msg.messageType) {
+						s.logger.Debug(
+							"message skipped due to submitter watched msg types configuration",
+							zap.String("msg_type", string(msg.messageType)),
+							zap.Uint64("query_id", msg.queryId),
+						)
+						continue
+					}
+
 					s.logger.Debug("handling a message from event", zap.String("message_type", string(msg.messageType)))
 					switch msg.messageType {
 					case neutrontypes.InterchainQueryTypeKV:
@@ -182,6 +203,13 @@ func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessag
 		}
 	}
 	return messages, nil
+}
+
+// isWatchedMsgType returns true if the given message type was added to the subscriber's watched
+// query types list.
+func (s *Subscriber) isWatchedMsgType(msgType neutrontypes.InterchainQueryType) bool {
+	_, ex := s.watchedTypes[msgType]
+	return ex
 }
 
 // isWatchedAddress returns true if the address is within the registry watched addresses or there

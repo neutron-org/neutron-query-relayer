@@ -158,10 +158,6 @@ func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 // Neutron chain.
 func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 	r.logger.Debug("running proofMessageTX for msg", zap.Uint64("query_id", m.QueryId))
-	if !r.cfg.AllowTxQueries {
-		return fmt.Errorf("TX queries are not allowed by configuration")
-	}
-
 	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to QueryLatestHeight: %w", err)
