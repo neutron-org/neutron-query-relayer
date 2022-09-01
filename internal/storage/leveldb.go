@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"strconv"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
+
+const SubmittedTxStatusPrefix = "submitted_txs"
 
 // LevelDBStorage Basically has a simple structure inside: we have 2 maps
 // first one : map of queryID -> last block this query has been processed
@@ -96,17 +99,41 @@ func (s *LevelDBStorage) Close() error {
 }
 
 func (s *LevelDBStorage) SaveSubmittedTxStatus(neutronTXHash string, txInfo relay.SubmittedTxInfo) error {
-	// TODO: implement
+	key := []byte(SubmittedTxStatusPrefix + neutronTXHash)
+	data, err := json.Marshal(txInfo)
+	if err != nil {
+		return fmt.Errorf("failed to marshal SubmittedTxInfo: %w", err)
+	}
+	err = s.db.Put(key, data, nil)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *LevelDBStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.SubmittedTxInfo, error) {
-	// TODO: implement
-	return nil, nil
+	key := []byte(SubmittedTxStatusPrefix + neutronTXHash)
+	data, err := s.db.Get(key, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read SubmittedTxInfo from underlying storage: %w", err)
+	}
+
+	var txInfo relay.SubmittedTxInfo
+	err = json.Unmarshal(data, &txInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal data into SubmittedTxInfo: %w", err)
+	}
+	
+	return &txInfo, nil
 }
 
 func (s *LevelDBStorage) RemoveSubmittedTxStatus(neutronTXHash string) error {
-	// TODO: implement
+	key := []byte(SubmittedTxStatusPrefix + neutronTXHash)
+	err := s.db.Delete(key, nil)
+	if err != nil {
+		return fmt.Errorf("failed to remove SubmittedTxInfo under the key %s: %w", neutronTXHash, err)
+	}
+
 	return nil
 }
 
