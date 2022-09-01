@@ -11,6 +11,7 @@ const Success = "Success"
 type Storage interface {
 	SaveSubmittedTxStatus(neutronTXHash string, txInfo SubmittedTxInfo) error
 	GetSubmittedTxStatus(neutronTXHash string) (*SubmittedTxInfo, error)
+	RemoveSubmittedTxStatus(neutronTXHash string) error
 	GetLastQueryHeight(queryID uint64) (block uint64, exists bool, err error)
 	SetLastQueryHeight(queryID uint64, block uint64) error
 	SetTxStatus(queryID uint64, hash string, status string) (err error)

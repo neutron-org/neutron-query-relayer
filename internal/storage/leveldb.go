@@ -105,6 +105,11 @@ func (s *LevelDBStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.Subm
 	return nil, nil
 }
 
+func (s *LevelDBStorage) RemoveSubmittedTxStatus(neutronTXHash string) error {
+	// TODO: implement
+	return nil
+}
+
 func uintToBytes(num uint64) []byte {
 	return []byte(strconv.FormatUint(num, 10))
 }

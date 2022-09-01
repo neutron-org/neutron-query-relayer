@@ -42,6 +42,10 @@ func (s *DummyStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.Submit
 	return nil, fmt.Errorf("GetSubmittedTxStatus is not yet implemented for DummyStorages")
 }
 
+func (s *DummyStorage) RemoveSubmittedTxStatus(neutronTXHash string) error {
+	return fmt.Errorf("RemoveSubmittedTxStatus is not yet implemented for DummyStorages")
+}
+
 func NewDummyStorage() *DummyStorage {
 	s := new(DummyStorage)
 	s.KVUpdateMap = make(map[uint64]uint64)
