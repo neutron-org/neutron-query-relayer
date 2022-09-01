@@ -131,10 +131,8 @@ func main() {
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
-
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-
 	go func() {
 		defer wg.Done()
 		if err := relayer.Run(ctx); err != nil {
@@ -146,11 +144,9 @@ func main() {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-		select {
-		case s := <-sigs:
-			logger.Info("Received termination signal, gracefully shutting down...", zap.String("signal", s.String()))
-			cancel()
-		}
+		s := <-sigs
+		logger.Info("Received termination signal, gracefully shutting down...", zap.String("signal", s.String()))
+		cancel()
 	}()
 
 	wg.Wait()
@@ -186,4 +182,3 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 
 	return neutronChain, targetChain, nil
 }
-
