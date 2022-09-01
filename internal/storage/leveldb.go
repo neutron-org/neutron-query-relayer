@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"strconv"
 	"sync"
 
@@ -92,6 +93,16 @@ func (s *LevelDBStorage) Close() error {
 		return fmt.Errorf("failed to close db: %w", err)
 	}
 	return nil
+}
+
+func (s *LevelDBStorage) SaveSubmittedTxStatus(neutronTXHash string, txInfo relay.SubmittedTxInfo) error {
+	// TODO: implement
+	return nil
+}
+
+func (s *LevelDBStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.SubmittedTxInfo, error) {
+	// TODO: implement
+	return nil, nil
 }
 
 func uintToBytes(num uint64) []byte {

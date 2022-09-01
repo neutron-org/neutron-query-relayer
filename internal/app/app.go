@@ -77,7 +77,7 @@ func NewDefaultRelayer(logger *zap.Logger, cfg config.CosmosQueryRelayerConfig) 
 		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
-	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain)
+	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger)
 	if err != nil {
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}
