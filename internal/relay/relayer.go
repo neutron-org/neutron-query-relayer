@@ -328,10 +328,9 @@ func (r *Relayer) getSrcChainHeader(ctx context.Context, height int64) (ibcexpor
 		r.logger.Info(
 			"failed to GetIBCUpdateHeader", zap.Error(err))
 	})); err != nil {
-		neutronmetrics.AddFailedTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
 		return nil, err
 	}
-	neutronmetrics.AddSuccessTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
+	neutronmetrics.RecordTime("GetIBCUpdateHeader", time.Since(start).Seconds())
 	return srcHeader, nil
 }
 
@@ -355,7 +354,7 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.
 	if !ok {
 		return nil, errors.New("failed to cast provider.RelayerMessage to cosmos.CosmosMessage")
 	}
-	neutronmetrics.AddSuccessTargetChainGetter("GetUpdateClientMsg", time.Since(start).Seconds())
+	neutronmetrics.RecordTime("GetUpdateClientMsg", time.Since(start).Seconds())
 	return updateMsgUnpacked.Msg, nil
 }
 

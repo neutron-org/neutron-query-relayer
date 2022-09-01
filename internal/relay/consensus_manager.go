@@ -10,19 +10,19 @@ import (
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	relayermetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
+	metrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	"go.uber.org/zap"
 	"time"
 )
 
-// How many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
+// how many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
 const consensusPageSize = 10
 
 // submissionMarginPeriod is a lag period, because we need consensusState to be valid until we approve it on the chain
 const submissionMarginPeriod time.Duration = time.Minute * 5
 
+// retries configuration for fetching light header
 var (
 	RtyAttNum = uint(5)
 	RtyAtt    = retry.Attempts(RtyAttNum)
@@ -47,30 +47,36 @@ func NewConsensusManager(neutronChain *relayer.Chain, targetChain *relayer.Chain
 
 // GetPackedHeadersWithTrustedHeight returns two IBC Update headers for height and height+1 packed into *codectypes.Any value
 func (cm *ConsensusManager) GetPackedHeadersWithTrustedHeight(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
+	start := time.Now()
+
 	// tries to find the closest consensus state height that is less or equal than provided height
 	suitableConsensusState, err := cm.getConsensusStateWithTrustedHeight(ctx, height)
 	if err != nil {
 		err = fmt.Errorf("no satisfying consensus state found: %w", err)
 		return
 	}
+	cm.logger.Debug("Found suitable consensus state with trusted height", zap.Uint64("height", suitableConsensusState.Height.RevisionHeight))
 
-	header, err = cm.getPackedHeaderWithTrustedHeight(ctx, suitableConsensusState, height)
+	header, err = cm.packedTrustedHeaderAtHeight(ctx, suitableConsensusState, height)
 	if err != nil {
 		err = fmt.Errorf("failed to get header for src chain: %w", err)
 		return
 	}
 
-	nextHeader, err = cm.getPackedHeaderWithTrustedHeight(ctx, suitableConsensusState, height+1)
+	nextHeader, err = cm.packedTrustedHeaderAtHeight(ctx, suitableConsensusState, height+1)
 	if err != nil {
 		err = fmt.Errorf("failed to get next header for src chain: %w", err)
 		return
 	}
 
+	metrics.RecordTime("GetPackedHeadersWithTrustedHeight", time.Since(start).Seconds())
+
 	return
 }
 
-func (cm *ConsensusManager) getPackedHeaderWithTrustedHeight(ctx context.Context, suitableConsensusState *clienttypes.ConsensusStateWithHeight, height uint64) (*codectypes.Any, error) {
-	header, err := cm.getHeaderWithTrustedHeight(ctx, suitableConsensusState, height)
+// packedTrustedHeaderAtHeight finds trusted header at height and packs it for sending
+func (cm *ConsensusManager) packedTrustedHeaderAtHeight(ctx context.Context, suitableConsensusState *clienttypes.ConsensusStateWithHeight, height uint64) (*codectypes.Any, error) {
+	header, err := cm.trustedHeaderAtHeight(ctx, suitableConsensusState, height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get header with trusted height: %w", err)
 	}
@@ -83,7 +89,7 @@ func (cm *ConsensusManager) getPackedHeaderWithTrustedHeight(ctx context.Context
 	return packedHeader, nil
 }
 
-// getHeaderWithTrustedHeight returns an IBC Update Header which can be used to update an on chain
+// trustedHeaderAtHeight returns an IBC Update Header which can be used to update an on chain
 // light client on the Neutron chain.
 //
 // It has the same purpose as r.targetChain.ChainProvider.GetIBCUpdateHeader() but the difference is
@@ -93,25 +99,50 @@ func (cm *ConsensusManager) getPackedHeaderWithTrustedHeight(ctx context.Context
 // Arguments:
 // `suitableConsensusState` - any consensus state that has height < supplied height
 // `height` - height for a header we'll get
-func (cm *ConsensusManager) getHeaderWithTrustedHeight(ctx context.Context, suitableConsensusState *clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
-	start := time.Now()
-
-	cm.logger.Info("Found suitable consensus state with trusted height", zap.Uint64("height", suitableConsensusState.Height.RevisionHeight))
-
+func (cm *ConsensusManager) trustedHeaderAtHeight(ctx context.Context, suitableConsensusState *clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
 	header, err := cm.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
 	if err != nil {
-		relayermetrics.AddFailedTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
 		return nil, fmt.Errorf("failed to get light signed header: %w", err)
 	}
 
-	relayermetrics.AddSuccessTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
-
-	resultHeader, err := InjectTrustedFields(ctx, cm.targetChain.ChainProvider, header, suitableConsensusState)
-	if err != nil {
-		return nil, fmt.Errorf("failed to inject trusted fields into tmHeader: %w", err)
+	// make copy of header stored in mop
+	tmHeader, ok := header.(*tmclient.Header)
+	if !ok {
+		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
 	}
 
-	return resultHeader, err
+	// inject TrustedHeight
+	tmHeader.TrustedHeight = suitableConsensusState.Height
+
+	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
+	// since the last trusted validators for a header at height h is the NextValidators
+	// at h+1 committed to in header h by NextValidatorsHash
+
+	var nextTmHeader *tmclient.Header
+	if err := retry.Do(func() error {
+		nextHeader, err := cm.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(tmHeader.TrustedHeight.RevisionHeight+1))
+		if err != nil {
+			return err
+		}
+
+		tmp, ok := nextHeader.(*tmclient.Header)
+		if !ok {
+			err = fmt.Errorf("non-tm client header")
+		}
+
+		nextTmHeader = tmp
+		return err
+	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
+		return nil, fmt.Errorf(
+			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
+			tmHeader.TrustedHeight.RevisionHeight, err,
+		)
+	}
+
+	// inject TrustedValidators into header
+	tmHeader.TrustedValidators = nextTmHeader.ValidatorSet
+
+	return tmHeader, nil
 }
 
 // getConsensusStateWithTrustedHeight tries to find any consensusState within trusted period with a height <= supplied height
@@ -133,19 +164,12 @@ func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Conte
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch trusting period: %w", err)
 	}
+	cm.logger.Debug("fetched trusting period", zap.Float64("trusting_period_hours", trustingPeriod.Hours()))
 
 	nextKey := make([]byte, 0)
 
 	for {
-		page, err := qc.ConsensusStates(ctx, &clienttypes.QueryConsensusStatesRequest{
-			ClientId: cm.neutronChain.ClientID(),
-			Pagination: &query.PageRequest{
-				Key:        nextKey,
-				Limit:      consensusPageSize,
-				Reverse:    true,
-				CountTotal: false,
-			},
-		})
+		page, err := qc.ConsensusStates(ctx, requestPage(cm.neutronChain.ClientID(), nextKey))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", cm.neutronChain.ClientID(), err)
 		}
@@ -193,44 +217,14 @@ func (cm *ConsensusManager) fetchTrustingPeriod(ctx context.Context) (time.Durat
 	return tmClientState.TrustingPeriod, nil
 }
 
-// InjectTrustedFields injects TrustedHeight and TrustedValidators into header
-func InjectTrustedFields(ctx context.Context, targetProvider provider.ChainProvider, header ibcexported.Header, suitableConsensusState *clienttypes.ConsensusStateWithHeight) (ibcexported.Header, error) {
-	// make copy of header stored in mop
-	tmHeader, ok := header.(*tmclient.Header)
-	if !ok {
-		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
+func requestPage(clientID string, nextKey []byte) *clienttypes.QueryConsensusStatesRequest {
+	return &clienttypes.QueryConsensusStatesRequest{
+		ClientId: clientID,
+		Pagination: &query.PageRequest{
+			Key:        nextKey,
+			Limit:      consensusPageSize,
+			Reverse:    true,
+			CountTotal: false,
+		},
 	}
-
-	// inject TrustedHeight
-	tmHeader.TrustedHeight = suitableConsensusState.Height
-
-	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
-	// since the last trusted validators for a header at height h is the NextValidators
-	// at h+1 committed to in header h by NextValidatorsHash
-
-	var trustedHeader *tmclient.Header
-	if err := retry.Do(func() error {
-		nextHeader, err := targetProvider.GetLightSignedHeaderAtHeight(ctx, int64(tmHeader.TrustedHeight.RevisionHeight+1))
-		if err != nil {
-			return err
-		}
-
-		nextTmHeader, ok := nextHeader.(*tmclient.Header)
-		if !ok {
-			err = fmt.Errorf("non-tm client header")
-		}
-
-		trustedHeader = nextTmHeader
-		return err
-	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
-		return nil, fmt.Errorf(
-			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
-			tmHeader.TrustedHeight.RevisionHeight, err,
-		)
-	}
-
-	// inject TrustedValidators into header
-	tmHeader.TrustedValidators = trustedHeader.ValidatorSet
-
-	return tmHeader, nil
 }
