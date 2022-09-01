@@ -9,7 +9,7 @@ require (
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/neutron-org/neutron v0.0.0-20220825124100-983542ed32ab
+	github.com/neutron-org/neutron v0.0.0-20220901073335-710b177634a2
 	github.com/prometheus/client_golang v1.12.1
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.19
@@ -126,7 +126,7 @@ require (
 	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20220805133916-01dd62135a58 // indirect
+	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
 	google.golang.org/grpc v1.48.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect

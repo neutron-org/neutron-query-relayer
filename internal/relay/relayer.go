@@ -186,7 +186,7 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				m.messageType, m.transactionsFilter, m.queryId, err)
 		}
 
-		var params []neutrontypes.FilterItem
+		var params neutrontypes.TransactionsFilter
 		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
@@ -194,11 +194,7 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 		}
 
 		// add filter by tx.height (tx.height>n)
-		params = append(params, struct {
-			Field string
-			Op    string
-			Value interface{}
-		}{Field: TxHeight, Op: "gt", Value: queryLastHeight})
+		params = append(params, neutrontypes.TransactionsFilterItem{Field: TxHeight, Op: "gt", Value: queryLastHeight})
 		// TODO: not search for old transactions we cannot prove? (not within trusted period)
 		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {

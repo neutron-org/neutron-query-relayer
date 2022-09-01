@@ -15,5 +15,5 @@ type Transaction struct {
 // Proofer can obtain proofs for different kinds of queries we need answers to
 type Proofer interface {
 	GetStorageValues(context.Context, uint64, neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error)
-	SearchTransactions(context.Context, []neutrontypes.FilterItem) (txs []Transaction, err error)
+	SearchTransactions(context.Context, neutrontypes.TransactionsFilter) (txs []Transaction, err error)
 }

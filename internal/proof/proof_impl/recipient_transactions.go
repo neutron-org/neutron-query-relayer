@@ -30,8 +30,8 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 }
 
 // SearchTransactions gets proofs for query type = 'tx'
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams []neutrontypes.FilterItem) ([]relay.Transaction, error) {
-	query, err := queryFromParams(queryParams)
+func (p ProoferImpl) SearchTransactions(ctx context.Context, filter neutrontypes.TransactionsFilter) ([]relay.Transaction, error) {
+	query, err := queryFromFilter(filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not compose query: %v", err)
 	}
@@ -90,8 +90,8 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
-// queryFromParams creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
-func queryFromParams(params []neutrontypes.FilterItem) (string, error) {
+// queryFromFilter creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
+func queryFromFilter(params neutrontypes.TransactionsFilter) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {
 		sign, err := getOpSign(row.Op)
