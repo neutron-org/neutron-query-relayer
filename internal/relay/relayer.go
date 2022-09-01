@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/neutron-org/cosmos-query-relayer/pkg/lib/iter"
-	"github.com/neutron-org/cosmos-query-relayer/pkg/lib/result"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -141,28 +139,6 @@ func (r *Relayer) stop() error {
 	return nil
 }
 
-func (r Relayer) TxProcessorOld(ctx context.Context, queryID uint64, txs iter.Iterator[result.Result[Transaction]]) (lastProcessedHeight uint64, err error) {
-	lastProcessedHeight = 0
-	//for txStruct := range txs {
-	for {
-		// TODO:
-		// FIXME:
-		txStruct := *txs.Next().Some.Ok
-		// always process first searched tx due it could be the last tx in its block
-		// we don't update last query height until full block is processed
-		// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
-		// so until all 3 txs from block 100 has been proofed & sent last query height will remain 0
-		// and only starting from block 101 last query height will be set to 100
-		if txStruct.Height > lastProcessedHeight {
-			err = r.storage.SetLastQueryHeight(queryID, lastProcessedHeight)
-			if err != nil {
-				return lastProcessedHeight, fmt.Errorf("failed to save last height of query: %w", err)
-			}
-		}
-		lastProcessedHeight = txStruct.Height
-	}
-}
-
 // processMessageKV handles an incoming KV interchain query message. It checks whether it's time
 // to execute the query (based on the relayer's settings), queries values and proofs for the query
 // keys, and submits the result to the Neutron chain.
@@ -247,7 +223,7 @@ func (r *Relayer) submitProof(
 	}
 
 	st := time.Now()
-	if err = r.submitter.SubmitProof(
+	if err = r.submitter.SubmitKVProof(
 		ctx,
 		uint64(height-1),
 		srcHeader.GetHeight().GetRevisionNumber(),
@@ -345,11 +321,4 @@ func (r *Relayer) getLastQueryHeight(queryID uint64) (uint64, error) {
 		return 0, fmt.Errorf("failed to check query in storage: %w", err)
 	}
 	return height, nil
-}
-
-func max(x, y uint64) uint64 {
-	if x < y {
-		return y
-	}
-	return x
 }

@@ -41,7 +41,7 @@ func (r TXProcessor) SubmitBlock(ctx context.Context, queryID uint64, block *neu
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	if err := r.submitter.SubmitTxProof(ctx, queryID, r.clientID, block); err != nil {
-		neutronmetrics.AddFailedProof(neutrontypes.InterchainQueryTypeTX, time.Since(proofStart).Seconds())
+		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(queryID, hash, err.Error())
 		if errSetStatus != nil {
 			return fmt.Errorf("failed to store tx: %w", errSetStatus)
@@ -49,7 +49,7 @@ func (r TXProcessor) SubmitBlock(ctx context.Context, queryID uint64, block *neu
 		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", neutrontypes.InterchainQueryTypeTX, queryID, err)
 	}
 
-	neutronmetrics.AddSuccessProof(neutrontypes.InterchainQueryTypeTX, time.Since(proofStart).Seconds())
+	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 	err := r.storage.SetTxStatus(queryID, hash, relay.Success)
 	if err != nil {
 		return fmt.Errorf("failed to store tx: %w", err)

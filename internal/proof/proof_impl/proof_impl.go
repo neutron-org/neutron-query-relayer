@@ -6,7 +6,9 @@ import (
 )
 
 type ProoferImpl struct {
-	querier *proof.Querier
+	querier           *proof.Querier
+	minKVUpdatePeriod uint64
+	allowKVCallbacks  bool
 }
 
 func NewProofer(querier *proof.Querier) relay.Proofer {

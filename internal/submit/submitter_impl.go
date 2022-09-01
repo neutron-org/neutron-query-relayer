@@ -18,8 +18,8 @@ func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
 	return &SubmitterImpl{sender: sender}
 }
 
-// SubmitProof submits query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitProof(
+// SubmitKVProof submits query with proof back to Neutron chain
+func (si *SubmitterImpl) SubmitKVProof(
 	ctx context.Context,
 	height,
 	revision,

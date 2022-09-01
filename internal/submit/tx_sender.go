@@ -3,6 +3,8 @@ package submit
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
+	"strings"
 	"sync"
 
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
@@ -39,6 +41,7 @@ type TxSender struct {
 	signKeyName   string
 	gasPrices     string
 	gasLimit      uint64
+	logger        *zap.Logger
 }
 
 func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
@@ -50,7 +53,7 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 	return keybase, nil
 }
 
-func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig) (*TxSender, error) {
+func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig, logger *zap.Logger) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
@@ -71,6 +74,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		signKeyName:   cfg.SignKeyName,
 		gasPrices:     cfg.GasPrices,
 		gasLimit:      cfg.GasLimit,
+		logger:        logger,
 	}
 	err := txs.Init()
 	if err != nil {
@@ -107,22 +111,16 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 		WithSequence(txs.sequence)
 
 	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
-	// TODO: reinit sender on error
-	// {"level":"error","ts":1661995842.0200863,"caller":"relay/relayer.go:118","msg":"could not process message","quer$
-	//_id":3,"error":"failed to process txs: failed to submit block: could not submit proof for tx with query_id=3: er$or calculating gas: no result in simulation response with log=\ngithub.com/cosmos/cosmos-sdk/baseapp.gRPCErrorTo$
-	//DKError\n\tgithub.com/cosmos/cosmos-sdk@v0.45.4/baseapp/abci.go:590\ngithub.com/cosmos/cosmos-sdk/baseapp.(*Base$pp).handleQueryGRPC\n\tgithub.com/cosmos/cosmos-sdk@v0.45.4/baseapp/abci.go:579\ngithub.com/cosmos/cosmos-sdk/ba$
-	//eapp.(*BaseApp).Query\n\tgithub.com/cosmos/cosmos-sdk@v0.45.4/baseapp/abci.go:421\ngithub.com/tendermint/tenderm$nt/abci/client.(*localClient).QuerySync\n\tgithub.com/tendermint/tendermint@v0.34.19/abci/client/local_client.go$
-	//256\ngithub.com/tendermint/tendermint/proxy.(*appConnQuery).QuerySync\n\tgithub.com/tendermint/tendermint@v0.34.$9/proxy/app_conn.go:159\ngithub.com/tendermint/tendermint/rpc/core.ABCIQuery\n\tgithub.com/tendermint/tendermint$
-	//v0.34.19/rpc/core/abci.go:20\nreflect.Value.call\n\treflect/value.go:556\nreflect.Value.Call\n\treflect/value.go$339\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.makeJSONRPCHandler.func1\n\tgithub.com/tendermint/tende$
-	//mint@v0.34.19/rpc/jsonrpc/server/http_json_handler.go:96\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.ha$
-	//dleInvalidJSONRPCPaths.func1\n\tgithub.com/tendermint/tendermint@v0.34.19/rpc/jsonrpc/server/http_json_handler.g$
-	//:122\nnet/http.HandlerFunc.ServeHTTP\n\tnet/http/server.go:2084\nnet/http.(*ServeMux).ServeHTTP\n\tnet/http/serv$r.go:2462\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.maxBytesHandler.ServeHTTP\n\tgithub.com/tendermin$
-	///tendermint@v0.34.19/rpc/jsonrpc/server/http_server.go:236\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.$ecoverAndLogHandler.func1\n\tgithub.com/tendermint/tendermint@v0.34.19/rpc/jsonrpc/server/http_server.go:209\nne$
-	///http.HandlerFunc.ServeHTTP\n\tnet/http/server.go:2084\nnet/http.serverHandler.ServeHTTP\n\tnet/http/server.go:2$16\nnet/http.(*conn).serve\n\tnet/http/server.go:1966\naccount sequence mismatch, expected 22, got 19: incorrect
-	//account sequence: invalid request code=18","stacktrace":"github.com/neutron-org/cosmos-query-relayer/internal/re$
-	//ay.(*Relayer).Run\n\t/home/swelf/src/lido/cosmos-query-relayer/internal/relay/relayer.go:118\nmain.main.func2\n\$/home/swelf/src/lido/cosmos-query-relayer/cmd/cosmos_query_relayer/main.go:46"}
-	// incorrect account sequence
 	if err != nil {
+		// at this point error code for "incorrect account sequence" is 18 = "invalid request"
+		// it's a very common error code to rely on, hence we have to rely on error message
+		if strings.Contains(err.Error(), "incorrect account sequence") {
+			errInit := txs.Init()
+			if errInit != nil {
+				return fmt.Errorf("error calculating gas: failed to reinit sender: %w", errInit)
+			}
+			txs.logger.Info("sender reinitialized successfully(account sequence reset)")
+		}
 		return fmt.Errorf("error calculating gas: %w", err)
 	}
 
@@ -147,16 +145,16 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 	if res.Code == 0 {
 		txs.sequence += 1
 		return nil
-	} else if res.Code == 32 {
+	}
+	if res.Code == 32 {
 		// code 32 is "incorrect account sequence" error
 		errInit := txs.Init()
 		if errInit != nil {
-			return fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", err)
+			return fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", errInit)
 		}
-		return fmt.Errorf("error broadcasting sync transaction: tx sender reinitialized, try again, log=%s", res.Log)
-	} else {
-		return fmt.Errorf("error broadcasting sync transaction with log=%s", res.Log)
+		txs.logger.Info("sender reinitialized successfully(account sequence reset)")
 	}
+	return fmt.Errorf("error broadcasting sync transaction: log=%s", res.Log)
 
 }
 

@@ -31,20 +31,6 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	return cp
 }
 
-// queryFromParams creates query from params like `key1=value1 AND key2=value2 AND ...`
-func queryFromParams(params map[string]string) string {
-	queryParamsList := make([]string, 0, len(params))
-	for key, value := range params {
-		if key == relay.TxHeight {
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>'%s'", key, value))
-		} else {
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
-		}
-
-	}
-	return strings.Join(queryParamsList, " AND ")
-}
-
 func NewTXQuerySrv(chainClient relay.ChainClient) *TXQuerierSrv {
 	return &TXQuerierSrv{
 		chainClient: chainClient,
