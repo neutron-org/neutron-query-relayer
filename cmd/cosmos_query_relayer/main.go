@@ -131,22 +131,29 @@ func main() {
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	errChan := make(chan error)
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	go runRelayer(relayer, logger, wg, ctx, errChan)
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case s := <-sigs:
-		logger.Info("received an OS signal, gracefully shutting down...", zap.String("signal", s.String()))
-		cancel()
-		wg.Wait()
-	case err := <-errChan:
-		logger.Error(err.Error())
-		os.Exit(1)
-	}
+	go func() {
+		defer wg.Done()
+		if err := relayer.Run(ctx); err != nil {
+			logger.Error("Relayer exited with an error", zap.Error(err))
+		}
+	}()
+
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		select {
+		case s := <-sigs:
+			logger.Info("Received termination signal, gracefully shutting down...", zap.String("signal", s.String()))
+			cancel()
+		}
+	}()
+
+	wg.Wait()
 }
 
 func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
@@ -180,22 +187,3 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 	return neutronChain, targetChain, nil
 }
 
-// runRelayer starts a background relaying process and manages its execution and a possible error
-// result. If the ctx is closed, a possible Run error is sent to the error channel. Also, if an
-// error occurs before the context is closed, it's sent to the error channel as well.
-func runRelayer(
-	relayer *relay.Relayer,
-	logger *zap.Logger,
-	wg *sync.WaitGroup,
-	ctx context.Context,
-	errChan chan<- error,
-) {
-	defer wg.Done()
-	if err := relayer.Run(ctx); err != nil {
-		select {
-		case <-ctx.Done():
-			logger.Error("relayer process finished with an error", zap.Error(err))
-		case errChan <- fmt.Errorf("relayer process finished with an error: %w", err):
-		}
-	}
-}
