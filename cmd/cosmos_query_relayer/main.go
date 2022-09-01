@@ -108,7 +108,7 @@ func main() {
 	if cfg.AllowTxQueries {
 		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
 	}
-	subscriber, err := subscriber.NewSubscriber(
+	sub, err := subscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.TargetChain.ChainID,
 		registry.New(cfg.Registry),
@@ -125,7 +125,7 @@ func main() {
 		proofSubmitter,
 		targetChain,
 		neutronChain,
-		subscriber,
+		sub,
 		logger,
 		store,
 	)
