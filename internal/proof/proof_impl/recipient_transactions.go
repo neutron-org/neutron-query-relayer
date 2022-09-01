@@ -16,6 +16,8 @@ import (
 
 var perPage = 100
 
+var TxsChanSize = 100
+
 const orderBy = "asc"
 
 func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
@@ -29,50 +31,101 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 	return cp
 }
 
-// SearchTransactions gets proofs for query type = 'tx'
+// queryFromParams creates query from params like `key1=value1 AND key2=value2 AND ...`
+func queryFromParams(params map[string]string) string {
+	queryParamsList := make([]string, 0, len(params))
+	for key, value := range params {
+		if key == relay.TxHeight {
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s>'%s'", key, value))
+		} else {
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s='%s'", key, value))
+		}
+
+	}
+	return strings.Join(queryParamsList, " AND ")
+}
+
+func NewTXQuerySrv(chainClient relay.ChainClient) *TXQuerierSrv {
+	return &TXQuerierSrv{
+		chainClient: chainClient,
+	}
+}
+
+type TXQuerierSrv struct {
+	chainClient relay.ChainClient
+	err         error
+}
+
+// proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
+func (t TXQuerierSrv) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*crypto.Proof, *abci.ResponseDeliverTx, error) {
+	results, err := t.chainClient.BlockResults(ctx, &blockHeight)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch block results for height = %d: %w", blockHeight, err)
+	}
+
+	txsResults := results.TxsResults
+	abciResults := types.NewResults(txsResults)
+	txProof := abciResults.ProveResult(int(txIndexInBlock))
+	txResult := txsResults[txIndexInBlock]
+
+	return cryptoProofFromMerkleProof(txProof), txResult, nil
+}
+
+// SearchTransactions gets txs with proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) ([]*relay.Transaction, error) {
+func (t *TXQuerierSrv) SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) <-chan relay.Transaction {
+	txs := make(chan relay.Transaction, TxsChanSize)
 	query, err := queryFromTxFilter(txFilter)
 	if err != nil {
-		return nil, fmt.Errorf("could not compose query: %v", err)
+		t.err = fmt.Errorf("could not compose query: %v", err)
+		close(txs)
+		return txs
 	}
 	page := 1 // NOTE: page index starts from 1
 
-	txs := make([]*relay.Transaction, 0)
-	for {
-		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
-		if err != nil {
-			return nil, fmt.Errorf("could not query new transactions to proof: %w", err)
-		}
-
-		if len(searchResult.Txs) == 0 {
-			break
-		}
-
-		for _, tx := range searchResult.Txs {
-			deliveryProof, deliveryResult, err := p.proofDelivery(ctx, tx.Height, tx.Index)
+	go func() {
+		defer close(txs)
+		for {
+			searchResult, err := t.chainClient.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 			if err != nil {
-				return nil, fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
+				t.err = fmt.Errorf("could not query new transactions to proof: %w", err)
+				return
 			}
 
-			txProof := neutrontypes.TxValue{
-				InclusionProof: cryptoProofFromMerkleProof(tx.Proof.Proof),
-				DeliveryProof:  deliveryProof,
-				Response:       deliveryResult,
-				Data:           tx.Tx,
+			if len(searchResult.Txs) == 0 {
+				return
 			}
 
-			txs = append(txs, &relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
+			for _, tx := range searchResult.Txs {
+				deliveryProof, deliveryResult, err := t.proofDelivery(ctx, tx.Height, tx.Index)
+				if err != nil {
+					t.err = fmt.Errorf("could not proof transaction with hash=%s: %w", tx.Tx.String(), err)
+					return
+				}
+
+				txProof := neutrontypes.TxValue{
+					InclusionProof: cryptoProofFromMerkleProof(tx.Proof.Proof),
+					DeliveryProof:  deliveryProof,
+					Response:       deliveryResult,
+					Data:           tx.Tx,
+				}
+				txs <- relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)}
+			}
+
+			if page*perPage >= searchResult.TotalCount {
+				return
+			}
+
+			page += 1
 		}
+	}()
 
-		if page*perPage >= searchResult.TotalCount {
-			break
-		}
+	return txs
+}
 
-		page += 1
-	}
-
-	return txs, nil
+func (t TXQuerierSrv) Err() error {
+	return t.err
 }
 
 // proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'

@@ -3,6 +3,7 @@ package submit
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -26,16 +27,18 @@ const (
 )
 
 type TxSender struct {
-	keybase         keyring.Keyring
-	baseTxf         tx.Factory
-	txConfig        client.TxConfig
-	rpcClient       rpcclient.Client
-	chainID         string
-	addressPrefix   string
-	signKeyName     string
-	gasPrices       string
-	gasLimit        uint64
-	txBroadcastType config.TxBroadcastType
+	lock          sync.Mutex
+	sequence      uint64
+	accountNumber uint64
+	keybase       keyring.Keyring
+	baseTxf       tx.Factory
+	txConfig      client.TxConfig
+	rpcClient     rpcclient.Client
+	chainID       string
+	addressPrefix string
+	signKeyName   string
+	gasPrices     string
+	gasLimit      uint64
 }
 
 func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
@@ -57,22 +60,29 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		WithGasAdjustment(cfg.GasAdjustment).
 		WithGasPrices(cfg.GasPrices)
 
-	return &TxSender{
-		keybase:         keybase,
-		txConfig:        txConfig,
-		baseTxf:         baseTxf,
-		rpcClient:       rpcClient,
-		chainID:         cfg.ChainID,
-		addressPrefix:   cfg.ChainPrefix,
-		signKeyName:     cfg.SignKeyName,
-		gasPrices:       cfg.GasPrices,
-		gasLimit:        cfg.GasLimit,
-		txBroadcastType: cfg.TxBroadcastType,
-	}, nil
+	txs := &TxSender{
+		lock:          sync.Mutex{},
+		keybase:       keybase,
+		txConfig:      txConfig,
+		baseTxf:       baseTxf,
+		rpcClient:     rpcClient,
+		chainID:       cfg.ChainID,
+		addressPrefix: cfg.ChainPrefix,
+		signKeyName:   cfg.SignKeyName,
+		gasPrices:     cfg.GasPrices,
+		gasLimit:      cfg.GasLimit,
+	}
+	err := txs.Init()
+	if err != nil {
+		return nil, fmt.Errorf("failed to init tx sender: %w", err)
+	}
+
+	return txs, nil
 }
 
-// Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
-func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
+func (txs *TxSender) Init() error {
+	//TODO pass ctx as method arg
+	ctx := context.Background()
 	senderAddr, err := txs.SenderAddr()
 	if err != nil {
 		return fmt.Errorf("could not fetch sender addr: %w", err)
@@ -82,12 +92,36 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 	if err != nil {
 		return fmt.Errorf("error fetching account: %w", err)
 	}
+	txs.accountNumber = account.AccountNumber
+	txs.sequence = account.Sequence
+	return nil
+}
+
+// Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
+func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
+	txs.lock.Lock()
+	defer txs.lock.Unlock()
 
 	txf := txs.baseTxf.
-		WithAccountNumber(account.AccountNumber).
-		WithSequence(account.Sequence)
+		WithAccountNumber(txs.accountNumber).
+		WithSequence(txs.sequence)
 
 	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
+	// TODO: reinit sender on error
+	// {"level":"error","ts":1661995842.0200863,"caller":"relay/relayer.go:118","msg":"could not process message","quer$
+	//_id":3,"error":"failed to process txs: failed to submit block: could not submit proof for tx with query_id=3: er$or calculating gas: no result in simulation response with log=\ngithub.com/cosmos/cosmos-sdk/baseapp.gRPCErrorTo$
+	//DKError\n\tgithub.com/cosmos/cosmos-sdk@v0.45.4/baseapp/abci.go:590\ngithub.com/cosmos/cosmos-sdk/baseapp.(*Base$pp).handleQueryGRPC\n\tgithub.com/cosmos/cosmos-sdk@v0.45.4/baseapp/abci.go:579\ngithub.com/cosmos/cosmos-sdk/ba$
+	//eapp.(*BaseApp).Query\n\tgithub.com/cosmos/cosmos-sdk@v0.45.4/baseapp/abci.go:421\ngithub.com/tendermint/tenderm$nt/abci/client.(*localClient).QuerySync\n\tgithub.com/tendermint/tendermint@v0.34.19/abci/client/local_client.go$
+	//256\ngithub.com/tendermint/tendermint/proxy.(*appConnQuery).QuerySync\n\tgithub.com/tendermint/tendermint@v0.34.$9/proxy/app_conn.go:159\ngithub.com/tendermint/tendermint/rpc/core.ABCIQuery\n\tgithub.com/tendermint/tendermint$
+	//v0.34.19/rpc/core/abci.go:20\nreflect.Value.call\n\treflect/value.go:556\nreflect.Value.Call\n\treflect/value.go$339\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.makeJSONRPCHandler.func1\n\tgithub.com/tendermint/tende$
+	//mint@v0.34.19/rpc/jsonrpc/server/http_json_handler.go:96\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.ha$
+	//dleInvalidJSONRPCPaths.func1\n\tgithub.com/tendermint/tendermint@v0.34.19/rpc/jsonrpc/server/http_json_handler.g$
+	//:122\nnet/http.HandlerFunc.ServeHTTP\n\tnet/http/server.go:2084\nnet/http.(*ServeMux).ServeHTTP\n\tnet/http/serv$r.go:2462\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.maxBytesHandler.ServeHTTP\n\tgithub.com/tendermin$
+	///tendermint@v0.34.19/rpc/jsonrpc/server/http_server.go:236\ngithub.com/tendermint/tendermint/rpc/jsonrpc/server.$ecoverAndLogHandler.func1\n\tgithub.com/tendermint/tendermint@v0.34.19/rpc/jsonrpc/server/http_server.go:209\nne$
+	///http.HandlerFunc.ServeHTTP\n\tnet/http/server.go:2084\nnet/http.serverHandler.ServeHTTP\n\tnet/http/server.go:2$16\nnet/http.(*conn).serve\n\tnet/http/server.go:1966\naccount sequence mismatch, expected 22, got 19: incorrect
+	//account sequence: invalid request code=18","stacktrace":"github.com/neutron-org/cosmos-query-relayer/internal/re$
+	//ay.(*Relayer).Run\n\t/home/swelf/src/lido/cosmos-query-relayer/internal/relay/relayer.go:118\nmain.main.func2\n\$/home/swelf/src/lido/cosmos-query-relayer/cmd/cosmos_query_relayer/main.go:46"}
+	// incorrect account sequence
 	if err != nil {
 		return fmt.Errorf("error calculating gas: %w", err)
 	}
@@ -104,41 +138,26 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 	if err != nil {
 		return fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
-	switch txs.txBroadcastType {
-	case config.BroadcastTxSync:
-		res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
-		if err != nil {
-			return fmt.Errorf("error broadcasting sync transaction: %w", err)
-		}
 
-		if res.Code == 0 {
-			return nil
-		} else {
-			return fmt.Errorf("error broadcasting sync transaction with log=%s", res.Log)
-		}
-	case config.BroadcastTxAsync:
-		res, err := txs.rpcClient.BroadcastTxAsync(ctx, bz)
-		if err != nil {
-			return fmt.Errorf("error broadcasting async transaction: %w", err)
-		}
-		if res.Code == 0 {
-			return nil
-		} else {
-			return fmt.Errorf("error broadcasting async transaction with log=%s", res.Log)
-		}
-	case config.BroadcastTxCommit:
-		res, err := txs.rpcClient.BroadcastTxCommit(ctx, bz)
-		if err != nil {
-			return fmt.Errorf("error broadcasting commit transaction: %w", err)
-		}
-		if res.CheckTx.Code == 0 && res.DeliverTx.Code == 0 {
-			return nil
-		} else {
-			return fmt.Errorf("error broadcasting commit transaction with checktx log=%s and deliverytx log=%s", res.CheckTx.Log, res.DeliverTx.Log)
-		}
-	default:
-		return fmt.Errorf("not implemented transaction send type: %s", txs.txBroadcastType)
+	res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
+	if err != nil {
+		return fmt.Errorf("error broadcasting sync transaction: %w", err)
 	}
+
+	if res.Code == 0 {
+		txs.sequence += 1
+		return nil
+	} else if res.Code == 32 {
+		// code 32 is "incorrect account sequence" error
+		errInit := txs.Init()
+		if errInit != nil {
+			return fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", err)
+		}
+		return fmt.Errorf("error broadcasting sync transaction: tx sender reinitialized, try again, log=%s", res.Log)
+	} else {
+		return fmt.Errorf("error broadcasting sync transaction with log=%s", res.Log)
+	}
+
 }
 
 func (txs *TxSender) SenderAddr() (string, error) {
