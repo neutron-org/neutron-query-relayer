@@ -57,7 +57,6 @@ func NewRelayer(
 	logger *zap.Logger,
 	store Storage,
 ) Relayer {
-	// TODO: after storage implementation update this func
 	return Relayer{
 		cfg:              cfg,
 		proofer:          proofer,

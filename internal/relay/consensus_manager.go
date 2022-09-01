@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/avast/retry-go/v4"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -14,12 +15,19 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	relayermetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	"go.uber.org/zap"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"time"
 )
 
 // How many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
 const consensusPageSize = 10
+
+// submissionMarginPeriod is a lag period, because we need consensusState to be valid until we approve it on the chain
+// TODO: uncomment
+//const submissionMarginPeriod = time.Minute * 2;
+const submissionMarginPeriod time.Duration = 0
 
 var (
 	RtyAttNum = uint(5)
@@ -108,6 +116,7 @@ func (cm *ConsensusManager) getHeaderWithTrustedHeight(ctx context.Context, suit
 	}
 
 	relayermetrics.AddSuccessTargetChainGetter("GetLightSignedHeaderAtHeight", time.Since(start).Seconds())
+
 	resultHeader, err := InjectTrustedFields(ctx, cm.targetChain.ChainProvider, header, suitableConsensusState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inject trusted fields into tmHeader: %w", err)
@@ -171,14 +180,9 @@ func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Conte
 
 			consensusTimestamp := time.Unix(0, int64(unpackedItem.GetTimestamp()))
 			now := time.Now()
-			trustingPeriod, err := time.ParseDuration("2m")
+			trustingPeriod, err := cm.fetchTrustingPeriod(ctx, cm.neutronChain.ChainProvider) // time.ParseDuration("2m")
 			if err != nil {
 				panic("incorrect trusting period string: " + err.Error())
-			}
-			// NOTE: need to use some margin period, because we need consensusState to be valid until we approve it on the chain
-			submissionMarginPeriod, err := time.ParseDuration("0m")
-			if err != nil {
-				panic("incorrect margin trusting period string")
 			}
 
 			olderThanCurrentHeight := height >= item.Height.RevisionHeight
@@ -212,6 +216,61 @@ func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Conte
 	}
 
 	return nil, fmt.Errorf("could not find any trusted consensus state for height=%d", height)
+}
+
+func (cm *ConsensusManager) fetchTrustingPeriod(ctx context.Context, targetProvider provider.ChainProvider) (time.Duration, error) {
+	//return targetProvider.TrustingPeriod(ctx)
+	//consensusStateResponse, err := targetProvider.QueryClientConsensusState(ctx, 0, clientId, 0)
+	//consensusStateResponse.ConsensusState.
+
+	//state, _, err := targetProvider.QueryConsensusState(ctx, int64(0))
+	//state.
+	//state, _ := targetProvider.QueryClientState(ctx, 0, "clientId")
+	//state.
+
+	//provConcreteTargetChain, ok := cm.targetChain.ChainProvider.(*cosmos.CosmosProvider)
+	//provConcreteTargetChain.InjectTrustedFields()
+	//cs, err := dst.QueryClientState(ctx, int64(h.TrustedHeight.RevisionHeight), dstClientId)
+	//kek, err := cm.neutronChain.ChainProvider.QueryClientState(ctx, 0, cm.neutronChain.PathEnd.ClientID)
+
+	url := fmt.Sprintf("http://localhost:1316/ibc/core/client/v1/client_states/%s", cm.neutronChain.PathEnd.ClientID)
+	resp, err := http.Get(url)
+	if err != nil {
+		// TODO
+		return 0, err
+	}
+
+	if resp.Body != nil {
+		defer resp.Body.Close()
+		fmt.Printf("CLOSE\n")
+	}
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		// TODO
+		return 0, fmt.Errorf("todo")
+	}
+	fmt.Printf("Body: %s", body)
+
+	type RespTest struct {
+		ClientState struct {
+			TrustingPeriod string `json:"trusting_period"`
+		} `json:"client_state"`
+	}
+
+	var cs RespTest
+	err = json.Unmarshal(body, &cs)
+	if err != nil {
+		// TODO
+		return 0, err
+	}
+
+	if cs.ClientState.TrustingPeriod == "" {
+		// TODO
+		return 0, fmt.Errorf("todo")
+	}
+	fmt.Printf("%+v\n\n", cs)
+
+	return time.ParseDuration(cs.ClientState.TrustingPeriod)
 }
 
 // InjectTrustedFields injects TrustedHeight and TrustedValidators into header
