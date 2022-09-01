@@ -30,53 +30,53 @@ var (
 	RtyErr    = retry.LastErrorOnly(true)
 )
 
-// ConsensusManager manages the consensus state
-type ConsensusManager struct {
+// TrustedHeaderFetcher able to get trusted headers
+type TrustedHeaderFetcher struct {
 	neutronChain *relayer.Chain
 	targetChain  *relayer.Chain
 	logger       *zap.Logger
 }
 
-func NewConsensusManager(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) ConsensusManager {
-	return ConsensusManager{
+func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) TrustedHeaderFetcher {
+	return TrustedHeaderFetcher{
 		neutronChain: neutronChain,
 		targetChain:  targetChain,
 		logger:       logger,
 	}
 }
 
-// GetPackedHeadersWithTrustedHeight returns two IBC Update headers for height and height+1 packed into *codectypes.Any value
-func (cm *ConsensusManager) GetPackedHeadersWithTrustedHeight(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
+// Fetch returns two IBC Update headers for height and height+1 packed into *codectypes.Any value
+func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
 	start := time.Now()
 
-	// tries to find the closest consensus state height that is less or equal than provided height
-	suitableConsensusState, err := cm.getConsensusStateWithTrustedHeight(ctx, height)
+	// tries to find height of the closest consensus state height that is less or equal than provided height
+	trustedHeight, err := thf.getTrustedHeight(ctx, height)
 	if err != nil {
 		err = fmt.Errorf("no satisfying consensus state found: %w", err)
 		return
 	}
-	cm.logger.Debug("Found suitable consensus state with trusted height", zap.Uint64("height", suitableConsensusState.Height.RevisionHeight))
+	thf.logger.Debug("Found suitable consensus state with trusted height", zap.Uint64("height", trustedHeight.RevisionHeight))
 
-	header, err = cm.packedTrustedHeaderAtHeight(ctx, suitableConsensusState, height)
+	header, err = thf.packedTrustedHeaderAtHeight(ctx, trustedHeight, height)
 	if err != nil {
 		err = fmt.Errorf("failed to get header for src chain: %w", err)
 		return
 	}
 
-	nextHeader, err = cm.packedTrustedHeaderAtHeight(ctx, suitableConsensusState, height+1)
+	nextHeader, err = thf.packedTrustedHeaderAtHeight(ctx, trustedHeight, height+1)
 	if err != nil {
 		err = fmt.Errorf("failed to get next header for src chain: %w", err)
 		return
 	}
 
-	metrics.RecordTime("GetPackedHeadersWithTrustedHeight", time.Since(start).Seconds())
+	metrics.RecordTime("TrustedHeaderFetcher", time.Since(start).Seconds())
 
 	return
 }
 
 // packedTrustedHeaderAtHeight finds trusted header at height and packs it for sending
-func (cm *ConsensusManager) packedTrustedHeaderAtHeight(ctx context.Context, suitableConsensusState *clienttypes.ConsensusStateWithHeight, height uint64) (*codectypes.Any, error) {
-	header, err := cm.trustedHeaderAtHeight(ctx, suitableConsensusState, height)
+func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (*codectypes.Any, error) {
+	header, err := thf.trustedHeaderAtHeight(ctx, trustedHeight, height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get header with trusted height: %w", err)
 	}
@@ -99,8 +99,8 @@ func (cm *ConsensusManager) packedTrustedHeaderAtHeight(ctx context.Context, sui
 // Arguments:
 // `suitableConsensusState` - any consensus state that has height < supplied height
 // `height` - height for a header we'll get
-func (cm *ConsensusManager) trustedHeaderAtHeight(ctx context.Context, suitableConsensusState *clienttypes.ConsensusStateWithHeight, height uint64) (ibcexported.Header, error) {
-	header, err := cm.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
+func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (ibcexported.Header, error) {
+	header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get light signed header: %w", err)
 	}
@@ -112,7 +112,7 @@ func (cm *ConsensusManager) trustedHeaderAtHeight(ctx context.Context, suitableC
 	}
 
 	// inject TrustedHeight
-	tmHeader.TrustedHeight = suitableConsensusState.Height
+	tmHeader.TrustedHeight = *trustedHeight
 
 	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
 	// since the last trusted validators for a header at height h is the NextValidators
@@ -120,7 +120,7 @@ func (cm *ConsensusManager) trustedHeaderAtHeight(ctx context.Context, suitableC
 
 	var nextTmHeader *tmclient.Header
 	if err := retry.Do(func() error {
-		nextHeader, err := cm.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(tmHeader.TrustedHeight.RevisionHeight+1))
+		nextHeader, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(tmHeader.TrustedHeight.RevisionHeight+1))
 		if err != nil {
 			return err
 		}
@@ -145,33 +145,33 @@ func (cm *ConsensusManager) trustedHeaderAtHeight(ctx context.Context, suitableC
 	return tmHeader, nil
 }
 
-// getConsensusStateWithTrustedHeight tries to find any consensusState within trusted period with a height <= supplied height
+// getTrustedHeight tries to find height of any consensusState within trusted period with a height <= supplied height
 // To do this, it simply iterates over all consensus states and checks each that it's within trusted period AND <= supplied_height
 // Note that we cannot optimize this search due to consensus states being stored in a tree with *STRING* key `RevisionNumber-RevisionHeight`
 //
 // Arguments:
 // `height` - found consensus state will be with a height <= than it
-func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Context, height uint64) (*clienttypes.ConsensusStateWithHeight, error) {
+func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height uint64) (*clienttypes.Height, error) {
 	// Without this hack it doesn't want to work with NewQueryClient
-	neutronProvider, ok := cm.neutronChain.ChainProvider.(*cosmos.CosmosProvider)
+	neutronProvider, ok := thf.neutronChain.ChainProvider.(*cosmos.CosmosProvider)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast ChainProvider to concrete type (cosmos.CosmosProvider)")
 	}
 
 	qc := clienttypes.NewQueryClient(neutronProvider)
 
-	trustingPeriod, err := cm.fetchTrustingPeriod(ctx)
+	trustingPeriod, err := thf.fetchTrustingPeriod(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch trusting period: %w", err)
 	}
-	cm.logger.Debug("fetched trusting period", zap.Float64("trusting_period_hours", trustingPeriod.Hours()))
+	thf.logger.Debug("fetched trusting period", zap.Float64("trusting_period_hours", trustingPeriod.Hours()))
 
 	nextKey := make([]byte, 0)
 
 	for {
-		page, err := qc.ConsensusStates(ctx, requestPage(cm.neutronChain.ClientID(), nextKey))
+		page, err := qc.ConsensusStates(ctx, requestPage(thf.neutronChain.ClientID(), nextKey))
 		if err != nil {
-			return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", cm.neutronChain.ClientID(), err)
+			return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", thf.neutronChain.ClientID(), err)
 		}
 
 		for _, item := range page.ConsensusStates {
@@ -181,15 +181,13 @@ func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Conte
 			}
 
 			consensusTimestamp := time.Unix(0, int64(unpackedItem.GetTimestamp()))
-			now := time.Now()
-
 			olderThanCurrentHeight := height >= item.Height.RevisionHeight
-			notExpired := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(now)
+			notExpired := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
 
 			if olderThanCurrentHeight && notExpired {
-				cm.logger.Debug("Found suitable consensus state",
+				thf.logger.Debug("Found suitable consensus state",
 					zap.Uint64("height", item.Height.RevisionHeight))
-				return &item, nil
+				return &item.Height, nil
 			}
 		}
 
@@ -203,10 +201,10 @@ func (cm *ConsensusManager) getConsensusStateWithTrustedHeight(ctx context.Conte
 	return nil, fmt.Errorf("could not find any trusted consensus state for height=%d", height)
 }
 
-func (cm *ConsensusManager) fetchTrustingPeriod(ctx context.Context) (time.Duration, error) {
-	clientState, err := cm.neutronChain.ChainProvider.QueryClientState(ctx, 0, cm.neutronChain.PathEnd.ClientID)
+func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.Duration, error) {
+	clientState, err := thf.neutronChain.ChainProvider.QueryClientState(ctx, 0, thf.neutronChain.PathEnd.ClientID)
 	if err != nil {
-		return 0, fmt.Errorf("could not fetch client state for ClientId=%s: %w", cm.neutronChain.PathEnd.ClientID, err)
+		return 0, fmt.Errorf("could not fetch client state for ClientId=%s: %w", thf.neutronChain.PathEnd.ClientID, err)
 	}
 
 	tmClientState := clientState.(*tmclient.ClientState)

@@ -101,7 +101,7 @@ func main() {
 		store = storage.NewDummyStorage()
 	}
 
-	consensusManager := relay.NewConsensusManager(neutronChain, targetChain, logger)
+	trustedHeaderFetcher := relay.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
 
 	relayer := relay.NewRelayer(
 		cfg,
@@ -110,7 +110,7 @@ func main() {
 		registry.New(cfg.Registry),
 		targetChain,
 		neutronChain,
-		consensusManager,
+		trustedHeaderFetcher,
 		logger,
 		store,
 	)

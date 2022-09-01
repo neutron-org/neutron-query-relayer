@@ -35,15 +35,15 @@ const TxHeight = "tx.height"
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	cfg              config.CosmosQueryRelayerConfig
-	proofer          Proofer
-	submitter        Submitter
-	registry         *registry.Registry
-	targetChain      *relayer.Chain
-	neutronChain     *relayer.Chain
-	consensusManager ConsensusManager
-	logger           *zap.Logger
-	storage          Storage
+	cfg                  config.CosmosQueryRelayerConfig
+	proofer              Proofer
+	submitter            Submitter
+	registry             *registry.Registry
+	targetChain          *relayer.Chain
+	neutronChain         *relayer.Chain
+	trustedHeaderFetcher TrustedHeaderFetcher
+	logger               *zap.Logger
+	storage              Storage
 }
 
 func NewRelayer(
@@ -53,20 +53,20 @@ func NewRelayer(
 	registry *registry.Registry,
 	srcChain,
 	dstChain *relayer.Chain,
-	consensusManager ConsensusManager,
+	trustedHeaderFetcher TrustedHeaderFetcher,
 	logger *zap.Logger,
 	store Storage,
 ) Relayer {
 	return Relayer{
-		cfg:              cfg,
-		proofer:          proofer,
-		submitter:        submitter,
-		registry:         registry,
-		targetChain:      srcChain,
-		neutronChain:     dstChain,
-		consensusManager: consensusManager,
-		logger:           logger,
-		storage:          store,
+		cfg:                  cfg,
+		proofer:              proofer,
+		submitter:            submitter,
+		registry:             registry,
+		targetChain:          srcChain,
+		neutronChain:         dstChain,
+		trustedHeaderFetcher: trustedHeaderFetcher,
+		logger:               logger,
+		storage:              store,
 	}
 }
 
@@ -231,7 +231,7 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 				continue
 			}
 
-			header, nextHeader, err := r.consensusManager.GetPackedHeadersWithTrustedHeight(ctx, txItem.Height)
+			header, nextHeader, err := r.trustedHeaderFetcher.Fetch(ctx, txItem.Height)
 			if err != nil {
 				// probably tried to get headers for a transaction that is too old, since we could not find any
 				// this should not be a reason to stop submitting proofs for other transactions

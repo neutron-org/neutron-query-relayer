@@ -36,7 +36,7 @@ var (
 	}, []string{labelMethod, labelType})
 
 	relayerTime = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "consensus_manager_time",
+		Name:    "relayer_time",
 		Help:    "A histogram of target chain getters duration",
 		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 30},
 	}, []string{labelMethod, labelType})
