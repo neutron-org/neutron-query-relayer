@@ -79,10 +79,12 @@ func (r *Relayer) Run(ctx context.Context) error {
 	r.logger.Info("successfully subscribed to neutron chain events")
 
 	for {
-		var start time.Time
-		var queryType neutrontypes.InterchainQueryType
-		var queryID uint64
-		var err error
+		var (
+			start     time.Time
+			queryType neutrontypes.InterchainQueryType
+			queryID   uint64
+			err       error
+		)
 		select {
 		case msg := <-kvChan:
 			start = time.Now()
