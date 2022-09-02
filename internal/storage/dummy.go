@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 )
 
 type DummyStorage struct {
@@ -32,18 +31,6 @@ func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) 
 
 func (s *DummyStorage) Close() error {
 	return nil
-}
-
-func (s *DummyStorage) SaveSubmittedTxStatus(neutronTXHash string, txInfo relay.SubmittedTxInfo) error {
-	return fmt.Errorf("SaveSubmittedTxStatus is not yet implemented for DummyStorages")
-}
-
-func (s *DummyStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.SubmittedTxInfo, error) {
-	return nil, fmt.Errorf("GetSubmittedTxStatus is not yet implemented for DummyStorages")
-}
-
-func (s *DummyStorage) RemoveSubmittedTxStatus(neutronTXHash string) error {
-	return fmt.Errorf("RemoveSubmittedTxStatus is not yet implemented for DummyStorages")
 }
 
 func NewDummyStorage() *DummyStorage {

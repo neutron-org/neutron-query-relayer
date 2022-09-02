@@ -68,7 +68,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		return fmt.Errorf("failed to open leveldb tranaction: %w", err)
 	}
 	defer t.Discard()
-	err = s.db.Put(constructKey(queryID, hash), []byte(status), nil)
+	err = t.Put(constructKey(queryID, hash), []byte(status), nil)
 	if err != nil {
 		return fmt.Errorf("failed to set tx status: %w", err)
 	}
@@ -78,7 +78,12 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 			SubmittedTxHash: hash,
 			SubmitTime:      time.Now(),
 		}
-		err = s.SaveSubmittedTxStatus(neutronHash, txInfo)
+		err = saveIntoPendingQueue(t, neutronHash, txInfo)
+		if err != nil {
+			return err
+		}
+	} else if status == relay.Committed || status == relay.ErrorOnCommit {
+		err = removeFromPendingQueue(t, neutronHash)
 		if err != nil {
 			return err
 		}
@@ -121,22 +126,22 @@ func (s *LevelDBStorage) Close() error {
 	return nil
 }
 
-func (s *LevelDBStorage) SaveSubmittedTxStatus(neutronTXHash string, txInfo relay.SubmittedTxInfo) error {
+func saveIntoPendingQueue(t *leveldb.Transaction, neutronTXHash string, txInfo relay.SubmittedTxInfo) error {
 	key := []byte(SubmittedTxStatusPrefix + neutronTXHash)
 	data, err := json.Marshal(txInfo)
 	if err != nil {
 		return fmt.Errorf("failed to marshal SubmittedTxInfo: %w", err)
 	}
-	err = s.db.Put(key, data, nil)
+	err = t.Put(key, data, nil)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *LevelDBStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.SubmittedTxInfo, error) {
+func getSubmittedTxStatus(t *leveldb.Transaction, neutronTXHash string) (*relay.SubmittedTxInfo, error) {
 	key := []byte(SubmittedTxStatusPrefix + neutronTXHash)
-	data, err := s.db.Get(key, nil)
+	data, err := t.Get(key, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read SubmittedTxInfo from underlying storage: %w", err)
 	}
@@ -150,9 +155,9 @@ func (s *LevelDBStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.Subm
 	return &txInfo, nil
 }
 
-func (s *LevelDBStorage) RemoveSubmittedTxStatus(neutronTXHash string) error {
+func removeFromPendingQueue(t *leveldb.Transaction, neutronTXHash string) error {
 	key := []byte(SubmittedTxStatusPrefix + neutronTXHash)
-	err := s.db.Delete(key, nil)
+	err := t.Delete(key, nil)
 	if err != nil {
 		return fmt.Errorf("failed to remove SubmittedTxInfo under the key %s: %w", neutronTXHash, err)
 	}
