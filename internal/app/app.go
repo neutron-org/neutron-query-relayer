@@ -3,22 +3,22 @@ package app
 import (
 	"fmt"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
-	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
-	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
-	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
-	"github.com/neutron-org/cosmos-query-relayer/internal/subscriber"
-	"github.com/neutron-org/cosmos-query-relayer/internal/txprocessor"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/proof"
+	"github.com/neutron-org/neutron-query-relayer/internal/proof/proof_impl"
+	"github.com/neutron-org/neutron-query-relayer/internal/raw"
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
+	"github.com/neutron-org/neutron-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
+	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"go.uber.org/zap"
 )
 
-func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
 	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
@@ -49,7 +49,7 @@ func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutro
 	return neutronChain, targetChain, nil
 }
 
-func NewDefaultRelayer(logger *zap.Logger, cfg config.CosmosQueryRelayerConfig) *relay.Relayer {
+func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) *relay.Relayer {
 
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on

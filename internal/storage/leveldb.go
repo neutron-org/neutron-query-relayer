@@ -3,7 +3,8 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"strconv"
 	"sync"
 	"time"
@@ -28,6 +29,23 @@ func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 	}
 
 	return &LevelDBStorage{db: database}, nil
+}
+
+func (s *LevelDBStorage) GetAllPendingTxs() ([]*relay.SubmittedTxInfo, error) {
+	iterator := s.db.NewIterator(util.BytesPrefix([]byte(SubmittedTxStatusPrefix)), nil)
+	defer iterator.Release()
+	var txs []*relay.SubmittedTxInfo
+	for iterator.Next() {
+		value := iterator.Value()
+		var txInfo relay.SubmittedTxInfo
+		err := json.Unmarshal(value, &txInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal data into SubmittedTxInfo: %w", err)
+		}
+
+		txs = append(txs, &txInfo)
+	}
+	return txs, nil
 }
 
 // GetLastQueryHeight returns last update block for KV query
@@ -76,6 +94,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		txInfo := relay.SubmittedTxInfo{
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
+			NeutronHash:     neutronHash,
 			SubmitTime:      time.Now(),
 		}
 		err = saveIntoPendingQueue(t, neutronHash, txInfo)

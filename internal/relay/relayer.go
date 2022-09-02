@@ -8,25 +8,17 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/query"
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
-
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
-	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // TxHeight describes tendermint filter by tx.height that we use to get only actual txs

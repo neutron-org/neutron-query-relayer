@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 )
 
 type DummyStorage struct {
@@ -27,6 +28,10 @@ func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) 
 	} else {
 		return 0, false, nil
 	}
+}
+
+func (s *DummyStorage) GetAllPendingTxs() ([]*relay.SubmittedTxInfo, error) {
+	return nil, fmt.Errorf("GetAllPendingTxs is not yet implemented for DummyStorages")
 }
 
 func (s *DummyStorage) Close() error {
