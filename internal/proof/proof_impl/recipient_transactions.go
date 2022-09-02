@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"

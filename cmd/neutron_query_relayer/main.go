@@ -14,15 +14,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
-	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
-	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
-	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
-	"github.com/neutron-org/cosmos-query-relayer/internal/subscriber"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/proof"
+	"github.com/neutron-org/neutron-query-relayer/internal/proof/proof_impl"
+	"github.com/neutron-org/neutron-query-relayer/internal/raw"
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
+	"github.com/neutron-org/neutron-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("couldn't initialize logger: %s", err)
 	}
-	logger.Info("cosmos-query-relayer starts...")
+	logger.Info("neutron-query-relayer starts...")
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
@@ -47,7 +47,7 @@ func main() {
 	}()
 	logger.Info("metrics handler set up")
 
-	cfg, err := config.NewCosmosQueryRelayerConfig()
+	cfg, err := config.NewNeutronQueryRelayerConfig()
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
@@ -152,7 +152,7 @@ func main() {
 	wg.Wait()
 }
 
-func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
 	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"

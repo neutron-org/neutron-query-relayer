@@ -9,22 +9,21 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/syndtr/goleveldb/leveldb"
-
-	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/query"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
+
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // TxHeight describes tendermint filter by tx.height that we use to get only actual txs
@@ -35,7 +34,7 @@ const TxHeight = "tx.height"
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	cfg          config.CosmosQueryRelayerConfig
+	cfg          config.NeutronQueryRelayerConfig
 	proofer      Proofer
 	submitter    Submitter
 	targetChain  *relayer.Chain
@@ -46,7 +45,7 @@ type Relayer struct {
 }
 
 func NewRelayer(
-	cfg config.CosmosQueryRelayerConfig,
+	cfg config.NeutronQueryRelayerConfig,
 	proofer Proofer,
 	submitter Submitter,
 	srcChain *relayer.Chain,

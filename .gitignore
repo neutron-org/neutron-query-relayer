@@ -25,9 +25,9 @@ go.work
 
 keys
 
-cmd/cosmos_query_relayer/test.go
+cmd/neutron_query_relayer/neutron_query_relayer
 storage
-/cosmos_query_relayer
+/neutron_query_relayer
 
 .env
 

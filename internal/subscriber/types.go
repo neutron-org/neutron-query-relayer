@@ -1,7 +1,7 @@
 package subscriber
 
 import (
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
