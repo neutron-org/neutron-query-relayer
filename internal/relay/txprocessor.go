@@ -18,4 +18,5 @@ type ChainClient interface {
 
 type TXProcessor interface {
 	ProcessAndSubmit(ctx context.Context, queryID uint64, txs <-chan Transaction) (uint64, error)
+	GetSubmitNotificationChannel() <-chan SubmittedTxInfo
 }

@@ -49,8 +49,7 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutr
 	return neutronChain, targetChain, nil
 }
 
-func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) *relay.Relayer {
-
+func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) (*relay.Relayer, <-chan relay.SubmittedTxInfo) {
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
@@ -136,5 +135,5 @@ func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig)
 		st,
 		txProcessor,
 	)
-	return relayer
+	return relayer, txProcessor.GetSubmitNotificationChannel()
 }
