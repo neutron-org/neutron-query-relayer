@@ -1,6 +1,6 @@
 module github.com/neutron-org/cosmos-query-relayer
 
-go 1.17
+go 1.18
 
 require (
 	github.com/avast/retry-go/v4 v4.0.5
