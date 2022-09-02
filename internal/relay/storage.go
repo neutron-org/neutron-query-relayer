@@ -4,8 +4,13 @@ import (
 	"time"
 )
 
-// Success describes successfully submitted tx
-const Success = "Success"
+const (
+	// Success describes successfully submitted tx
+	Success       = "Success"
+	ErrorOnSubmit = "ErrorOnSubmit"
+	Committed     = "Committed"
+	ErrorOnCommit = "ErrorOnCommit"
+)
 
 // Storage is local storage we use to store queries history: known queries, know transactions and its statuses
 type Storage interface {
@@ -14,13 +19,13 @@ type Storage interface {
 	RemoveSubmittedTxStatus(neutronTXHash string) error
 	GetLastQueryHeight(queryID uint64) (block uint64, exists bool, err error)
 	SetLastQueryHeight(queryID uint64, block uint64) error
-	SetTxStatus(queryID uint64, hash string, status string) (err error)
+	SetTxStatus(queryID uint64, hash string, neutronHash string, status string) (err error)
 	TxExists(queryID uint64, hash string) (exists bool, err error)
 	Close() error
 }
 
 type SubmittedTxInfo struct {
-	queryID         string
+	QueryID         uint64
 	SubmittedTxHash string
-	submitTime      time.Time
+	SubmitTime      time.Time
 }

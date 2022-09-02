@@ -6,6 +6,7 @@ import (
 	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -51,17 +52,39 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, exist
 }
 
 // SetTxStatus sets status for given tx
-func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
+// queryID + hash can be one of 4 statuses:
+// 1) Error while submitting tx
+// 2) tx submitted successfully (temporary status, should be updated after neutron tx committed into the block)
+//	2.a) failed to commit tx into the block
+//  2.b) tx successfully committed
+// To convert status from "2" to either "2.a" or "2.b" we use additional SubmittedTxStatusPrefix storage to track txs
+func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, status string) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	// save tx status
+	t, err := s.db.OpenTransaction()
+	if err != nil {
+		return fmt.Errorf("failed to open leveldb tranaction: %w", err)
+	}
+	defer t.Discard()
 	err = s.db.Put(constructKey(queryID, hash), []byte(status), nil)
 	if err != nil {
 		return fmt.Errorf("failed to set tx status: %w", err)
 	}
-
-	return
+	if status == relay.Success {
+		txInfo := relay.SubmittedTxInfo{
+			QueryID:         queryID,
+			SubmittedTxHash: hash,
+			SubmitTime:      time.Now(),
+		}
+		err = s.SaveSubmittedTxStatus(neutronHash, txInfo)
+		if err != nil {
+			return err
+		}
+	}
+	err = t.Commit()
+	return err
 }
 
 // TxExists returns if tx has been processed
@@ -123,7 +146,7 @@ func (s *LevelDBStorage) GetSubmittedTxStatus(neutronTXHash string) (*relay.Subm
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data into SubmittedTxInfo: %w", err)
 	}
-	
+
 	return &txInfo, nil
 }
 

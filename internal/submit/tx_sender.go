@@ -2,7 +2,9 @@ package submit
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
 	"strings"
 	"sync"
@@ -102,7 +104,7 @@ func (txs *TxSender) Init() error {
 }
 
 // Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
-func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
+func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 	txs.lock.Lock()
 	defer txs.lock.Unlock()
 
@@ -117,15 +119,15 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 		if strings.Contains(err.Error(), "incorrect account sequence") {
 			errInit := txs.Init()
 			if errInit != nil {
-				return fmt.Errorf("error calculating gas: failed to reinit sender: %w", errInit)
+				return "", fmt.Errorf("error calculating gas: failed to reinit sender: %w", errInit)
 			}
 			txs.logger.Info("sender reinitialized successfully(account sequence reset)")
 		}
-		return fmt.Errorf("error calculating gas: %w", err)
+		return "", fmt.Errorf("error calculating gas: %w", err)
 	}
 
 	if txs.gasLimit > 0 && gasNeeded > txs.gasLimit {
-		return fmt.Errorf("exceeds gas limit: gas needed %d, gas limit %d", gasNeeded, txs.gasLimit)
+		return "", fmt.Errorf("exceeds gas limit: gas needed %d, gas limit %d", gasNeeded, txs.gasLimit)
 	}
 
 	txf = txf.
@@ -134,27 +136,27 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 
 	bz, err := txs.signAndBuildTxBz(txf, msgs)
 	if err != nil {
-		return fmt.Errorf("could not sign and build tx bz: %w", err)
+		return "", fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
 
 	res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
 	if err != nil {
-		return fmt.Errorf("error broadcasting sync transaction: %w", err)
+		return "", fmt.Errorf("error broadcasting sync transaction: %w", err)
 	}
 
 	if res.Code == 0 {
 		txs.sequence += 1
-		return nil
+		return hex.EncodeToString(tmtypes.Tx(bz).Hash()), nil
 	}
 	if res.Code == 32 {
 		// code 32 is "incorrect account sequence" error
 		errInit := txs.Init()
 		if errInit != nil {
-			return fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", errInit)
+			return "", fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", errInit)
 		}
 		txs.logger.Info("sender reinitialized successfully(account sequence reset)")
 	}
-	return fmt.Errorf("error broadcasting sync transaction: log=%s", res.Log)
+	return "", fmt.Errorf("error broadcasting sync transaction: log=%s", res.Log)
 
 }
 

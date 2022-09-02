@@ -9,7 +9,7 @@ type DummyStorage struct {
 	KVUpdateMap map[uint64]uint64
 }
 
-func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
+func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, status string) (err error) {
 	return fmt.Errorf("SetTxStatus is not yet implemented for DummyStorage")
 }
 
