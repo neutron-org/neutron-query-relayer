@@ -1,6 +1,10 @@
 dev:
 	go run ./cmd/neutron_query_relayer/
 
+clean:
+	@echo "Removing relayer storage state"
+	-@rm -rf ./storage
+
 test:
 	 go test ./...
 

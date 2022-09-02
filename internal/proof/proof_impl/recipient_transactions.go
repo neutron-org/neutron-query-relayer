@@ -31,14 +31,14 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 
 // SearchTransactions gets proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.RecipientTransactionsParams) ([]relay.Transaction, error) {
-	query, err := queryFromParams(queryParams)
+func (p ProoferImpl) SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) ([]*relay.Transaction, error) {
+	query, err := queryFromTxFilter(txFilter)
 	if err != nil {
 		return nil, fmt.Errorf("could not compose query: %v", err)
 	}
 	page := 1 // NOTE: page index starts from 1
 
-	txs := make([]relay.Transaction, 0)
+	txs := make([]*relay.Transaction, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
@@ -62,7 +62,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, queryParams relay.R
 				Data:           tx.Tx,
 			}
 
-			txs = append(txs, relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
+			txs = append(txs, &relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
 		}
 
 		if page*perPage >= searchResult.TotalCount {
@@ -91,8 +91,9 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
-// queryFromParams creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
-func queryFromParams(params relay.RecipientTransactionsParams) (string, error) {
+// queryFromTxFilter creates query from transactions filter like
+// `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
+func queryFromTxFilter(params neutrontypes.TransactionsFilter) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {
 		sign, err := getOpSign(row.Op)
