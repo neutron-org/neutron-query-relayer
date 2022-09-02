@@ -17,7 +17,7 @@ type RecipientTransactionsParams []struct {
 
 // types of keys for parsing incoming events
 const (
-	zoneIdAttr         = "message." + neutrontypes.AttributeKeyZoneID
+	connectionIdAttr   = "message." + neutrontypes.AttributeKeyConnectionID
 	queryIdAttr        = "message." + neutrontypes.AttributeKeyQueryID
 	kvKeyAttr          = "message." + neutrontypes.AttributeKeyKVQuery
 	transactionsFilter = "message." + neutrontypes.AttributeTransactionsFilterQuery

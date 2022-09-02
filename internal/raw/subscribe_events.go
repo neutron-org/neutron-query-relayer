@@ -36,7 +36,6 @@ func Subscribe(ctx context.Context, subscriberName string, rpcAddress string, qu
 }
 
 // SubscribeQuery describes query to filter out events by module and action.
-func SubscribeQuery(zoneId string) string {
-	// TODO: add zoneId to the query when zone id passing is implemented
-	return fmt.Sprintf("message.module='%s' AND message.action='%s' AND tm.event='%s'", neutrontypes.ModuleName, neutrontypes.AttributeValueQuery, types.EventNewBlockHeader)
+func SubscribeQuery(connectionId string) string {
+	return fmt.Sprintf("message.module='%s' AND message.action='%s' AND message.connection_id='%s' AND tm.event='%s'", neutrontypes.ModuleName, neutrontypes.AttributeValueQuery, connectionId, types.EventNewBlockHeader)
 }

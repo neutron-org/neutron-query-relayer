@@ -72,7 +72,7 @@ func NewRelayer(
 	}
 }
 
-func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
+func (r *Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	messages, err := r.tryExtractInterchainQueries(event)
 	if err != nil {
 		return fmt.Errorf("could not filter interchain query messages: %w", err)
@@ -99,23 +99,23 @@ func (r Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
 	return err
 }
 
-func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
+func (r *Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
 	events := event.Events
-	if len(events[zoneIdAttr]) == 0 {
+	if len(events[connectionIdAttr]) == 0 {
 		return nil, nil
 	}
 
-	if len(events[zoneIdAttr]) != len(events[kvKeyAttr]) ||
-		len(events[zoneIdAttr]) != len(events[transactionsFilter]) ||
-		len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
-		len(events[zoneIdAttr]) != len(events[typeAttr]) {
+	if len(events[connectionIdAttr]) != len(events[kvKeyAttr]) ||
+		len(events[connectionIdAttr]) != len(events[transactionsFilter]) ||
+		len(events[connectionIdAttr]) != len(events[queryIdAttr]) ||
+		len(events[connectionIdAttr]) != len(events[typeAttr]) {
 		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
 	}
 
-	messages := make([]queryEventMessage, 0, len(events[zoneIdAttr]))
+	messages := make([]queryEventMessage, 0, len(events[connectionIdAttr]))
 
-	for idx, zoneId := range events[zoneIdAttr] {
-		if !(r.isTargetZone(zoneId) && r.isWatchedAddress(events[ownerAttr][idx])) {
+	for idx, connectionId := range events[connectionIdAttr] {
+		if !(r.isRightConnection(connectionId) && r.isWatchedAddress(events[ownerAttr][idx])) {
 			continue
 		}
 
@@ -153,7 +153,7 @@ func (r Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]que
 	return messages, nil
 }
 
-func (r Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
+func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 	r.logger.Debug("proofMessage", zap.String("message_type", string(m.messageType)))
 
 	// TODO:
@@ -463,9 +463,9 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.
 	return updateMsgUnpacked.Msg, nil
 }
 
-// isTargetZone returns true if the zoneID is the relayer's target zone id.
-func (r *Relayer) isTargetZone(zoneID string) bool {
-	return r.targetChain.ChainID() == zoneID
+// isRightConnection returns true if the connectionID is the relayer's configuration connectionID.
+func (r *Relayer) isRightConnection(connectionId string) bool {
+	return r.targetChain.ConnectionID() == connectionId
 }
 
 // isWatchedAddress returns true if the address is within the registry watched addresses or there

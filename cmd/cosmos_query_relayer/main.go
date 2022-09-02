@@ -114,7 +114,7 @@ func main() {
 
 	ctx := context.Background()
 	logger.Info("subscribing to neutron chain events")
-	events, err := raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ChainID))
+	events, err := raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ConnectionID))
 	if err != nil {
 		logger.Error("failed to subscribe on events", zap.Error(err))
 	}
