@@ -13,7 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/syndtr/goleveldb/leveldb"
 
-	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -26,8 +26,8 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -39,7 +39,7 @@ const TxHeight = "tx.height"
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	cfg          config.CosmosQueryRelayerConfig
+	cfg          config.NeutronQueryRelayerConfig
 	proofer      Proofer
 	submitter    Submitter
 	registry     *registry.Registry
@@ -50,7 +50,7 @@ type Relayer struct {
 }
 
 func NewRelayer(
-	cfg config.CosmosQueryRelayerConfig,
+	cfg config.NeutronQueryRelayerConfig,
 	proofer Proofer,
 	submitter Submitter,
 	registry *registry.Registry,

@@ -7,7 +7,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
 )
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {

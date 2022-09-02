@@ -9,13 +9,13 @@ RUN  --mount=type=ssh mkdir -p ~/.ssh && chmod 600 ~/.ssh && \
     ssh-keyscan -H github.com >> ~/.ssh/known_hosts && \
     git config --global url."git@github.com:".insteadOf "https://github.com/" && \
     go mod download && \
-    go build -a -o /go/bin/cosmos_query_relayer ./cmd/cosmos_query_relayer
+    go build -a -o /go/bin/neutron_query_relayer ./cmd/neutron_query_relayer
 
 FROM debian:buster
 RUN apt update && apt install ca-certificates curl -y && apt-get clean
 ADD ["https://github.com/CosmWasm/wasmvm/raw/v1.0.0/api/libwasmvm.x86_64.so", "https://github.com/CosmWasm/wasmvm/raw/v1.0.0/api/libwasmvm.aarch64.so", "/lib/"]
 ADD run.sh .
-COPY --from=builder /go/bin/cosmos_query_relayer /bin/
+COPY --from=builder /go/bin/neutron_query_relayer /bin/
 EXPOSE 9999
 
-ENTRYPOINT ["cosmos_query_relayer"]
+ENTRYPOINT ["neutron_query_relayer"]
