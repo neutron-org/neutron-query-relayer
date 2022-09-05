@@ -7,21 +7,24 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof"
-	"github.com/neutron-org/cosmos-query-relayer/internal/proof/proof_impl"
-	"github.com/neutron-org/cosmos-query-relayer/internal/raw"
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
-	"github.com/neutron-org/cosmos-query-relayer/internal/storage"
-	"github.com/neutron-org/cosmos-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/proof"
+	"github.com/neutron-org/neutron-query-relayer/internal/proof/proof_impl"
+	"github.com/neutron-org/neutron-query-relayer/internal/raw"
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
+	"github.com/neutron-org/neutron-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	neutronapp "github.com/neutron-org/neutron/app"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 func main() {
@@ -33,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("couldn't initialize logger: %s", err)
 	}
-	logger.Info("cosmos-query-relayer starts...")
+	logger.Info("neutron-query-relayer starts...")
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
@@ -44,7 +47,7 @@ func main() {
 	}()
 	logger.Info("metrics handler set up")
 
-	cfg, err := config.NewCosmosQueryRelayerConfig()
+	cfg, err := config.NewNeutronQueryRelayerConfig()
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
@@ -101,55 +104,55 @@ func main() {
 		store = storage.NewDummyStorage()
 	}
 
+	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
+	if cfg.AllowTxQueries {
+		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
+	}
+	sub, err := subscriber.NewSubscriber(
+		cfg.NeutronChain.RPCAddr,
+		cfg.TargetChain.ChainID,
+		registry.New(cfg.Registry),
+		watchedMsgTypes,
+		logger,
+	)
+	if err != nil {
+		logger.Fatal("failed to init subscriber", zap.Error(err))
+	}
+
 	relayer := relay.NewRelayer(
 		cfg,
 		proofFetcher,
 		proofSubmitter,
-		registry.New(cfg.Registry),
 		targetChain,
 		neutronChain,
+		sub,
 		logger,
 		store,
 	)
 
-	ctx := context.Background()
-	logger.Info("subscribing to neutron chain events")
-	events, err := raw.Subscribe(ctx, cfg.TargetChain.ChainID+"-client", cfg.NeutronChain.RPCAddr, raw.SubscribeQuery(cfg.TargetChain.ConnectionID))
-	if err != nil {
-		logger.Error("failed to subscribe on events", zap.Error(err))
-	}
-	logger.Info("successfully subscribed to neutron chain events\n")
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	for {
-		select {
-		case event, ok := <-events:
-			// NOTE: no parallel processing here. What if proofs or transaction submissions for each event will take too long?
-			// Then the proofs will be for past events, but still for last target blockchain state, and that is kinda okay for now
-			if !ok {
-				logger.Error("subscribed to neutron chain event channel has been closed")
-				os.Exit(1)
-			}
-			if err = relayer.Proof(ctx, event); err != nil {
-				logger.Error("failed to prove event on query", zap.String("query", event.Query), zap.Error(err))
-			}
-
-		case <-sigs:
-			logger.Info("relayer gracefully shutting down...")
-			err := relayer.CloseStorage()
-			if err != nil {
-				logger.Error("failed to gracefully shut down", zap.Error(err))
-				os.Exit(1)
-			}
-			os.Exit(0)
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := relayer.Run(ctx); err != nil {
+			logger.Error("Relayer exited with an error", zap.Error(err))
 		}
+	}()
 
-	}
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		s := <-sigs
+		logger.Info("Received termination signal, gracefully shutting down...", zap.String("signal", s.String()))
+		cancel()
+	}()
+
+	wg.Wait()
 }
 
-func loadChains(cfg config.CosmosQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
 	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)

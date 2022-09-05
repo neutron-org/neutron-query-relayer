@@ -1,71 +1,67 @@
 # Description
-Interchain query relayer implementation for Cosmos
+Interchain query relayer implementation for Neutron
 
-Makes interchain queries possible.
-For example there is blockchain N that needs to make query to blockchain T.
-N -> T
+Makes interchain queries possible:
+1. Neutron manages interchain query registration;
+2. Relayer sees incoming ICQ events from Neutron;
+3. On each event, relayer gets proofs for all the needed data for query from the target chain;
+4. Relayer either sends query result to Neutron (for KV queries) or calls query owner's sudo handler (for TX queries if callback execution is allowed by relayer's configuration).
 
-Blockchain N submits an interchain query with needed params and so on.
-
-Relayer sees the incoming event from blockchain N and:
-1. Tries to parse it from list of supported queries
-2. If successful, gets proofs for all the needed data for query
-3. If successful, submits transaction with proofs back to blockchain N
-
-Blockchain L can then verify the result for the query.
-
-# Running in development
+## Running in development
 - export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs)` note: change rpc addresses to actual)
-- `$ make dev`
+- `make dev`
 
-For more configuration parameters see struct in internal/config/config.go
+For more configuration parameters see [env parameters section](###Common).
 
-# Testing
+## Testing
 
-## Run unit tests
+### Run unit tests
 `$ make test`
 
-## Testing with 2 neutron-chains (easier for development)
+### Testing with 2 neutron-chains (easier for development) via cli
 
-### terminal 1
-we expect that both this repo and neutron will be located in one dir
+#### prerequisites
+Clone the following repositories to the same folder where the neutron-query-relayer folder is located:
 1. `git clone git@github.com:neutron-org/neutron.git`
-2. `cd neutron`
-3. `make build && make init && make start-rly`
+2. `git clone git@github.com:neutron-org/neutron-contracts.git`
+3. `git clone git@github.com:neutron-org/neutron-integration-tests.git` for testing using docker
 
-### terminal 2
-see test-2/config/genesis.json for $VAL2 value
+#### terminal 1
+1. `cd neutron`
+2. `make build && make init && make start-rly`
 
-1. Create delegation from demowallet2 to val2 on test-2 chain
-```
-VAL2=neutronvaloper1qnk2n4nlkpw9xfqntladh74w6ujtulwnqshepx
-DEMOWALLET2=$(neutrond keys show demowallet2 -a --keyring-backend test --home ./data/test-2)
-echo "DEMOWALLET2: $DEMOWALLET2"
-./build/neutrond tx staking delegate $VAL2 1stake --from demowallet2 --keyring-backend test --home ./data/test-2 --chain-id=test-2 -y
-```
-2. Register interchain query
-```
-./build/neutrond tx interchainqueries register-interchain-query test-2 connection-0 x/staking/DelegatorDelegations '{"delegator": "neutron10h9stc5v6ntgeygf5xf945njqq5h32r54rf7kf"}' 1 --from demowallet1 --gas 10000000 --gas-adjustment 1.4 --gas-prices 0.5stake --broadcast-mode block --chain-id test-1 --keyring-backend test --home ./data/test-1 --node tcp://127.0.0.1:16657
-```
+#### terminal 2
+1. `cd neutron-contracts`
+2. run test_*.sh files from the root of the neutron-contracts project (e.g. `./test_tx_query_result.sh`).
 
-### terminal 3
-#### via cli
-1. set env from env list via way you prefer (e.g. `export $(grep -v '^#' .env.example | xargs)` )
-2. `make dev`
+#### terminal 3
+1. copy `.env.example` and rename the copy to `.env`
+2. set env from env list via way you prefer and run relayer:
 
+`export $(grep -v '^#' .env | xargs) && make dev`
 
-#### via Docker
-currently `neutron` is a private repo, so you need to run `ssh-add ~/.ssh/id_rsa`
-*note*: we're going to remove this after making all our repos public
-1. Build docker image 
-`make build-docker`
-2. Run
-`docker run --env-file .env.example -v $PWD/../neutron/data:/data -p 9999:9999 neutron-org/cosmos-query-relayer`
-note: this command uses relative path to mount keys, run this from root path of `cosmos-query-relayer`
+### Testing via docker
+1. `cd neutron-integration-tests`
+2. read and run preparation steps described in the README.md file
+3. run tests as described in the README.md file
+
+In case of unexpected behaviour (e.g. tests failure) you can inspect neutron and relayer logs by doing the following:
+
+Neutron:
+1. `docker ps`
+2. find the neutron container id
+3. `docker exec -it neutron_id bash`
+4. `cd /opt/neutron/data`
+5. observe neutron logs in file `test-1.log`
+
+Relayer:
+1. `docker ps`
+2. find the relayer container id
+3. `docker logs -f relayer_id`
+
 ### Logging
 We are using [zap.loger](https://github.com/uber-go/zap)
-By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
-
+By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for examples)
 
 ##  Environment Notes
 ### Common 
