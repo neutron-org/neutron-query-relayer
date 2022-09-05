@@ -3,6 +3,8 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
@@ -37,17 +39,19 @@ var (
 // - included in the block (inclusion proof)
 // - successfully executed (delivery proof)
 type TrustedHeaderFetcher struct {
-	neutronChain *relayer.Chain
-	targetChain  *relayer.Chain
-	logger       *zap.Logger
+	neutronChain   *relayer.Chain
+	targetChain    *relayer.Chain
+	logger         *zap.Logger
+	revisionNumber uint64
 }
 
 // NewTrustedHeaderFetcher constructs a new TrustedHeaderFetcher
 func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) *TrustedHeaderFetcher {
 	return &TrustedHeaderFetcher{
-		neutronChain: neutronChain,
-		targetChain:  targetChain,
-		logger:       logger,
+		neutronChain:   neutronChain,
+		targetChain:    targetChain,
+		logger:         logger,
+		revisionNumber: parseRevisionNumber(targetChain),
 	}
 }
 
@@ -192,6 +196,11 @@ func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height ui
 	}
 	thf.logger.Debug("fetched trusting period", zap.Float64("trusting_period_hours", trustingPeriod.Hours()))
 
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse revision number: %w", err)
+	}
+	thf.logger.Debug("current revision number", zap.Uint64("revisionNumber", revisionNumber))
+
 	nextKey := make([]byte, 0)
 
 	for {
@@ -206,11 +215,12 @@ func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height ui
 				return nil, fmt.Errorf("could not unpack consensus state from Any value")
 			}
 
+			newerThanHeightInSameRevision := item.Height.RevisionNumber == revisionNumber && item.Height.RevisionHeight <= height
+
 			consensusTimestamp := time.Unix(0, int64(unpackedItem.GetTimestamp()))
-			olderThanCurrentHeight := height >= item.Height.RevisionHeight
 			notExpired := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
 
-			if olderThanCurrentHeight && notExpired {
+			if newerThanHeightInSameRevision && notExpired {
 				thf.logger.Debug("Found suitable consensus state",
 					zap.Uint64("height", item.Height.RevisionHeight))
 				return &item.Height, nil
@@ -240,6 +250,21 @@ func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.
 	}
 
 	return tmClientState.TrustingPeriod, nil
+}
+
+func (thf *TrustedHeaderFetcher) revisionNumber() (uint64, error) {
+	chainID := thf.targetChain.ChainID()
+	arr := strings.Split(chainID, "-")
+	if len(arr) != 2 {
+		return 0, fmt.Errorf("invalid chain id format, chain_id=%s", chainID)
+	}
+
+	revisionStr := arr[1]
+	revisionNumber, err := strconv.ParseInt(revisionStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid chain id revision, not int, chain_id=%s", chainID)
+	}
+	return uint64(revisionNumber), err
 }
 
 func requestPage(clientID string, nextKey []byte) *clienttypes.QueryConsensusStatesRequest {
