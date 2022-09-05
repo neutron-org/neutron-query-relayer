@@ -240,7 +240,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 		if setErr != nil {
 			return fmt.Errorf("failed to mark tx as processed: %w", setErr)
 		}
-		r.logger.Info("proof submitted successfully", zap.Uint64("query_id", m.QueryId))
+		r.logger.Info("proof for tx submitted successfully", zap.Uint64("query_id", m.QueryId))
 	}
 	err = r.storage.SetLastQueryHeight(m.QueryId, max(lastProcessedHeight, uint64(latestHeight)))
 	if err != nil {
@@ -282,7 +282,7 @@ func (r *Relayer) submitProof(
 	}
 	neutronmetrics.IncSuccessProofs()
 	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(start).Seconds())
-	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
+	r.logger.Info("proof for kv query submitted successfully", zap.Uint64("query_id", queryID))
 	return nil
 }
 
