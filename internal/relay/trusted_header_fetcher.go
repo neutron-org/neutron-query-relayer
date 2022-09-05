@@ -32,14 +32,17 @@ var (
 	RtyErr    = retry.LastErrorOnly(true)
 )
 
-// TrustedHeaderFetcher able to get trusted headers
-// Encapsulates logic that knows how to
+// TrustedHeaderFetcher able to get trusted headers for a given height
+// Trusted headers are needed in Neutron along with proofs to verify that transactions are:
+// - included in the block (inclusion proof)
+// - successfully executed (delivery proof)
 type TrustedHeaderFetcher struct {
 	neutronChain *relayer.Chain
 	targetChain  *relayer.Chain
 	logger       *zap.Logger
 }
 
+// NewTrustedHeaderFetcher constructs a new TrustedHeaderFetcher
 func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) TrustedHeaderFetcher {
 	return TrustedHeaderFetcher{
 		neutronChain: neutronChain,
@@ -48,7 +51,11 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 	}
 }
 
-// Fetch returns two IBC Update headers for height and height+1 packed into *codectypes.Any value
+// Fetch returns two Headers for height and height+1 packed into *codectypes.Any value
+// We need two blocks in Neutron to verify both delivery of tx and inclusion in block:
+// - We need to know block X (`header`) to verify inclusion of transaction for block X (inclusion proof)
+// - We need to know block X+1 (`nextHeader`) to verify response of transaction for block X
+// since LastResultsHash is root hash of all results from the txs from the previous block (delivery proof)
 func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
 	start := time.Now()
 
@@ -97,7 +104,7 @@ func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context
 // chain.
 // TrustedHeight is a height of the IBC client on Neutron for the provided height to trust
 // TrustedValidators is the validator set of target chain at the TrustedHeight + 1.
-
+//
 // The function is very similar to InjectTrustedFields (https://github.com/cosmos/relayer/blob/v2.0.0-beta7/relayer/provider/cosmos/provider.go#L727)
 // but with one big difference: trustedHeaderAtHeight injects trusted fields for a particular trusted height, not the latest one in IBC light client.
 // This allows us to call send UpdateClient msg not only for new heights, but for the old ones (which are still in the trusting period).
@@ -207,6 +214,7 @@ func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height ui
 	return nil, fmt.Errorf("could not find any trusted consensus state for height=%d", height)
 }
 
+// fetchTrustingPeriod fetches trusting period of the client
 func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.Duration, error) {
 	clientState, err := thf.neutronChain.ChainProvider.QueryClientState(ctx, 0, thf.neutronChain.PathEnd.ClientID)
 	if err != nil {

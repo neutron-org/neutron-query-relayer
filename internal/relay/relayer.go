@@ -196,7 +196,7 @@ func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
 
 		// add filter by tx.height (tx.height>n)
 		params = append(params, neutrontypes.TransactionsFilterItem{Field: TxHeight, Op: "gt", Value: queryLastHeight})
-		// TODO: not search for old transactions we cannot prove? (not within trusted period)
+		// TODO: not search for old transactions we cannot prove? (not within trusting period)
 		txs, err := r.proofer.SearchTransactions(ctx, params)
 		if err != nil {
 			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
