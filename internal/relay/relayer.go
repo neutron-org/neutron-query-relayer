@@ -212,18 +212,22 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 
 		header, nextHeader, err := r.trustedHeaderFetcher.Fetch(ctx, tx.Height)
 		if err != nil {
-			// probably tried to get headers for a transaction that is too old, since we could not find any
+			// probably encountered one of two cases:
+			// - tried to get headers for a transaction that is too old, since we could not find any consensus states for it
+			// - tried to get headers for a transaction that is too new, and there is no light headers yet (unlikely, since we have retry in it)
 			// this should not be a reason to stop submitting proofs for other transactions
+			// NOTE: this can be bad as we can accidentally skip such transactions when new transactions will be processed and saved in storage
 			r.logger.Info("could not get headers with trusted height for tx", zap.Error(err), zap.Uint64("query_id", m.QueryId), zap.String("hash", hash), zap.Uint64("height", tx.Height))
 			continue
 		}
 
 		proofStart := time.Now()
-		if err := r.submitter.SubmitTxProof(ctx, m.QueryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
+		err = r.submitter.SubmitTxProof(ctx, m.QueryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
 			Header:          header,
 			NextBlockHeader: nextHeader,
 			Tx:              tx.Tx,
-		}); err != nil {
+		})
+		if err != nil {
 			neutronmetrics.IncFailedProofs()
 			neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 

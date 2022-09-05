@@ -15,7 +15,7 @@ Makes interchain queries possible:
 - export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs)` note: change rpc addresses to actual)
 - `make dev`
 
-For more configuration parameters see [configuration section](#Environment).
+For more configuration parameters see [Environment section](#Environment).
 ### In Docker
 currently `neutron` is a private repo, so you need to run `ssh-add ~/.ssh/id_rsa`
 *note*: we're going to remove this after making all our repos public

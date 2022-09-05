@@ -56,6 +56,9 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 // - We need to know block X (`header`) to verify inclusion of transaction for block X (inclusion proof)
 // - We need to know block X+1 (`nextHeader`) to verify response of transaction for block X
 // since LastResultsHash is root hash of all results from the txs from the previous block (delivery proof)
+//
+// Arguments:
+// `height` - remote chain block height X = transaction with such block height
 func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
 	start := time.Now()
 
@@ -111,17 +114,27 @@ func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context
 //
 // Arguments:
 // `trustedHeight` - height of any consensus state that's height <= supplied height
-// `height` - height for a header we'll get
+// `height` - remote chain height for a header
 func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (ibcexported.Header, error) {
-	header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get light signed header: %w", err)
-	}
+	var tmHeader *tmclient.Header
+	if err := retry.Do(func() error {
+		header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
+		if err != nil {
+			return err
+		}
 
-	// make copy of header stored in mop
-	tmHeader, ok := header.(*tmclient.Header)
-	if !ok {
-		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
+		tmp, ok := header.(*tmclient.Header)
+		if !ok {
+			err = fmt.Errorf("non-tm client header")
+		}
+
+		tmHeader = tmp
+		return err
+	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
+		return nil, fmt.Errorf(
+			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
+			tmHeader.TrustedHeight.RevisionHeight, err,
+		)
 	}
 
 	// inject TrustedHeight
