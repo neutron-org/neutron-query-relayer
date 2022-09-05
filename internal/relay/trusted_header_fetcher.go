@@ -89,12 +89,15 @@ func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context
 	return packedHeader, nil
 }
 
-// trustedHeaderAtHeight returns an IBC Update Header which can be used to update an on chain
-// light client on the Neutron chain.
-//
-// It has the same purpose as r.targetChain.ChainProvider.GetIBCUpdateHeader() but the difference is
-// that getHeaderWithTrustedHeight() tries to find the best TrustedHeight for the header
-// relying on existing light client's consensus states on the Neutron chain.
+// trustedHeaderAtHeight returns a Header with injected necessary trusted fields (TrustedHeight and TrustedValidators) for a height
+// to update a light client stored on the Neutron, using the information provided by the target chain.
+// chain.
+// TrustedHeight is a height of the IBC client on Neutron for the provided height to trust
+// TrustedValidators is the validator set of target chain at the TrustedHeight + 1.
+
+// The function is very similar to InjectTrustedFields (https://github.com/cosmos/relayer/blob/v2.0.0-beta7/relayer/provider/cosmos/provider.go#L727)
+// but with one big difference: trustedHeaderAtHeight injects trusted fields for a particular trusted height, not the latest one in IBC light client.
+// This allows us to call send UpdateClient msg not only for new heights, but for the old ones (which are still in the trusting period).
 //
 // Arguments:
 // `suitableConsensusState` - any consensus state that has height < supplied height
