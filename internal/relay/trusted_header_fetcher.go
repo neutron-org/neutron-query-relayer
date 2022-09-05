@@ -3,6 +3,8 @@ package relay
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/avast/retry-go/v4"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
@@ -11,16 +13,16 @@ import (
 	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	metrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 	"go.uber.org/zap"
-	"time"
+
+	metrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 )
 
 // how many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
 const consensusPageSize = 10
 
 // submissionMarginPeriod is a lag period, because we need consensusState to be valid until we approve it on the chain
-const submissionMarginPeriod time.Duration = time.Minute * 5
+const submissionMarginPeriod = time.Minute * 5
 
 // retries configuration for fetching light header
 var (
@@ -31,6 +33,7 @@ var (
 )
 
 // TrustedHeaderFetcher able to get trusted headers
+// Encapsulates logic that knows how to
 type TrustedHeaderFetcher struct {
 	neutronChain *relayer.Chain
 	targetChain  *relayer.Chain
@@ -100,7 +103,7 @@ func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context
 // This allows us to call send UpdateClient msg not only for new heights, but for the old ones (which are still in the trusting period).
 //
 // Arguments:
-// `suitableConsensusState` - any consensus state that has height < supplied height
+// `trustedHeight` - height of any consensus state that's height <= supplied height
 // `height` - height for a header we'll get
 func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (ibcexported.Header, error) {
 	header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
@@ -148,8 +151,8 @@ func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trus
 	return tmHeader, nil
 }
 
-// getTrustedHeight tries to find height of any consensusState within trusted period with a height <= supplied height
-// To do this, it simply iterates over all consensus states and checks each that it's within trusted period AND <= supplied_height
+// getTrustedHeight tries to find height of any consensusState within trusting period with a height <= supplied height
+// To do this, it simply iterates over all consensus states and checks each that it's within trusting period AND <= supplied_height
 // Note that we cannot optimize this search due to consensus states being stored in a tree with *STRING* key `RevisionNumber-RevisionHeight`
 //
 // Arguments:

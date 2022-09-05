@@ -22,9 +22,10 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	"github.com/neutron-org/cosmos-query-relayer/internal/config"
 	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // TxHeight describes tendermint filter by tx.height that we use to get only actual txs
