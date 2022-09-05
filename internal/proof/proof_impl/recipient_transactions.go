@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
@@ -31,14 +31,14 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 }
 
 // SearchTransactions gets proofs for query type = 'tx'
-func (p ProoferImpl) SearchTransactions(ctx context.Context, filter neutrontypes.TransactionsFilter) ([]relay.Transaction, error) {
+func (p ProoferImpl) SearchTransactions(ctx context.Context, filter neutrontypes.TransactionsFilter) ([]*relay.Transaction, error) {
 	query, err := constructQuery(filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not compose query: %v", err)
 	}
 	page := 1 // NOTE: page index starts from 1
 
-	txs := make([]relay.Transaction, 0)
+	txs := make([]*relay.Transaction, 0)
 	for {
 		searchResult, err := p.querier.Client.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 		if err != nil {
@@ -62,7 +62,7 @@ func (p ProoferImpl) SearchTransactions(ctx context.Context, filter neutrontypes
 				Data:           tx.Tx,
 			}
 
-			txs = append(txs, relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
+			txs = append(txs, &relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)})
 		}
 
 		if page*perPage >= searchResult.TotalCount {
@@ -91,7 +91,8 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
-// constructQuery creates query from params like `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
+// queryFromTxFilter creates query from transactions filter like
+// `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
 func constructQuery(params neutrontypes.TransactionsFilter) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {

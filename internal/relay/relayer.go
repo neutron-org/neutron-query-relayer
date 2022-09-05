@@ -5,27 +5,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/syndtr/goleveldb/leveldb"
-
-	neutronmetrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/config"
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // TxHeight describes tendermint filter by tx.height that we use to get only actual txs
@@ -36,248 +31,222 @@ const TxHeight = "tx.height"
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	cfg                  config.CosmosQueryRelayerConfig
+	cfg                  config.NeutronQueryRelayerConfig
 	proofer              Proofer
 	submitter            Submitter
-	registry             *registry.Registry
 	targetChain          *relayer.Chain
 	neutronChain         *relayer.Chain
-	trustedHeaderFetcher TrustedHeaderFetcher
+	trustedHeaderFetcher *TrustedHeaderFetcher
+	subscriber           Subscriber
 	logger               *zap.Logger
 	storage              Storage
 }
 
 func NewRelayer(
-	cfg config.CosmosQueryRelayerConfig,
+	cfg config.NeutronQueryRelayerConfig,
 	proofer Proofer,
 	submitter Submitter,
-	registry *registry.Registry,
-	srcChain,
+	srcChain *relayer.Chain,
 	dstChain *relayer.Chain,
-	trustedHeaderFetcher TrustedHeaderFetcher,
+	trustedHeaderFetcher *TrustedHeaderFetcher,
+	subscriber Subscriber,
 	logger *zap.Logger,
 	store Storage,
-) Relayer {
-	return Relayer{
+) *Relayer {
+	return &Relayer{
 		cfg:                  cfg,
 		proofer:              proofer,
 		submitter:            submitter,
-		registry:             registry,
 		targetChain:          srcChain,
 		neutronChain:         dstChain,
 		trustedHeaderFetcher: trustedHeaderFetcher,
+		subscriber:           subscriber,
 		logger:               logger,
 		storage:              store,
 	}
 }
 
-func (r *Relayer) Proof(ctx context.Context, event coretypes.ResultEvent) error {
-	messages, err := r.tryExtractInterchainQueries(event)
+// Run starts the relaying process: subscribes on the incoming interchain query messages from the
+// Neutron and performs the queries by interacting with the target chain and submitting them to
+// the Neutron chain.
+func (r *Relayer) Run(ctx context.Context) error {
+	r.logger.Info("subscribing to neutron chain events...")
+	kvChan, txChan, err := r.subscriber.Subscribe()
 	if err != nil {
-		return fmt.Errorf("could not filter interchain query messages: %w", err)
+		return fmt.Errorf("failed to subscribe to neutron events: %w", err)
 	}
-	if len(messages) == 0 {
-		r.logger.Info("event has been skipped: it's not intended for us", zap.String("query", event.Query))
-		return nil
-	}
+	r.logger.Info("successfully subscribed to neutron chain events")
 
-	for _, m := range messages {
-		start := time.Now()
-		if err := r.proofMessage(ctx, m); err != nil {
-			r.logger.Error("could not process message", zap.Uint64("query_id", m.queryId), zap.Error(err))
+	for {
+		var (
+			start     time.Time
+			queryType neutrontypes.InterchainQueryType
+			queryID   uint64
+			err       error
+		)
+		select {
+		case msg := <-kvChan:
+			start = time.Now()
+			queryType = neutrontypes.InterchainQueryTypeKV
+			queryID = msg.QueryId
+			err = r.processMessageKV(context.Background(), msg)
+		case msg := <-txChan:
+			start = time.Now()
+			queryType = neutrontypes.InterchainQueryTypeTX
+			queryID = msg.QueryId
+			err = r.processMessageTX(context.Background(), msg)
+		case <-ctx.Done():
+			return r.stop()
+		}
+		if err != nil {
+			r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
 			neutronmetrics.IncFailedRequests()
-			neutronmetrics.AddFailedRequest(string(m.messageType), time.Since(start).Seconds())
+			neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
 		} else {
 			neutronmetrics.IncSuccessRequests()
-			neutronmetrics.AddSuccessRequest(string(m.messageType), time.Since(start).Seconds())
+			neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
 		}
 	}
-
-	// TODO: return a detailed error message here, e.g.
-	// failed to prove N of M messages: latest error: %v (just an example, could be better)
-	return err
 }
 
-func (r *Relayer) tryExtractInterchainQueries(event coretypes.ResultEvent) ([]queryEventMessage, error) {
-	events := event.Events
-	if len(events[zoneIdAttr]) == 0 {
-		return nil, nil
+// stop finishes execution of relayer's auxiliary entities.
+func (r *Relayer) stop() error {
+	var failed bool
+	if err := r.storage.Close(); err != nil {
+		r.logger.Error("failed to close relayer's storage", zap.Error(err))
+		failed = true
+	} else {
+		r.logger.Info("relayer's storage has been closed")
 	}
 
-	if len(events[zoneIdAttr]) != len(events[kvKeyAttr]) ||
-		len(events[zoneIdAttr]) != len(events[transactionsFilter]) ||
-		len(events[zoneIdAttr]) != len(events[queryIdAttr]) ||
-		len(events[zoneIdAttr]) != len(events[typeAttr]) {
-		return nil, fmt.Errorf("cannot filter interchain query messages because events attributes length does not match for events=%v", events)
+	if err := r.subscriber.Unsubscribe(); err != nil {
+		r.logger.Error("failed to unsubscribe", zap.Error(err))
+		failed = true
+	} else {
+		r.logger.Info("subscriber has been stopped")
 	}
 
-	messages := make([]queryEventMessage, 0, len(events[zoneIdAttr]))
-
-	for idx, zoneId := range events[zoneIdAttr] {
-		if !(r.isTargetZone(zoneId) && r.isWatchedAddress(events[ownerAttr][idx])) {
-			continue
-		}
-
-		queryIdStr := events[queryIdAttr][idx]
-		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
-		if err != nil {
-			r.logger.Info("invalid query_id format (not an uint)", zap.Error(err))
-			continue
-		}
-
-		var (
-			kvKeys                  neutrontypes.KVKeys
-			transactionsFilterValue string
-		)
-
-		messageType := neutrontypes.InterchainQueryType(events[typeAttr][idx])
-
-		switch messageType {
-		case neutrontypes.InterchainQueryTypeKV:
-			kvKeys, err = neutrontypes.KVKeysFromString(events[kvKeyAttr][idx])
-			if err != nil {
-				r.logger.Info("invalid kv_key attr", zap.Error(err))
-				continue
-			}
-		case neutrontypes.InterchainQueryTypeTX:
-			transactionsFilterValue = events[transactionsFilter][idx]
-		default:
-			r.logger.Info("unknown query_type", zap.String("query_type", string(messageType)))
-			continue
-		}
-
-		messages = append(messages, queryEventMessage{queryId: queryId, messageType: messageType, kvKeys: kvKeys, transactionsFilter: transactionsFilterValue})
+	if failed {
+		return fmt.Errorf("error occurred while stopping relayer, see recent logs for more info")
 	}
-
-	return messages, nil
+	return nil
 }
 
-func (r *Relayer) proofMessage(ctx context.Context, m queryEventMessage) error {
-	r.logger.Debug("proofMessage", zap.String("message_type", string(m.messageType)))
+// processMessageKV handles an incoming KV interchain query message. It checks whether it's time
+// to execute the query (based on the relayer's settings), queries values and proofs for the query
+// keys, and submits the result to the Neutron chain.
+func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
+	r.logger.Debug("running proofMessageKV for msg", zap.Uint64("query_id", m.QueryId))
+	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get header for src chain: %w", err)
+	}
 
-	// TODO:
-	// 1. move message handling logic from switch section to dedicated methods
-	// 2. move the QueryLatestHeight call to the methods which require it
+	ok, err := r.isQueryOnTime(m.QueryId, uint64(latestHeight))
+	if err != nil || !ok {
+		return fmt.Errorf("error on checking previous query update with query_id=%d: %w", m.QueryId, err)
+	}
+
+	proofs, height, err := r.proofer.GetStorageValues(ctx, uint64(latestHeight), m.KVKeys)
+	if err != nil {
+		return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.QueryId, err)
+	}
+	return r.submitProof(ctx, int64(height), m.QueryId, proofs)
+}
+
+// processMessageTX handles an incoming TX interchain query message. It fetches proven transactions
+// from the target chain using the message transactions filter value, and submits the result to the
+// Neutron chain.
+func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
+	r.logger.Debug("running proofMessageTX for msg", zap.Uint64("query_id", m.QueryId))
 	latestHeight, err := r.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to QueryLatestHeight: %w", err)
 	}
 
-	switch m.messageType {
-	case neutrontypes.InterchainQueryTypeKV:
-		ok, err := r.isQueryOnTime(m.queryId, uint64(latestHeight))
-		if err != nil || !ok {
-			return fmt.Errorf("error on checking previous query update with query_id=%d: %w", m.queryId, err)
-		}
-
-		proofs, height, err := r.proofer.GetStorageValues(ctx, uint64(latestHeight), m.kvKeys)
-		if err != nil {
-			return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.queryId, err)
-		}
-
-		return r.submitProof(ctx, int64(height), m.queryId, string(m.messageType), proofs)
-	case neutrontypes.InterchainQueryTypeTX:
-		if !r.cfg.AllowTxQueries {
-			return fmt.Errorf("could not process %s with query_id=%d: Tx queries not allowed by configuration", m.messageType, m.queryId)
-		}
-
-		queryLastHeight, err := r.getLastQueryHeight(m.queryId)
-		if err != nil {
-			return fmt.Errorf("could not get last query height: %s with params=%s query_id=%d: %w",
-				m.messageType, m.transactionsFilter, m.queryId, err)
-		}
-
-		var params neutrontypes.TransactionsFilter
-		err = json.Unmarshal([]byte(m.transactionsFilter), &params)
-		if err != nil {
-			return fmt.Errorf("could not unmarshal transactions filter for %s with params=%s query_id=%d: %w",
-				m.messageType, m.transactionsFilter, m.queryId, err)
-		}
-
-		// add filter by tx.height (tx.height>n)
-		params = append(params, neutrontypes.TransactionsFilterItem{Field: TxHeight, Op: "gt", Value: queryLastHeight})
-		// TODO: not search for old transactions we cannot prove? (not within trusting period)
-		txs, err := r.proofer.SearchTransactions(ctx, params)
-		if err != nil {
-			return fmt.Errorf("could not get proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-		}
-
-		if len(txs) == 0 {
-			return nil
-		}
-
-		// always process first searched tx due it could be the last tx in its block
-		lastProcessedHeight := txs[0].Height
-		for _, txItem := range txs {
-			// we don't update last query height until full block is processed
-			// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
-			// so until all 3 txs from block 100 has been proofed & sent, last query height will remain 0
-			// and only starting from block 101 last query height will be set to 100
-			if txItem.Height > lastProcessedHeight {
-				err = r.storage.SetLastQueryHeight(m.queryId, lastProcessedHeight)
-				if err != nil {
-					return fmt.Errorf("failed to save last height of query: %w", err)
-				}
-			}
-			lastProcessedHeight = txItem.Height
-
-			hash := string(tmtypes.Tx(txItem.Tx.Data).Hash())
-			txExists, err := r.storage.TxExists(m.queryId, hash)
-			if err != nil {
-				return fmt.Errorf("failed to check if transaction already exists: %w", err)
-			}
-
-			if txExists {
-				r.logger.Debug("transaction already submitted", zap.Uint64("query_id", m.queryId), zap.String("hash", hash))
-				continue
-			}
-
-			header, nextHeader, err := r.trustedHeaderFetcher.Fetch(ctx, txItem.Height)
-			if err != nil {
-				// probably tried to get headers for a transaction that is too old, since we could not find any
-				// this should not be a reason to stop submitting proofs for other transactions
-				r.logger.Info("could not get headers with trusted height for tx", zap.Error(err), zap.Uint64("query_id", m.queryId), zap.String("hash", hash), zap.Uint64("height", txItem.Height))
-				continue
-			}
-
-			proofStart := time.Now()
-			if err := r.submitter.SubmitTxProof(ctx, m.queryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
-				Header:          header,
-				NextBlockHeader: nextHeader,
-				Tx:              txItem.Tx,
-			}); err != nil {
-				neutronmetrics.IncFailedProofs()
-				neutronmetrics.AddFailedProof(string(m.messageType), time.Since(proofStart).Seconds())
-
-				setErr := r.storage.SetTxStatus(m.queryId, hash, err.Error())
-				if setErr != nil {
-					return fmt.Errorf("failed to store tx: %w", setErr)
-				}
-				return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", m.messageType, m.queryId, err)
-			}
-
-			neutronmetrics.IncSuccessProofs()
-			neutronmetrics.AddSuccessProof(string(m.messageType), time.Since(proofStart).Seconds())
-
-			err = r.storage.SetTxStatus(m.queryId, hash, Success)
-			if err != nil {
-				return fmt.Errorf("failed to store tx: %w", err)
-			}
-
-			r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", m.queryId))
-
-		}
-		err = r.storage.SetLastQueryHeight(m.queryId, max(lastProcessedHeight, uint64(latestHeight)))
-		if err != nil {
-			return fmt.Errorf("failed to save last height of query: %w", err)
-		}
-
-		return nil
-
-	default:
-		return fmt.Errorf("unknown query messageType=%s", m.messageType)
+	queryLastHeight, err := r.getLastQueryHeight(m.QueryId)
+	if err != nil {
+		return fmt.Errorf("could not get last query height: %w", err)
 	}
 
+	var params neutrontypes.TransactionsFilter
+	if err = json.Unmarshal([]byte(m.TransactionsFilter), &params); err != nil {
+		return fmt.Errorf("could not unmarshal transactions filter: %w", err)
+	}
+	// add filter by tx.height (tx.height>n)
+	params = append(params, neutrontypes.TransactionsFilterItem{Field: TxHeight, Op: "gt", Value: queryLastHeight})
+	txs, err := r.proofer.SearchTransactions(ctx, params)
+	if err != nil {
+		return fmt.Errorf("search for transactions failed: %w", err)
+	}
+
+	if len(txs) == 0 {
+		return nil
+	}
+
+	// always process first searched tx due it could be the last tx in its block
+	lastProcessedHeight := txs[0].Height
+	for _, tx := range txs {
+		// we don't update last query height until full block is processed
+		// e.g. last query height = 0 and there are 3 txs in block 100 + 2 txs in block 101.
+		// so until all 3 txs from block 100 has been proofed & sent, last query height will remain 0
+		// and only starting from block 101 last query height will be set to 100
+		if tx.Height > lastProcessedHeight {
+			err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
+			if err != nil {
+				return fmt.Errorf("failed to save last height of query: %w", err)
+			}
+		}
+		lastProcessedHeight = tx.Height
+
+		hash := string(tmtypes.Tx(tx.Tx.Data).Hash())
+		txExists, err := r.storage.TxExists(m.QueryId, hash)
+		if err != nil {
+			return fmt.Errorf("failed to check if transaction already exists: %w", err)
+		}
+
+		if txExists {
+			r.logger.Debug("transaction already submitted", zap.Uint64("query_id", m.QueryId), zap.String("hash", hash))
+			continue
+		}
+
+		header, nextHeader, err := r.trustedHeaderFetcher.Fetch(ctx, tx.Height)
+		if err != nil {
+			// probably tried to get headers for a transaction that is too old, since we could not find any
+			// this should not be a reason to stop submitting proofs for other transactions
+			r.logger.Info("could not get headers with trusted height for tx", zap.Error(err), zap.Uint64("query_id", m.QueryId), zap.String("hash", hash), zap.Uint64("height", tx.Height))
+			continue
+		}
+
+		proofStart := time.Now()
+		if err := r.submitter.SubmitTxProof(ctx, m.QueryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
+			Header:          header,
+			NextBlockHeader: nextHeader,
+			Tx:              tx.Tx,
+		}); err != nil {
+			neutronmetrics.IncFailedProofs()
+			neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
+
+			setErr := r.storage.SetTxStatus(m.QueryId, hash, err.Error())
+			if setErr != nil {
+				return fmt.Errorf("failed to store tx submission error: %w", setErr)
+			}
+			return fmt.Errorf("could not submit proof: %w", err)
+		}
+		neutronmetrics.IncSuccessProofs()
+		neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
+
+		setErr := r.storage.SetTxStatus(m.QueryId, hash, Success)
+		if setErr != nil {
+			return fmt.Errorf("failed to mark tx as processed: %w", setErr)
+		}
+		r.logger.Info("proof submitted successfully", zap.Uint64("query_id", m.QueryId))
+	}
+	err = r.storage.SetLastQueryHeight(m.QueryId, max(lastProcessedHeight, uint64(latestHeight)))
+	if err != nil {
+		return fmt.Errorf("failed to save last query height: %w", err)
+	}
+	return nil
 }
 
 // submitProof submits the proof for the given query on the given height and tracks the result.
@@ -285,7 +254,6 @@ func (r *Relayer) submitProof(
 	ctx context.Context,
 	height int64,
 	queryID uint64,
-	messageType string,
 	proof []*neutrontypes.StorageValue,
 ) error {
 	srcHeader, err := r.getSrcChainHeader(ctx, height)
@@ -309,11 +277,11 @@ func (r *Relayer) submitProof(
 		updateClientMsg,
 	); err != nil {
 		neutronmetrics.IncFailedProofs()
-		neutronmetrics.AddFailedProof(messageType, time.Since(start).Seconds())
-		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", messageType, queryID, err)
+		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(start).Seconds())
+		return fmt.Errorf("could not submit proof: %w", err)
 	}
 	neutronmetrics.IncSuccessProofs()
-	neutronmetrics.AddSuccessProof(messageType, time.Since(start).Seconds())
+	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(start).Seconds())
 	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
 	return nil
 }
@@ -359,17 +327,6 @@ func (r *Relayer) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.
 	return updateMsgUnpacked.Msg, nil
 }
 
-// isTargetZone returns true if the zoneID is the relayer's target zone id.
-func (r *Relayer) isTargetZone(zoneID string) bool {
-	return r.targetChain.ChainID() == zoneID
-}
-
-// isWatchedAddress returns true if the address is within the registry watched addresses or there
-// are no registry watched addresses configured for the Relayer meaning all addresses are watched.
-func (r *Relayer) isWatchedAddress(address string) bool {
-	return r.registry.IsEmpty() || r.registry.Contains(address)
-}
-
 // isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
 func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
 	// if it wasn't set in config
@@ -392,15 +349,6 @@ func (r *Relayer) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, erro
 	}
 
 	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, r.cfg.MinKvUpdatePeriod)
-}
-
-func (r *Relayer) CloseStorage() error {
-	err := r.storage.Close()
-	if err != nil {
-		return fmt.Errorf("couldn't close relayer's storage: %w", err)
-	}
-
-	return nil
 }
 
 // getLastQueryHeight returns last query height & no err if query exists in storage, also initializes query with height = 0  if not exists yet

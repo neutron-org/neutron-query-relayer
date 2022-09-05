@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+
 	"github.com/avast/retry-go/v4"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
@@ -14,8 +16,6 @@ import (
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
-
-	metrics "github.com/neutron-org/cosmos-query-relayer/cmd/cosmos_query_relayer/metrics"
 )
 
 // how many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
@@ -43,8 +43,8 @@ type TrustedHeaderFetcher struct {
 }
 
 // NewTrustedHeaderFetcher constructs a new TrustedHeaderFetcher
-func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) TrustedHeaderFetcher {
-	return TrustedHeaderFetcher{
+func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) *TrustedHeaderFetcher {
+	return &TrustedHeaderFetcher{
 		neutronChain: neutronChain,
 		targetChain:  targetChain,
 		logger:       logger,
@@ -79,7 +79,7 @@ func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (head
 		return
 	}
 
-	metrics.RecordTime("TrustedHeaderFetcher", time.Since(start).Seconds())
+	neutronmetrics.RecordTime("TrustedHeaderFetcher", time.Since(start).Seconds())
 
 	return
 }

@@ -21,11 +21,13 @@
 go.work
 
 .idea
+.vscode
 
 keys
 
-cmd/cosmos_query_relayer/test.go
-/cosmos_query_relayer
+cmd/neutron_query_relayer/neutron_query_relayer
+storage
+neutron_query_relayer
 
 .env
 

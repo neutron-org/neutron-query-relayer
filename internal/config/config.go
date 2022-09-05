@@ -6,11 +6,11 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
-	"github.com/neutron-org/cosmos-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 )
 
-// CosmosQueryRelayerConfig describes configuration of the app
-type CosmosQueryRelayerConfig struct {
+// NeutronQueryRelayerConfig describes configuration of the app
+type NeutronQueryRelayerConfig struct {
 	NeutronChain      *NeutronChainConfig      `split_words:"true"`
 	TargetChain       *TargetChainConfig       `split_words:"true"`
 	Registry          *registry.RegistryConfig `split_words:"true"`
@@ -62,8 +62,8 @@ const (
 	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
 )
 
-func NewCosmosQueryRelayerConfig() (CosmosQueryRelayerConfig, error) {
-	var cfg CosmosQueryRelayerConfig
+func NewNeutronQueryRelayerConfig() (NeutronQueryRelayerConfig, error) {
+	var cfg NeutronQueryRelayerConfig
 
 	err := envconfig.Process(EnvPrefix, &cfg)
 	if err != nil {
