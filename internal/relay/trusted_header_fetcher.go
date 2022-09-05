@@ -46,13 +46,18 @@ type TrustedHeaderFetcher struct {
 }
 
 // NewTrustedHeaderFetcher constructs a new TrustedHeaderFetcher
-func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) *TrustedHeaderFetcher {
+func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) (*TrustedHeaderFetcher, error) {
+	revisionNumber, err := extractRevisionNumber(targetChain.ChainID())
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract revision number")
+	}
+
 	return &TrustedHeaderFetcher{
 		neutronChain:   neutronChain,
 		targetChain:    targetChain,
 		logger:         logger,
-		revisionNumber: parseRevisionNumber(targetChain),
-	}
+		revisionNumber: revisionNumber,
+	}, nil
 }
 
 // Fetch returns two Headers for height and height+1 packed into *codectypes.Any value
@@ -108,71 +113,36 @@ func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context
 
 // trustedHeaderAtHeight returns a Header with injected necessary trusted fields (TrustedHeight and TrustedValidators) for a height
 // to update a light client stored on the Neutron, using the information provided by the target chain.
-// chain.
+//
 // TrustedHeight is a height of the IBC client on Neutron for the provided height to trust
 // TrustedValidators is the validator set of target chain at the TrustedHeight + 1.
 //
 // The function is very similar to InjectTrustedFields (https://github.com/cosmos/relayer/blob/v2.0.0-beta7/relayer/provider/cosmos/provider.go#L727)
 // but with one big difference: trustedHeaderAtHeight injects trusted fields for a particular trusted height, not the latest one in IBC light client.
-// This allows us to call send UpdateClient msg not only for new heights, but for the old ones (which are still in the trusting period).
+// This allows us to send UpdateClient msg not only for new heights, but for the old ones (which are still in the trusting period).
 //
 // Arguments:
 // `trustedHeight` - height of any consensus state that's height <= supplied height
 // `height` - remote chain height for a header
 func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (ibcexported.Header, error) {
-	var tmHeader *tmclient.Header
-	if err := retry.Do(func() error {
-		header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
-		if err != nil {
-			return err
-		}
-
-		tmp, ok := header.(*tmclient.Header)
-		if !ok {
-			err = fmt.Errorf("non-tm client header")
-		}
-
-		tmHeader = tmp
-		return err
-	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
-		return nil, fmt.Errorf(
-			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
-			tmHeader.TrustedHeight.RevisionHeight, err,
-		)
+	header, err := thf.retryGetLightSignedHeaderAtHeight(ctx, height)
+	if err != nil {
+		return nil, fmt.Errorf("could not get light header: %w", err)
 	}
-
-	// inject TrustedHeight
-	tmHeader.TrustedHeight = *trustedHeight
 
 	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
 	// since the last trusted validators for a header at height h is the NextValidators
 	// at h+1 committed to in header h by NextValidatorsHash
-
-	var nextTmHeader *tmclient.Header
-	if err := retry.Do(func() error {
-		nextHeader, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(tmHeader.TrustedHeight.RevisionHeight+1))
-		if err != nil {
-			return err
-		}
-
-		tmp, ok := nextHeader.(*tmclient.Header)
-		if !ok {
-			err = fmt.Errorf("non-tm client header")
-		}
-
-		nextTmHeader = tmp
-		return err
-	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
-		return nil, fmt.Errorf(
-			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
-			tmHeader.TrustedHeight.RevisionHeight, err,
-		)
+	nextHeader, err := thf.retryGetLightSignedHeaderAtHeight(ctx, trustedHeight.RevisionHeight+1)
+	if err != nil {
+		return nil, fmt.Errorf("could not get next light header: %w", err)
 	}
 
-	// inject TrustedValidators into header
-	tmHeader.TrustedValidators = nextTmHeader.ValidatorSet
+	// inject TrustedHeight and TrustedValidators into header
+	header.TrustedHeight = *trustedHeight
+	header.TrustedValidators = nextHeader.ValidatorSet
 
-	return tmHeader, nil
+	return header, nil
 }
 
 // getTrustedHeight tries to find height of any consensusState within trusting period with a height <= supplied height
@@ -196,11 +166,6 @@ func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height ui
 	}
 	thf.logger.Debug("fetched trusting period", zap.Float64("trusting_period_hours", trustingPeriod.Hours()))
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse revision number: %w", err)
-	}
-	thf.logger.Debug("current revision number", zap.Uint64("revisionNumber", revisionNumber))
-
 	nextKey := make([]byte, 0)
 
 	for {
@@ -215,14 +180,12 @@ func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height ui
 				return nil, fmt.Errorf("could not unpack consensus state from Any value")
 			}
 
-			newerThanHeightInSameRevision := item.Height.RevisionNumber == revisionNumber && item.Height.RevisionHeight <= height
+			olderOrSameAsHeightInSameRevision := item.Height.RevisionNumber == thf.revisionNumber && item.Height.RevisionHeight <= height
 
 			consensusTimestamp := time.Unix(0, int64(unpackedItem.GetTimestamp()))
 			notExpired := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
 
-			if newerThanHeightInSameRevision && notExpired {
-				thf.logger.Debug("Found suitable consensus state",
-					zap.Uint64("height", item.Height.RevisionHeight))
+			if olderOrSameAsHeightInSameRevision && notExpired {
 				return &item.Height, nil
 			}
 		}
@@ -244,7 +207,10 @@ func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.
 		return 0, fmt.Errorf("could not fetch client state for ClientId=%s: %w", thf.neutronChain.PathEnd.ClientID, err)
 	}
 
-	tmClientState := clientState.(*tmclient.ClientState)
+	tmClientState, ok := clientState.(*tmclient.ClientState)
+	if !ok {
+		return 0, fmt.Errorf("got non-tm ClientState")
+	}
 	if tmClientState.TrustingPeriod == 0 {
 		return 0, fmt.Errorf("got empty TrustingPeriod")
 	}
@@ -252,8 +218,33 @@ func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.
 	return tmClientState.TrustingPeriod, nil
 }
 
-func (thf *TrustedHeaderFetcher) revisionNumber() (uint64, error) {
-	chainID := thf.targetChain.ChainID()
+func (thf *TrustedHeaderFetcher) retryGetLightSignedHeaderAtHeight(ctx context.Context, height uint64) (*tmclient.Header, error) {
+	var tmHeader *tmclient.Header
+
+	if err := retry.Do(func() error {
+		header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
+		if err != nil {
+			return err
+		}
+
+		tmp, ok := header.(*tmclient.Header)
+		if !ok {
+			return fmt.Errorf("non-tm client header")
+		}
+
+		tmHeader = tmp
+		return err
+	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
+		return nil, fmt.Errorf(
+			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
+			tmHeader.TrustedHeight.RevisionHeight, err,
+		)
+	}
+
+	return tmHeader, nil
+}
+
+func extractRevisionNumber(chainID string) (uint64, error) {
 	arr := strings.Split(chainID, "-")
 	if len(arr) != 2 {
 		return 0, fmt.Errorf("invalid chain id format, chain_id=%s", chainID)
@@ -264,6 +255,7 @@ func (thf *TrustedHeaderFetcher) revisionNumber() (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid chain id revision, not int, chain_id=%s", chainID)
 	}
+
 	return uint64(revisionNumber), err
 }
 

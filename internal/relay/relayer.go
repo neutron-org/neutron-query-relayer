@@ -231,18 +231,16 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 			neutronmetrics.IncFailedProofs()
 			neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 
-			setErr := r.storage.SetTxStatus(m.QueryId, hash, err.Error())
-			if setErr != nil {
-				return fmt.Errorf("failed to store tx submission error: %w", setErr)
+			if err := r.storage.SetTxStatus(m.QueryId, hash, err.Error()); err != nil {
+				return fmt.Errorf("failed to store tx submission error: %w", err)
 			}
 			return fmt.Errorf("could not submit proof: %w", err)
 		}
 		neutronmetrics.IncSuccessProofs()
 		neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 
-		setErr := r.storage.SetTxStatus(m.QueryId, hash, Success)
-		if setErr != nil {
-			return fmt.Errorf("failed to mark tx as processed: %w", setErr)
+		if err := r.storage.SetTxStatus(m.QueryId, hash, Success); err != nil {
+			return fmt.Errorf("failed to mark tx as processed: %w", err)
 		}
 		r.logger.Info("proof for tx submitted successfully", zap.Uint64("query_id", m.QueryId))
 	}
