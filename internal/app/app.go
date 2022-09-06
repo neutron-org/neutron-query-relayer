@@ -13,6 +13,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
+	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"go.uber.org/zap"
@@ -49,7 +50,7 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutr
 	return neutronChain, targetChain, nil
 }
 
-func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) (*relay.Relayer, <-chan relay.SubmittedTxInfo) {
+func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) *relay.Relayer {
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
@@ -123,6 +124,16 @@ func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig)
 
 	txProcessor := txprocessor.NewTxProcessor(csManager, st, proofSubmitter, neutronChain.PathEnd.ClientID, logger)
 
+	txSubmitChecker := txsubmitchecker.NewTxSubmitChecker(
+		txProcessor.GetSubmitNotificationChannel(),
+		st,
+		neutronClient,
+		logger,
+		cfg.CheckSubmittedTxStatusDelay,
+	)
+	// XXX: should I really start this service from here?
+	go txSubmitChecker.Run()
+
 	relayer := relay.NewRelayer(
 		cfg,
 		proofFetcher,
@@ -135,5 +146,5 @@ func NewDefaultRelayer(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig)
 		st,
 		txProcessor,
 	)
-	return relayer, txProcessor.GetSubmitNotificationChannel()
+	return relayer
 }
