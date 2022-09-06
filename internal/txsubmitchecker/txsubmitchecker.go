@@ -50,18 +50,25 @@ func (tc *TxSubmitChecker) Run() {
 		go tc.queueTx(*tx)
 	}
 
-	for i := 0; i < TxCheckThreads; i++ {
-		go tc.workerThread()
-	}
+	go func() {
+		for tx := range tc.inChan {
+			go tc.queueTx(tx)
+		}
+	}()
 
-	for tx := range tc.inChan {
-		go tc.queueTx(tx)
+	rateLimiter := make(chan struct{}, TxCheckThreads)
+	for tx := range tc.queue {
+		rateLimiter <- struct{}{}
+		tc.logger.Info(fmt.Sprintf("tx submit checker: new job: %s", tx.NeutronHash))
+		go func(t relay.SubmittedTxInfo) {
+			tc.workerThread(t)
+			<-rateLimiter
+		}(tx)
 	}
 }
 
 func (tc *TxSubmitChecker) queueTx(tx relay.SubmittedTxInfo) {
-	tc.logger.Info(fmt.Sprintf("tx submit checker: new job: %s", tx.NeutronHash))
-	age := time.Now().Sub(tx.SubmitTime).Milliseconds()
+	age := time.Since(tx.SubmitTime).Milliseconds()
 	if age < 0 {
 		tc.logger.Warn(fmt.Sprintf(
 			"tx %s has negative age of %d milliseconds (submitted at %s)",
@@ -76,34 +83,31 @@ func (tc *TxSubmitChecker) queueTx(tx relay.SubmittedTxInfo) {
 	tc.queue <- tx
 }
 
-func (tc *TxSubmitChecker) workerThread() {
-	// TODO: this thread runs for infinite amount of time, there must be some means to gracefully stop it
-	for tx := range tc.queue {
-		neutronHash, err := hex.DecodeString(tx.NeutronHash)
-		if err != nil {
-			tc.logger.Error(
-				fmt.Sprintf("Failed to decode neutron hash %s (this must never happen)", tx.NeutronHash),
-				zap.Error(err),
-			)
-			continue
-		}
+func (tc *TxSubmitChecker) workerThread(tx relay.SubmittedTxInfo) {
+	neutronHash, err := hex.DecodeString(tx.NeutronHash)
+	if err != nil {
+		tc.logger.Error(
+			fmt.Sprintf("Failed to decode neutron hash %s (this must never happen)", tx.NeutronHash),
+			zap.Error(err),
+		)
+		return
+	}
 
-		txResponse, err := tc.rpcClient.Tx(context.TODO(), neutronHash, false)
-		if err != nil {
-			tc.logger.Info(fmt.Sprintf("Failed to call rpc://Tx(%s)", tx.NeutronHash), zap.Error(err))
-			// try again after `checkSubmittedTxStatusDelay` milliseconds
-			go func(tx relay.SubmittedTxInfo) {
-				time.Sleep(time.Duration(tc.checkDelay) * time.Millisecond)
-				tc.queue <- tx
-			}(tx)
-			continue
-		}
+	txResponse, err := tc.rpcClient.Tx(context.TODO(), neutronHash, false)
+	if err != nil {
+		tc.logger.Info(fmt.Sprintf("Failed to call rpc://Tx(%s)", tx.NeutronHash), zap.Error(err))
+		// try again after `checkSubmittedTxStatusDelay` milliseconds
+		go func(tx relay.SubmittedTxInfo) {
+			time.Sleep(time.Duration(tc.checkDelay) * time.Millisecond)
+			tc.queue <- tx
+		}(tx)
+		return
+	}
 
-		if txResponse.TxResult.Code == 0 {
-			tc.updateTxStatus(&tx, relay.Committed)
-		} else {
-			tc.updateTxStatus(&tx, relay.ErrorOnCommit)
-		}
+	if txResponse.TxResult.Code == 0 {
+		tc.updateTxStatus(&tx, relay.Committed)
+	} else {
+		tc.updateTxStatus(&tx, relay.ErrorOnCommit)
 	}
 }
 
