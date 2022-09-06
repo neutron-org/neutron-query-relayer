@@ -25,10 +25,10 @@ note: with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC
 
 # Testing
 
-## Run unit tests
+### Run unit tests
 `$ make test`
 
-## Testing with 2 neutron-chains (easier for development) via cli
+### Testing with 2 neutron-chains (easier for development) via cli
 
 #### prerequisites
 Clone the following repositories to the same folder where the neutron-query-relayer folder is located:
