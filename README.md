@@ -7,15 +7,14 @@ Makes interchain queries possible:
 3. On each event, relayer gets proofs for all the needed data for query from the target chain;
 4. Relayer either sends query result to Neutron (for KV queries) or calls query owner's sudo handler (for TX queries if callback execution is allowed by configuration of the relayer).
 
-# Running
-
-## Running in development
+# Running in development
 
 ### Natively
 - export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs)` note: change rpc addresses to actual)
 - `make dev`
 
 For more configuration parameters see [Environment section](#Environment).
+
 ### In Docker
 1. Build docker image 
 `make build-docker`
@@ -23,12 +22,6 @@ For more configuration parameters see [Environment section](#Environment).
 `docker run --env-file .env.example -v $PWD/../neutron/data:/data -p 9999:9999 neutron-org/neutron-query-relayer`
 note: this command uses relative path to mount keys, run this from root path of `neutron-query-relayer`
 note: with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1`
-
-## Running in production
-!!! TODO: full info on how to run in production
-
-note: consider to change  `RELAYER_NEUTRON_CHAIN_RPC_ADDR` & `RELAYER_TARGET_CHAIN_RPC_ADDR` to actual rpc addresses
-- `RELAYER_TARGET_CHAIN_HOME_DIR` `RELAYER_NEUTRON_CHAIN_HOME_DIR` also need to be changed (keys are generated in `terminal 1`)
 
 # Testing
 
