@@ -18,6 +18,7 @@ import (
 func NewSubscriber(
 	rpcAddress string,
 	targetChainID string,
+	targetConnectionID string,
 	registry *registry.Registry,
 	watchedTypes []neutrontypes.InterchainQueryType,
 	logger *zap.Logger,
@@ -34,12 +35,13 @@ func NewSubscriber(
 		watchedTypesMap[queryType] = struct{}{}
 	}
 	return &Subscriber{
-		client:        client,
-		rpcAddress:    rpcAddress,
-		targetChainID: targetChainID,
-		registry:      registry,
-		logger:        logger,
-		watchedTypes:  watchedTypesMap,
+		client:             client,
+		rpcAddress:         rpcAddress,
+		targetChainID:      targetChainID,
+		targetConnectionID: targetConnectionID,
+		registry:           registry,
+		logger:             logger,
+		watchedTypes:       watchedTypesMap,
 	}, nil
 }
 
@@ -47,13 +49,14 @@ func NewSubscriber(
 // filters them in accordance with the Registry configuration and watchedTypes, and provides a
 // stream of split to KV and TX messages.
 type Subscriber struct {
-	client        *http.HTTP
-	rpcAddress    string
-	targetChainID string
-	registry      *registry.Registry
-	logger        *zap.Logger
-	watchedTypes  map[neutrontypes.InterchainQueryType]struct{}
-	subCancel     context.CancelFunc // subCancel controls subscriber event handling loop
+	client             *http.HTTP
+	rpcAddress         string
+	targetChainID      string
+	targetConnectionID string
+	registry           *registry.Registry
+	logger             *zap.Logger
+	watchedTypes       map[neutrontypes.InterchainQueryType]struct{}
+	subCancel          context.CancelFunc // subCancel controls subscriber event handling loop
 }
 
 // Subscribe subscribes on chain's events, transforms them to KV and TX messages and sends to
@@ -142,7 +145,7 @@ func (s *Subscriber) subscriberName() string {
 // subscribeQuery returns a query to filter out interchain query events.
 func (s *Subscriber) subscribeQuery() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.targetChainID,
+		connectionIdAttr, s.targetConnectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQuery,
 		eventAttr, types.EventNewBlockHeader,
