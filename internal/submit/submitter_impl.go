@@ -18,8 +18,8 @@ func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
 	return &SubmitterImpl{sender: sender}
 }
 
-// SubmitProof submits query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitProof(
+// SubmitKVProof submits query with proof back to Neutron chain
+func (si *SubmitterImpl) SubmitKVProof(
 	ctx context.Context,
 	height,
 	revision,
@@ -34,15 +34,15 @@ func (si *SubmitterImpl) SubmitProof(
 	}
 
 	msgs = append([]sdk.Msg{updateClientMsg}, msgs...)
-
-	return si.sender.Send(ctx, msgs)
+	_, err = si.sender.Send(ctx, msgs)
+	return err
 }
 
 // SubmitTxProof submits tx query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clientID string, proof *neutrontypes.Block) error {
+func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clientID string, proof *neutrontypes.Block) (string, error) {
 	msgs, err := si.buildTxProofMsg(queryId, clientID, proof)
 	if err != nil {
-		return fmt.Errorf("could not build tx proof msg: %w", err)
+		return "", fmt.Errorf("could not build tx proof msg: %w", err)
 	}
 
 	return si.sender.Send(ctx, msgs)

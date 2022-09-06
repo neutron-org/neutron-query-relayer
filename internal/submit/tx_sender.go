@@ -2,7 +2,12 @@ package submit
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	tmtypes "github.com/tendermint/tendermint/types"
+	"go.uber.org/zap"
+	"strings"
+	"sync"
 
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -26,16 +31,19 @@ const (
 )
 
 type TxSender struct {
-	keybase         keyring.Keyring
-	baseTxf         tx.Factory
-	txConfig        client.TxConfig
-	rpcClient       rpcclient.Client
-	chainID         string
-	addressPrefix   string
-	signKeyName     string
-	gasPrices       string
-	gasLimit        uint64
-	txBroadcastType config.TxBroadcastType
+	lock          sync.Mutex
+	sequence      uint64
+	accountNumber uint64
+	keybase       keyring.Keyring
+	baseTxf       tx.Factory
+	txConfig      client.TxConfig
+	rpcClient     rpcclient.Client
+	chainID       string
+	addressPrefix string
+	signKeyName   string
+	gasPrices     string
+	gasLimit      uint64
+	logger        *zap.Logger
 }
 
 func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
@@ -47,7 +55,7 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 	return keybase, nil
 }
 
-func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig) (*TxSender, error) {
+func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig, logger *zap.Logger) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
@@ -57,22 +65,30 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		WithGasAdjustment(cfg.GasAdjustment).
 		WithGasPrices(cfg.GasPrices)
 
-	return &TxSender{
-		keybase:         keybase,
-		txConfig:        txConfig,
-		baseTxf:         baseTxf,
-		rpcClient:       rpcClient,
-		chainID:         cfg.ChainID,
-		addressPrefix:   cfg.ChainPrefix,
-		signKeyName:     cfg.SignKeyName,
-		gasPrices:       cfg.GasPrices,
-		gasLimit:        cfg.GasLimit,
-		txBroadcastType: cfg.TxBroadcastType,
-	}, nil
+	txs := &TxSender{
+		lock:          sync.Mutex{},
+		keybase:       keybase,
+		txConfig:      txConfig,
+		baseTxf:       baseTxf,
+		rpcClient:     rpcClient,
+		chainID:       cfg.ChainID,
+		addressPrefix: cfg.ChainPrefix,
+		signKeyName:   cfg.SignKeyName,
+		gasPrices:     cfg.GasPrices,
+		gasLimit:      cfg.GasLimit,
+		logger:        logger,
+	}
+	err := txs.Init()
+	if err != nil {
+		return nil, fmt.Errorf("failed to init tx sender: %w", err)
+	}
+
+	return txs, nil
 }
 
-// Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
-func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
+func (txs *TxSender) Init() error {
+	//TODO pass ctx as method arg
+	ctx := context.Background()
 	senderAddr, err := txs.SenderAddr()
 	if err != nil {
 		return fmt.Errorf("could not fetch sender addr: %w", err)
@@ -82,18 +98,36 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 	if err != nil {
 		return fmt.Errorf("error fetching account: %w", err)
 	}
+	txs.accountNumber = account.AccountNumber
+	txs.sequence = account.Sequence
+	return nil
+}
+
+// Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
+func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
+	txs.lock.Lock()
+	defer txs.lock.Unlock()
 
 	txf := txs.baseTxf.
-		WithAccountNumber(account.AccountNumber).
-		WithSequence(account.Sequence)
+		WithAccountNumber(txs.accountNumber).
+		WithSequence(txs.sequence)
 
 	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
 	if err != nil {
-		return fmt.Errorf("error calculating gas: %w", err)
+		// at this point error code for "incorrect account sequence" is 18 = "invalid request"
+		// it's a very common error code to rely on, hence we have to rely on error message
+		if strings.Contains(err.Error(), "incorrect account sequence") {
+			errInit := txs.Init()
+			if errInit != nil {
+				return "", fmt.Errorf("error calculating gas: failed to reinit sender: %w", errInit)
+			}
+			txs.logger.Info("sender reinitialized successfully(account sequence reset)")
+		}
+		return "", fmt.Errorf("error calculating gas: %w", err)
 	}
 
 	if txs.gasLimit > 0 && gasNeeded > txs.gasLimit {
-		return fmt.Errorf("exceeds gas limit: gas needed %d, gas limit %d", gasNeeded, txs.gasLimit)
+		return "", fmt.Errorf("exceeds gas limit: gas needed %d, gas limit %d", gasNeeded, txs.gasLimit)
 	}
 
 	txf = txf.
@@ -102,43 +136,28 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) error {
 
 	bz, err := txs.signAndBuildTxBz(txf, msgs)
 	if err != nil {
-		return fmt.Errorf("could not sign and build tx bz: %w", err)
+		return "", fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
-	switch txs.txBroadcastType {
-	case config.BroadcastTxSync:
-		res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
-		if err != nil {
-			return fmt.Errorf("error broadcasting sync transaction: %w", err)
-		}
 
-		if res.Code == 0 {
-			return nil
-		} else {
-			return fmt.Errorf("error broadcasting sync transaction with log=%s", res.Log)
-		}
-	case config.BroadcastTxAsync:
-		res, err := txs.rpcClient.BroadcastTxAsync(ctx, bz)
-		if err != nil {
-			return fmt.Errorf("error broadcasting async transaction: %w", err)
-		}
-		if res.Code == 0 {
-			return nil
-		} else {
-			return fmt.Errorf("error broadcasting async transaction with log=%s", res.Log)
-		}
-	case config.BroadcastTxCommit:
-		res, err := txs.rpcClient.BroadcastTxCommit(ctx, bz)
-		if err != nil {
-			return fmt.Errorf("error broadcasting commit transaction: %w", err)
-		}
-		if res.CheckTx.Code == 0 && res.DeliverTx.Code == 0 {
-			return nil
-		} else {
-			return fmt.Errorf("error broadcasting commit transaction with checktx log=%s and deliverytx log=%s", res.CheckTx.Log, res.DeliverTx.Log)
-		}
-	default:
-		return fmt.Errorf("not implemented transaction send type: %s", txs.txBroadcastType)
+	res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
+	if err != nil {
+		return "", fmt.Errorf("error broadcasting sync transaction: %w", err)
 	}
+
+	if res.Code == 0 {
+		txs.sequence += 1
+		return hex.EncodeToString(tmtypes.Tx(bz).Hash()), nil
+	}
+	if res.Code == 32 {
+		// code 32 is "incorrect account sequence" error
+		errInit := txs.Init()
+		if errInit != nil {
+			return "", fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", errInit)
+		}
+		txs.logger.Info("sender reinitialized successfully(account sequence reset)")
+	}
+	return "", fmt.Errorf("error broadcasting sync transaction: log=%s", res.Log)
+
 }
 
 func (txs *TxSender) SenderAddr() (string, error) {
