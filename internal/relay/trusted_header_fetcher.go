@@ -195,8 +195,7 @@ func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.
 
 	tmClientState, ok := clientState.(*tmclient.ClientState)
 	if !ok {
-		// todo: correct to print nonconverted var?
-		return 0, fmt.Errorf("expected client state of type *tmclient.ClientState, got %T", tmClientState)
+		return 0, fmt.Errorf("expected client state of type *tmclient.ClientState, got %T", clientState)
 	}
 	if tmClientState.TrustingPeriod == 0 {
 		return 0, fmt.Errorf("got empty TrustingPeriod")
