@@ -104,10 +104,7 @@ func main() {
 		store = storage.NewDummyStorage()
 	}
 
-	trustedHeaderFetcher, err := relay.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
-	if err != nil {
-		logger.Fatal("couldn't initialize TrustedHeaderFetcher", zap.Error(err))
-	}
+	trustedHeaderFetcher := relay.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
 
 	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
 	if cfg.AllowTxQueries {

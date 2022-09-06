@@ -3,8 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
@@ -20,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// how many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
+// consensusPageSize is how many consensusStates to retrieve for each page in `qc.ConsensusStates(...)` call
 const consensusPageSize = 10
 
 // submissionMarginPeriod is a lag period, because we need consensusState to be valid until we approve it on the chain
@@ -46,18 +44,13 @@ type TrustedHeaderFetcher struct {
 }
 
 // NewTrustedHeaderFetcher constructs a new TrustedHeaderFetcher
-func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) (*TrustedHeaderFetcher, error) {
-	revisionNumber, err := extractRevisionNumber(targetChain.ChainID())
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract revision number")
-	}
-
+func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.Chain, logger *zap.Logger) *TrustedHeaderFetcher {
 	return &TrustedHeaderFetcher{
 		neutronChain:   neutronChain,
 		targetChain:    targetChain,
 		logger:         logger,
-		revisionNumber: revisionNumber,
-	}, nil
+		revisionNumber: clienttypes.ParseChainID(targetChain.ChainID()),
+	}
 }
 
 // Fetch returns two Headers for height and height+1 packed into *codectypes.Any value
@@ -91,7 +84,7 @@ func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (head
 		return
 	}
 
-	neutronmetrics.RecordTime("TrustedHeaderFetcher", time.Since(start).Seconds())
+	neutronmetrics.RecordActionDuration("TrustedHeaderFetcher", time.Since(start).Seconds())
 
 	return
 }
@@ -174,19 +167,12 @@ func (thf *TrustedHeaderFetcher) getTrustedHeight(ctx context.Context, height ui
 			return nil, fmt.Errorf("failed to get consensus states for client ID %s: %w", thf.neutronChain.ClientID(), err)
 		}
 
-		for _, item := range page.ConsensusStates {
-			unpackedItem, ok := item.ConsensusState.GetCachedValue().(ibcexported.ConsensusState)
-			if !ok {
-				return nil, fmt.Errorf("could not unpack consensus state from Any value")
-			}
-
-			olderOrSameAsHeightInSameRevision := item.Height.RevisionNumber == thf.revisionNumber && item.Height.RevisionHeight <= height
-
-			consensusTimestamp := time.Unix(0, int64(unpackedItem.GetTimestamp()))
-			notExpired := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
-
-			if olderOrSameAsHeightInSameRevision && notExpired {
-				return &item.Height, nil
+		for _, cs := range page.ConsensusStates {
+			suitable, err := thf.isSuitableCS(cs, trustingPeriod, height)
+			if err != nil {
+				return nil, err
+			} else if suitable {
+				return &cs.Height, nil
 			}
 		}
 
@@ -209,7 +195,8 @@ func (thf *TrustedHeaderFetcher) fetchTrustingPeriod(ctx context.Context) (time.
 
 	tmClientState, ok := clientState.(*tmclient.ClientState)
 	if !ok {
-		return 0, fmt.Errorf("got non-tm ClientState")
+		// todo: correct to print nonconverted var?
+		return 0, fmt.Errorf("expected client state of type *tmclient.ClientState, got %T", tmClientState)
 	}
 	if tmClientState.TrustingPeriod == 0 {
 		return 0, fmt.Errorf("got empty TrustingPeriod")
@@ -229,11 +216,11 @@ func (thf *TrustedHeaderFetcher) retryGetLightSignedHeaderAtHeight(ctx context.C
 
 		tmp, ok := header.(*tmclient.Header)
 		if !ok {
-			return fmt.Errorf("non-tm client header")
+			return fmt.Errorf("expected header of type *tmclient.Header, got %T", header)
 		}
 
 		tmHeader = tmp
-		return err
+		return nil
 	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
 		return nil, fmt.Errorf(
 			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
@@ -244,19 +231,20 @@ func (thf *TrustedHeaderFetcher) retryGetLightSignedHeaderAtHeight(ctx context.C
 	return tmHeader, nil
 }
 
-func extractRevisionNumber(chainID string) (uint64, error) {
-	arr := strings.Split(chainID, "-")
-	if len(arr) != 2 {
-		return 0, fmt.Errorf("invalid chain id format, chain_id=%s", chainID)
+// isSuitableCS parses the given consensus state and checks if its height can be used as trusted.
+// The condition for this check is the following:
+//
+// 1. The consensus state height is in the same revision and is less or equal to the given height;
+// 2. The consensus state timestamp is within the trusting period.
+func (thf *TrustedHeaderFetcher) isSuitableCS(cs clienttypes.ConsensusStateWithHeight, trustingPeriod time.Duration, height uint64) (bool, error) {
+	ibcCS, ok := cs.ConsensusState.GetCachedValue().(ibcexported.ConsensusState)
+	if !ok {
+		return false, fmt.Errorf("couldn't cast consensus state value of type %T to ibcexported.ConsensusState", cs.ConsensusState.GetCachedValue())
 	}
-
-	revisionStr := arr[1]
-	revisionNumber, err := strconv.ParseInt(revisionStr, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid chain id revision, not int, chain_id=%s", chainID)
-	}
-
-	return uint64(revisionNumber), err
+	olderOrSameAsHeightInSameRevision := cs.Height.RevisionNumber == thf.revisionNumber && cs.Height.RevisionHeight <= height
+	consensusTimestamp := time.Unix(0, int64(ibcCS.GetTimestamp()))
+	inTrustingPeriod := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
+	return olderOrSameAsHeightInSameRevision && inTrustingPeriod, nil
 }
 
 func requestPage(clientID string, nextKey []byte) *clienttypes.QueryConsensusStatesRequest {
