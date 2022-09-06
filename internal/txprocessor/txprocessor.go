@@ -61,7 +61,7 @@ func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, txs <
 
 		block, err := r.txToBlock(ctx, tx)
 		if err != nil {
-			return 0, fmt.Errorf("failed to prepsre block: %w", err)
+			return 0, fmt.Errorf("failed to prepare block: %w", err)
 		}
 
 		err = r.submitTxWithProofs(queryID, block)
