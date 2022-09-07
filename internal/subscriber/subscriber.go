@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.

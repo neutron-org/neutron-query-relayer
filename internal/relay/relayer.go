@@ -20,10 +20,11 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // TxHeight describes tendermint filter by tx.height that we use to get only actual txs
