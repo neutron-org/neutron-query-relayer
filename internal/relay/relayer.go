@@ -36,7 +36,7 @@ type Relayer struct {
 	submitter            Submitter
 	targetChain          *relayer.Chain
 	neutronChain         *relayer.Chain
-	trustedHeaderFetcher *TrustedHeaderFetcher
+	trustedHeaderFetcher TrustedHeaderFetcher
 	subscriber           Subscriber
 	logger               *zap.Logger
 	storage              Storage
@@ -48,7 +48,7 @@ func NewRelayer(
 	submitter Submitter,
 	srcChain *relayer.Chain,
 	dstChain *relayer.Chain,
-	trustedHeaderFetcher *TrustedHeaderFetcher,
+	trustedHeaderFetcher TrustedHeaderFetcher,
 	subscriber Subscriber,
 	logger *zap.Logger,
 	store Storage,

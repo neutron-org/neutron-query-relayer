@@ -36,7 +36,7 @@ var (
 	}, []string{labelMethod, labelType})
 
 	actionDurations = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "relayer_time",
+		Name:    "action_durations",
 		Help:    "A histogram of target chain getters duration",
 		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 30},
 	}, []string{labelMethod, labelType})

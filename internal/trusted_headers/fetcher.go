@@ -1,4 +1,4 @@
-package relay
+package trusted_headers
 
 import (
 	"context"

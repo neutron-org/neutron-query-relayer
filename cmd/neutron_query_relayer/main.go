@@ -10,6 +10,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
+
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -104,7 +106,7 @@ func main() {
 		store = storage.NewDummyStorage()
 	}
 
-	trustedHeaderFetcher := relay.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
+	trustedHeaderFetcher := trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
 
 	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
 	if cfg.AllowTxQueries {
