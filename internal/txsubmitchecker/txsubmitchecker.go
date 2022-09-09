@@ -27,7 +27,7 @@ type TxSubmitChecker struct {
 	storage    relay.Storage
 	rpcClient  rpcclient.Client
 	logger     *zap.Logger
-	checkDelay uint64
+	checkDelay time.Duration
 }
 
 func NewTxSubmitChecker(
@@ -43,7 +43,7 @@ func NewTxSubmitChecker(
 		storage,
 		rpcClient,
 		logger,
-		checkSubmittedTxStatusDelay,
+		time.Duration(checkSubmittedTxStatusDelay) * time.Second,
 	}
 }
 
@@ -70,17 +70,17 @@ func (tc *TxSubmitChecker) Run(ctx context.Context) {
 
 func (tc *TxSubmitChecker) queueTx(tx relay.PendingSubmittedTxInfo) {
 	tc.logger.Info(fmt.Sprintf("tx submit checker: new job: %s", tx.NeutronHash))
-	age := time.Now().Sub(tx.SubmitTime).Milliseconds()
+	age := time.Since(tx.SubmitTime)
 	if age < 0 {
 		tc.logger.Warn(fmt.Sprintf(
 			"tx %s has negative age of %d milliseconds (submitted at %s)",
 			tx.NeutronHash,
-			age,
+			age.Milliseconds(),
 			tx.SubmitTime.Format(time.RFC3339Nano),
 		))
 	}
-	if age >= 0 && age < int64(tc.checkDelay) {
-		time.Sleep(time.Duration(int64(tc.checkDelay)-age) * time.Millisecond)
+	if age >= 0 && age < tc.checkDelay {
+		time.Sleep(tc.checkDelay - age)
 	}
 	tc.queue <- tx
 }
