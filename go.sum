@@ -755,8 +755,10 @@ github.com/nats-io/nkeys v0.2.0/go.mod h1:XdZpAbhgyyODYqjTawOnIOI7VlbKSarI9Gfy1t
 github.com/nats-io/nkeys v0.3.0/go.mod h1:gvUNGjVcM2IPr5rCsRsC6Wb3Hr2CQAm08dsxtV6A5y4=
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=
 github.com/neilotoole/errgroup v0.1.5/go.mod h1:Q2nLGf+594h0CLBs/Mbg6qOr7GtqDK7C2S41udRnToE=
-github.com/neutron-org/neutron v0.0.0-20220831181931-4220511948f3 h1:4O62Ji64yGxFgyEj128vmTv/Chr10Kh2PYyEUwBx9No=
-github.com/neutron-org/neutron v0.0.0-20220831181931-4220511948f3/go.mod h1:W/hfSP5c5KUIJbTdLcQHP1G8cvIUuXWEMNVf91rAhg4=
+github.com/neutron-org/neutron v0.0.0-20220902110907-a94acd6cbc2d h1:O6hF8GWJ2PL3NOQjqBWz/k4sxkm6s7/grFMtcZHcFy8=
+github.com/neutron-org/neutron v0.0.0-20220902110907-a94acd6cbc2d/go.mod h1:5SagbPCnekzjByaPM2HWPxpClgKhCGy9kKj+Q14UDOM=
+github.com/neutron-org/neutron v0.0.0-20220909075558-caf377b38db1 h1:seBlI0u9QSQb9870lyfzsCx3uaOyn69oSItVeGxzjfM=
+github.com/neutron-org/neutron v0.0.0-20220909075558-caf377b38db1/go.mod h1:5SagbPCnekzjByaPM2HWPxpClgKhCGy9kKj+Q14UDOM=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
