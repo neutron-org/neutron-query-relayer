@@ -82,6 +82,7 @@ func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.Neutr
 	subscriber, err := subscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.TargetChain.ChainID,
+		cfg.TargetChain.ConnectionID,
 		registry.New(cfg.Registry),
 		watchedMsgTypes,
 		logger,

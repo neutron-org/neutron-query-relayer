@@ -41,7 +41,9 @@ func main() {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
 
-	relayer, notifChannel := app.NewDefaultRelayer(logger, cfg)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	relayer, notifChannel := app.NewDefaultRelayer(ctx, logger, cfg)
 
 	// DEMO PURPOSE ONLY
 	go func() {
@@ -51,7 +53,6 @@ func main() {
 	}()
 	// DEMO PURPOSE ONLY
 
-	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
