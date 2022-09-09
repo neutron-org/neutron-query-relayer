@@ -115,6 +115,7 @@ func main() {
 	sub, err := subscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.TargetChain.ChainID,
+		cfg.TargetChain.ConnectionID,
 		registry.New(cfg.Registry),
 		watchedMsgTypes,
 		logger,
