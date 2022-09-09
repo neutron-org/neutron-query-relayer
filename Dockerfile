@@ -5,10 +5,7 @@ RUN mkdir /app
 WORKDIR /app
 COPY . .
 ENV GOPRIVATE=github.com/neutron-org/neutron
-RUN  --mount=type=ssh mkdir -p ~/.ssh && chmod 600 ~/.ssh && \
-    ssh-keyscan -H github.com >> ~/.ssh/known_hosts && \
-    git config --global url."git@github.com:".insteadOf "https://github.com/" && \
-    go mod download && \
+RUN go mod download && \
     go build -a -o /go/bin/neutron_query_relayer ./cmd/neutron_query_relayer
 
 FROM debian:buster
