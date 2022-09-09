@@ -12,9 +12,9 @@ const (
 	// eventAttr is the key of the tendermint's event attribute that contains the kind of event.
 	eventAttr = "tm.event"
 
-	// zoneIdAttr is the key of the Neutron's custom message event's attribute that contains the
-	// zone ID the event originates from.
-	zoneIdAttr = "message." + types.AttributeKeyZoneID
+	// connectionIdAttr is the key of the Neutron's custom message event's attribute that contains the
+	// connectionID of the event's query.
+	connectionIdAttr = "message." + types.AttributeKeyConnectionID
 	// queryIdAttr is the key of the Neutron's custom message event's attribute that contains the
 	// incoming ICQ ID.
 	queryIdAttr = "message." + types.AttributeKeyQueryID

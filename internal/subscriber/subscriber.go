@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
 func NewSubscriber(
 	rpcAddress string,
 	targetChainID string,
+	targetConnectionID string,
 	registry *registry.Registry,
 	watchedTypes []neutrontypes.InterchainQueryType,
 	logger *zap.Logger,
@@ -34,12 +36,13 @@ func NewSubscriber(
 		watchedTypesMap[queryType] = struct{}{}
 	}
 	return &Subscriber{
-		client:        client,
-		rpcAddress:    rpcAddress,
-		targetChainID: targetChainID,
-		registry:      registry,
-		logger:        logger,
-		watchedTypes:  watchedTypesMap,
+		client:             client,
+		rpcAddress:         rpcAddress,
+		targetChainID:      targetChainID,
+		targetConnectionID: targetConnectionID,
+		registry:           registry,
+		logger:             logger,
+		watchedTypes:       watchedTypesMap,
 	}, nil
 }
 
@@ -47,13 +50,14 @@ func NewSubscriber(
 // filters them in accordance with the Registry configuration and watchedTypes, and provides a
 // stream of split to KV and TX messages.
 type Subscriber struct {
-	client        *http.HTTP
-	rpcAddress    string
-	targetChainID string
-	registry      *registry.Registry
-	logger        *zap.Logger
-	watchedTypes  map[neutrontypes.InterchainQueryType]struct{}
-	subCancel     context.CancelFunc // subCancel controls subscriber event handling loop
+	client             *http.HTTP
+	rpcAddress         string
+	targetChainID      string
+	targetConnectionID string
+	registry           *registry.Registry
+	logger             *zap.Logger
+	watchedTypes       map[neutrontypes.InterchainQueryType]struct{}
+	subCancel          context.CancelFunc // subCancel controls subscriber event handling loop
 }
 
 // Subscribe subscribes on chain's events, transforms them to KV and TX messages and sends to
@@ -142,7 +146,7 @@ func (s *Subscriber) subscriberName() string {
 // subscribeQuery returns a query to filter out interchain query events.
 func (s *Subscriber) subscribeQuery() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
-		zoneIdAttr, s.targetChainID,
+		connectionIdAttr, s.targetConnectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQuery,
 		eventAttr, types.EventNewBlockHeader,
@@ -153,7 +157,7 @@ func (s *Subscriber) subscribeQuery() string {
 // to a slice of queryEventMessage.
 func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessage, error) {
 	events := e.Events
-	icqEventsCount := len(events[zoneIdAttr])
+	icqEventsCount := len(events[connectionIdAttr])
 	if icqEventsCount == 0 {
 		return nil, nil
 	}
@@ -166,7 +170,7 @@ func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessag
 	}
 
 	messages := make([]*queryEventMessage, 0, icqEventsCount)
-	for idx := range events[zoneIdAttr] {
+	for idx := range events[connectionIdAttr] {
 		if !s.isWatchedAddress(events[ownerAttr][idx]) {
 			continue
 		}
