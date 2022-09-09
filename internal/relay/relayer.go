@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zyedidia/generic/queue"
 	"time"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
@@ -57,14 +58,7 @@ func NewRelayer(
 // Run starts the relaying process: subscribes on the incoming interchain query messages from the
 // Neutron and performs the queries by interacting with the target chain and submitting them to
 // the Neutron chain.
-func (r *Relayer) Run(ctx context.Context) error {
-	r.logger.Info("subscribing to neutron chain events...")
-	kvChan, txChan, err := r.subscriber.Subscribe()
-	if err != nil {
-		return fmt.Errorf("failed to subscribe to neutron events: %w", err)
-	}
-	r.logger.Info("successfully subscribed to neutron chain events")
-
+func (r *Relayer) Run(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
 	go r.txSubmitChecker.Run(ctx)
 
 	for {
@@ -75,24 +69,30 @@ func (r *Relayer) Run(ctx context.Context) error {
 			err       error
 		)
 		select {
-		case msg := <-kvChan:
-			start = time.Now()
-			queryType = neutrontypes.InterchainQueryTypeKV
-			queryID = msg.QueryId
-			err = r.processMessageKV(context.Background(), msg)
-		case msg := <-txChan:
-			start = time.Now()
-			queryType = neutrontypes.InterchainQueryTypeTX
-			queryID = msg.QueryId
-			err = r.processMessageTX(context.Background(), msg)
+		default:
+			// TODO(oopcode): busy loop?
+			if tasks.Empty() {
+				continue
+			}
+
+			query := tasks.Dequeue()
+			switch query.QueryType {
+			case string(neutrontypes.InterchainQueryTypeKV):
+				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
+				err = r.processMessageKV(ctx, msg)
+			case string(neutrontypes.InterchainQueryTypeTX):
+				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
+				err = r.processMessageTX(context.Background(), msg)
+			}
+
+			if err != nil {
+				r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
+				neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
+			} else {
+				neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
+			}
 		case <-ctx.Done():
 			return r.stop()
-		}
-		if err != nil {
-			r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
-			neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
-		} else {
-			neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
 		}
 	}
 }
@@ -107,16 +107,10 @@ func (r *Relayer) stop() error {
 		r.logger.Info("relayer's storage has been closed")
 	}
 
-	if err := r.subscriber.Unsubscribe(); err != nil {
-		r.logger.Error("failed to unsubscribe", zap.Error(err))
-		failed = true
-	} else {
-		r.logger.Info("subscriber has been stopped")
-	}
-
 	if failed {
 		return fmt.Errorf("error occurred while stopping relayer, see recent logs for more info")
 	}
+
 	return nil
 }
 

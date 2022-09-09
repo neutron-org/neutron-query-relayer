@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	"github.com/zyedidia/generic/queue"
 	"log"
 	"net/http"
 	"os"
@@ -35,19 +37,24 @@ func main() {
 		}
 	}()
 	logger.Info("metrics handler set up")
+
 	cfg, err := config.NewNeutronQueryRelayerConfig()
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	relayer := app.NewDefaultRelayer(ctx, logger, cfg)
-
 	wg := &sync.WaitGroup{}
+
+	queriesTasksQueue := queue.New[neutrontypes.RegisteredQuery]()
+
+	// TODO(oopcode): initialise & run the subscriber (currently done in NewDefaultRelayer)
+
+	relayer := app.NewDefaultRelayer(ctx, logger, cfg)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := relayer.Run(ctx); err != nil {
+		if err := relayer.Run(ctx, queriesTasksQueue); err != nil {
 			logger.Error("Relayer exited with an error", zap.Error(err))
 		}
 	}()
