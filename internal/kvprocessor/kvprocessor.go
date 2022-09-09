@@ -12,16 +12,17 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/tdmquerier"
+	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"go.uber.org/zap"
 	"time"
 )
 
+// KVProcessor is implementation of relay.KVProcessor that processes event query KV type.
+// Obtains the proof for a query we need to process, and sends it to  the neutron
 type KVProcessor struct {
-	querier           *tdmquerier.Querier
+	querier           *tmquerier.Querier
 	minKVUpdatePeriod uint64
-	allowKVCallbacks  bool
 	logger            *zap.Logger
 	submitter         relay.Submitter
 	storage           relay.Storage
@@ -30,18 +31,16 @@ type KVProcessor struct {
 }
 
 func NewKVProcessor(
-	querier *tdmquerier.Querier,
+	querier *tmquerier.Querier,
 	minKVUpdatePeriod uint64,
-	allowKVCallbacks bool,
 	logger *zap.Logger,
 	submitter relay.Submitter,
 	storage relay.Storage,
 	targetChain *relayer.Chain,
 	neutronChain *relayer.Chain) relay.KVProcessor {
-	return KVProcessor{
+	return &KVProcessor{
 		querier:           querier,
 		minKVUpdatePeriod: minKVUpdatePeriod,
-		allowKVCallbacks:  allowKVCallbacks,
 		logger:            logger,
 		submitter:         submitter,
 		storage:           storage,
@@ -50,7 +49,8 @@ func NewKVProcessor(
 	}
 }
 
-func (p KVProcessor) ProcessAndSubmit(ctx context.Context, m *relay.MessageKV) error {
+// ProcessAndSubmit processes relay.MessageKV. The main method which does all the work of the KVProcessor
+func (p *KVProcessor) ProcessAndSubmit(ctx context.Context, m *relay.MessageKV) error {
 	latestHeight, err := p.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get header for src chain: %w", err)
@@ -69,7 +69,7 @@ func (p KVProcessor) ProcessAndSubmit(ctx context.Context, m *relay.MessageKV) e
 }
 
 // getStorageValues gets proofs for query type = 'kv'
-func (p KVProcessor) getStorageValues(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
+func (p *KVProcessor) getStorageValues(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
 	stValues := make([]*neutrontypes.StorageValue, 0, len(keys))
 	height := uint64(0)
 
@@ -92,12 +92,12 @@ func (p *KVProcessor) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, 
 		return true, nil
 	}
 
-	previous, ok, err := p.storage.GetLastQueryHeight(queryID)
+	previous, err := p.storage.GetLastQueryHeight(queryID)
 	if err != nil {
 		return false, err
 	}
 
-	if !ok || previous+p.minKVUpdatePeriod <= currentBlock {
+	if previous+p.minKVUpdatePeriod <= currentBlock {
 		err := p.storage.SetLastQueryHeight(queryID, currentBlock)
 		if err != nil {
 			return false, err
@@ -128,11 +128,9 @@ func (p *KVProcessor) submitKVWithProof(
 
 	st := time.Now()
 	if err = p.submitter.SubmitKVProof(
-		ctx,
 		uint64(height-1),
 		srcHeader.GetHeight().GetRevisionNumber(),
 		queryID,
-		p.allowKVCallbacks,
 		proof,
 		updateClientMsg,
 	); err != nil {

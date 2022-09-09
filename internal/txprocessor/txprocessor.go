@@ -18,7 +18,6 @@ type TXProcessor struct {
 	csManager relay.ConsensusManager
 	storage   relay.Storage
 	submitter relay.Submitter
-	clientID  string
 	logger    *zap.Logger
 	enqueue   chan<- relay.PendingSubmittedTxInfo
 	dequeue   <-chan relay.PendingSubmittedTxInfo
@@ -28,13 +27,11 @@ func NewTxProcessor(
 	csManager relay.ConsensusManager,
 	storage relay.Storage,
 	submitter relay.Submitter,
-	clientID string,
 	logger *zap.Logger) TXProcessor {
 	txProcessor := TXProcessor{
 		csManager: csManager,
 		storage:   storage,
 		submitter: submitter,
-		clientID:  clientID,
 		logger:    logger,
 	}
 	txProcessor.enqueue, txProcessor.dequeue = makeQueue()
@@ -67,7 +64,7 @@ func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, txs <
 			return 0, fmt.Errorf("failed to prepsre block: %w", err)
 		}
 
-		err = r.submitBlock(ctx, queryID, block)
+		err = r.submitTxWithProofs(queryID, block)
 		if err != nil {
 			return 0, fmt.Errorf("failed to submit block: %w", err)
 		}
@@ -79,10 +76,10 @@ func (r TXProcessor) GetSubmitNotificationChannel() <-chan relay.PendingSubmitte
 	return r.dequeue
 }
 
-func (r TXProcessor) submitBlock(ctx context.Context, queryID uint64, block *neutrontypes.Block) error {
+func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Block) error {
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
-	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, r.clientID, block)
+	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
 	if err != nil {
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})

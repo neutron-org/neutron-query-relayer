@@ -49,24 +49,24 @@ func (s *LevelDBStorage) GetAllPendingTxs() ([]*relay.PendingSubmittedTxInfo, er
 }
 
 // GetLastQueryHeight returns last update block for KV query
-func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, exists bool, err error) {
+func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	data, err := s.db.Get(uintToBytes(queryID), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
-			return 0, false, nil
+			return 0, nil
 		}
-		return 0, false, fmt.Errorf("failed getting data from db: %w", err)
+		return 0, fmt.Errorf("failed getting data from db: %w", err)
 	}
 
 	res, err := bytesToUint(data)
 	if err != nil {
-		return 0, false, fmt.Errorf("failed converting bytest to uint: %w", err)
+		return 0, fmt.Errorf("failed converting bytest to uint: %w", err)
 	}
 
-	return res, true, nil
+	return res, nil
 }
 
 // SetTxStatus sets status for given tx
@@ -83,7 +83,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 	// save tx status
 	t, err := s.db.OpenTransaction()
 	if err != nil {
-		return fmt.Errorf("failed to open leveldb tranaction: %w", err)
+		return fmt.Errorf("failed to open leveldb transaction: %w", err)
 	}
 
 	defer t.Discard()

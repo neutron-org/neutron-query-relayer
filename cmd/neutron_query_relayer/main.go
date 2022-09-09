@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
@@ -72,24 +71,4 @@ func main() {
 	}()
 
 	wg.Wait()
-}
-
-// runRelayer starts a background relaying process and manages its execution and a possible error
-// result. If the ctx is closed, a possible Run error is sent to the error channel. Also, if an
-// error occurs before the context is closed, it's sent to the error channel as well.
-func runRelayer(
-	relayer *relay.Relayer,
-	logger *zap.Logger,
-	wg *sync.WaitGroup,
-	ctx context.Context,
-	errChan chan<- error,
-) {
-	defer wg.Done()
-	if err := relayer.Run(ctx); err != nil {
-		select {
-		case <-ctx.Done():
-			logger.Error("relayer process finished with an error", zap.Error(err))
-		case errChan <- fmt.Errorf("relayer process finished with an error: %w", err):
-		}
-	}
 }

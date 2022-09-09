@@ -26,12 +26,14 @@ import (
 )
 
 const (
-	accountQueryPath  = "/cosmos.auth.v1beta1.Query/Account"
-	simulateQueryPath = "/cosmos.tx.v1beta1.Service/Simulate"
+	accountQueryPath             = "/cosmos.auth.v1beta1.Query/Account"
+	simulateQueryPath            = "/cosmos.tx.v1beta1.Service/Simulate"
+	IncorrectAccountSequenceCode = 32
 )
 
 type TxSender struct {
 	lock          sync.Mutex
+	ctx           context.Context
 	sequence      uint64
 	accountNumber uint64
 	keybase       keyring.Keyring
@@ -55,7 +57,7 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 	return keybase, nil
 }
 
-func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig, logger *zap.Logger) (*TxSender, error) {
+func NewTxSender(ctx context.Context, rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig, logger *zap.Logger) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
@@ -67,6 +69,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 
 	txs := &TxSender{
 		lock:          sync.Mutex{},
+		ctx:           ctx,
 		keybase:       keybase,
 		txConfig:      txConfig,
 		baseTxf:       baseTxf,
@@ -78,7 +81,7 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 		gasLimit:      cfg.GasLimit,
 		logger:        logger,
 	}
-	err := txs.Init()
+	err := txs.refreshAccountInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to init tx sender: %w", err)
 	}
@@ -86,15 +89,13 @@ func NewTxSender(rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshale
 	return txs, nil
 }
 
-func (txs *TxSender) Init() error {
-	//TODO pass ctx as method arg
-	ctx := context.Background()
+func (txs *TxSender) refreshAccountInfo() error {
 	senderAddr, err := txs.SenderAddr()
 	if err != nil {
 		return fmt.Errorf("could not fetch sender addr: %w", err)
 	}
 
-	account, err := txs.queryAccount(ctx, senderAddr)
+	account, err := txs.queryAccount(senderAddr)
 	if err != nil {
 		return fmt.Errorf("error fetching account: %w", err)
 	}
@@ -104,7 +105,7 @@ func (txs *TxSender) Init() error {
 }
 
 // Send builds transaction with calculated input msgs, calculated gas and fees, signs it and submits to chain
-func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
+func (txs *TxSender) Send(msgs []sdk.Msg) (string, error) {
 	txs.lock.Lock()
 	defer txs.lock.Unlock()
 
@@ -112,12 +113,12 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 		WithAccountNumber(txs.accountNumber).
 		WithSequence(txs.sequence)
 
-	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
+	gasNeeded, err := txs.calculateGas(txf, msgs...)
 	if err != nil {
 		// at this point error code for "incorrect account sequence" is 18 = "invalid request"
 		// it's a very common error code to rely on, hence we have to rely on error message
 		if strings.Contains(err.Error(), "incorrect account sequence") {
-			errInit := txs.Init()
+			errInit := txs.refreshAccountInfo()
 			if errInit != nil {
 				return "", fmt.Errorf("error calculating gas: failed to reinit sender: %w", errInit)
 			}
@@ -139,7 +140,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 		return "", fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
 
-	res, err := txs.rpcClient.BroadcastTxSync(ctx, bz)
+	res, err := txs.rpcClient.BroadcastTxSync(txs.ctx, bz)
 	if err != nil {
 		return "", fmt.Errorf("error broadcasting sync transaction: %w", err)
 	}
@@ -148,16 +149,15 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 		txs.sequence += 1
 		return hex.EncodeToString(tmtypes.Tx(bz).Hash()), nil
 	}
-	if res.Code == 32 {
-		// code 32 is "incorrect account sequence" error
-		errInit := txs.Init()
+
+	if res.Code == IncorrectAccountSequenceCode {
+		errInit := txs.refreshAccountInfo()
 		if errInit != nil {
 			return "", fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", errInit)
 		}
 		txs.logger.Info("sender reinitialized successfully(account sequence reset)")
 	}
 	return "", fmt.Errorf("error broadcasting sync transaction: log=%s", res.Log)
-
 }
 
 func (txs *TxSender) SenderAddr() (string, error) {
@@ -170,7 +170,7 @@ func (txs *TxSender) SenderAddr() (string, error) {
 }
 
 // queryAccount returns BaseAccount for given account address
-func (txs *TxSender) queryAccount(ctx context.Context, address string) (*authtypes.BaseAccount, error) {
+func (txs *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error) {
 	request := authtypes.QueryAccountRequest{Address: address}
 	req, err := request.Marshal()
 	if err != nil {
@@ -180,7 +180,7 @@ func (txs *TxSender) queryAccount(ctx context.Context, address string) (*authtyp
 		Path: accountQueryPath,
 		Data: req,
 	}
-	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := txs.rpcClient.ABCIQueryWithOptions(txs.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error making abci query for account=%s: %w", address, err)
 	}
@@ -220,7 +220,7 @@ func (txs *TxSender) signAndBuildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, e
 	return bz, err
 }
 
-func (txs *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
+func (txs *TxSender) calculateGas(txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	simulation, err := txs.buildSimulationTx(txf, msgs...)
 	if err != nil {
 		return 0, fmt.Errorf("error building simulation tx: %w", err)
@@ -230,7 +230,7 @@ func (txs *TxSender) calculateGas(ctx context.Context, txf tx.Factory, msgs ...s
 		Path: simulateQueryPath,
 		Data: simulation,
 	}
-	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := txs.rpcClient.ABCIQueryWithOptions(txs.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return 0, fmt.Errorf("error making abci query for gas calculation: %w", err)
 	}

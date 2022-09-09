@@ -3,15 +3,14 @@ package txquerier
 import (
 	"context"
 	"fmt"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/types"
 	"strings"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	abci "github.com/tendermint/tendermint/abci/types"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
-
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var perPage = 100
@@ -19,17 +18,6 @@ var perPage = 100
 var TxsChanSize = 100
 
 const orderBy = "asc"
-
-func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
-	cp := new(crypto.Proof)
-
-	cp.Total = mp.Total
-	cp.Index = mp.Index
-	cp.LeafHash = mp.LeafHash
-	cp.Aunts = mp.Aunts
-
-	return cp
-}
 
 func NewTXQuerySrv(chainClient relay.ChainClient) *TXQuerierSrv {
 	return &TXQuerierSrv{
@@ -43,25 +31,10 @@ type TXQuerierSrv struct {
 	err         error
 }
 
-// proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
-func (t TXQuerierSrv) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*crypto.Proof, *abci.ResponseDeliverTx, error) {
-	results, err := t.chainClient.BlockResults(ctx, &blockHeight)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch block results for height = %d: %w", blockHeight, err)
-	}
-
-	txsResults := results.TxsResults
-	abciResults := types.NewResults(txsResults)
-	txProof := abciResults.ProveResult(int(txIndexInBlock))
-	txResult := txsResults[txIndexInBlock]
-
-	return cryptoProofFromMerkleProof(txProof), txResult, nil
-}
-
 // SearchTransactions gets txs with proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
 func (t *TXQuerierSrv) SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) <-chan relay.Transaction {
+	t.err = nil
 	txs := make(chan relay.Transaction, TxsChanSize)
 	query, err := queryFromTxFilter(txFilter)
 	if err != nil {
@@ -111,8 +84,24 @@ func (t *TXQuerierSrv) SearchTransactions(ctx context.Context, txFilter neutront
 	return txs
 }
 
-func (t TXQuerierSrv) Err() error {
+func (t *TXQuerierSrv) Err() error {
 	return t.err
+}
+
+// proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
+func (t *TXQuerierSrv) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*crypto.Proof, *abci.ResponseDeliverTx, error) {
+	results, err := t.chainClient.BlockResults(ctx, &blockHeight)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch block results for height = %d: %w", blockHeight, err)
+	}
+
+	txsResults := results.TxsResults
+	abciResults := types.NewResults(txsResults)
+	txProof := abciResults.ProveResult(int(txIndexInBlock))
+	txResult := txsResults[txIndexInBlock]
+
+	return cryptoProofFromMerkleProof(txProof), txResult, nil
 }
 
 // queryFromTxFilter creates query from transactions filter like
@@ -151,4 +140,15 @@ func getOpSign(op string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported operator %s", op)
 	}
+}
+
+func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
+	cp := new(crypto.Proof)
+
+	cp.Total = mp.Total
+	cp.Index = mp.Index
+	cp.LeafHash = mp.LeafHash
+	cp.Aunts = mp.Aunts
+
+	return cp
 }

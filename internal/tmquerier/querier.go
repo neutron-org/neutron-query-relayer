@@ -1,4 +1,4 @@
-package tdmquerier
+package tmquerier
 
 import (
 	"context"

@@ -14,7 +14,14 @@ type Transaction struct {
 
 // TXQuerier fetches transactions from a remote chain with specified txFilter
 type TXQuerier interface {
+	// SearchTransactions searches for transactions from remote chain.
+	// the returned channel can be closed due to one of the following cases:
+	// a) All transactions from an RPC call preprocessed successfully
+	// b) error encountered during the SearchTransactions method
 	SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) <-chan Transaction
+	// Err is method to check the reason of `<-chan Transaction` closing,
+	// NonNil - error encountered during the SearchTransactions method
+	// Nil - SearchTransactions stopped with all transactions pre-processed successfully after a successful RPC call
 	Err() error
 }
 

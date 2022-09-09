@@ -23,31 +23,31 @@ const TxHeight = "tx.height"
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
 	cfg         config.NeutronQueryRelayerConfig
-	kvprocessor KVProcessor
 	txQuerier   TXQuerier
 	subscriber  Subscriber
 	logger      *zap.Logger
 	storage     Storage
 	txProcessor TXProcessor
+	kvProcessor KVProcessor
 }
 
 func NewRelayer(
 	cfg config.NeutronQueryRelayerConfig,
-	kvprocessor KVProcessor,
 	txQuerier TXQuerier,
 	subscriber Subscriber,
-	logger *zap.Logger,
 	store Storage,
 	txProcessor TXProcessor,
+	kvprocessor KVProcessor,
+	logger *zap.Logger,
 ) *Relayer {
 	return &Relayer{
 		cfg:         cfg,
 		txQuerier:   txQuerier,
-		kvprocessor: kvprocessor,
 		subscriber:  subscriber,
 		logger:      logger,
 		storage:     store,
 		txProcessor: txProcessor,
+		kvProcessor: kvprocessor,
 	}
 }
 
@@ -115,13 +115,13 @@ func (r *Relayer) stop() error {
 	return nil
 }
 
-// processMessageKV handles an incoming KV interchain query message and passes it to the kvprocessor for further processing.
+// processMessageKV handles an incoming KV interchain query message and passes it to the kvProcessor for further processing.
 func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 	r.logger.Debug("running processMessageKV for msg", zap.Uint64("query_id", m.QueryId))
-	return r.kvprocessor.ProcessAndSubmit(ctx, m)
+	return r.kvProcessor.ProcessAndSubmit(ctx, m)
 }
 
-func (r Relayer) buildTxQuery(m *MessageTX) (neutrontypes.TransactionsFilter, error) {
+func (r *Relayer) buildTxQuery(m *MessageTX) (neutrontypes.TransactionsFilter, error) {
 	queryLastHeight, err := r.getLastQueryHeight(m.QueryId)
 	if err != nil {
 		return nil, fmt.Errorf("could not get last query height: %w", err)
@@ -147,9 +147,6 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 	}
 
 	txs := r.txQuerier.SearchTransactions(ctx, queryParams)
-	if err != nil {
-		return fmt.Errorf("search for transactions failed: %w", err)
-	}
 
 	lastProcessedHeight, err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, txs)
 	if err != nil {
@@ -167,7 +164,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 
 // getLastQueryHeight returns last query height & no err if query exists in storage, also initializes query with height = 0  if not exists yet
 func (r *Relayer) getLastQueryHeight(queryID uint64) (uint64, error) {
-	height, _, err := r.storage.GetLastQueryHeight(queryID)
+	height, err := r.storage.GetLastQueryHeight(queryID)
 	if err == leveldb.ErrNotFound {
 		err = r.storage.SetLastQueryHeight(queryID, 0)
 		if err != nil {

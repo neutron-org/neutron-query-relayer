@@ -53,14 +53,6 @@ type TargetChainConfig struct {
 	OutputFormat           string        `required:"true" split_words:"true"`
 }
 
-type TxBroadcastType string
-
-const (
-	BroadcastTxSync   TxBroadcastType = "BroadcastTxSync"
-	BroadcastTxAsync  TxBroadcastType = "BroadcastTxAsync"
-	BroadcastTxCommit TxBroadcastType = "BroadcastTxCommit"
-)
-
 func NewNeutronQueryRelayerConfig() (NeutronQueryRelayerConfig, error) {
 	var cfg NeutronQueryRelayerConfig
 
