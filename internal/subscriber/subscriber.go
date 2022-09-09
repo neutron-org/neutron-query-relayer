@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -11,8 +12,12 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	"github.com/zyedidia/generic/queue"
+)
+
+var (
+	unsubscribeTimeout = time.Second * 5
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
@@ -28,13 +33,16 @@ func NewSubscriber(
 	if err != nil {
 		return nil, fmt.Errorf("could not create new tendermint client: %w", err)
 	}
+
 	if err = client.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint client: %w", err)
 	}
+
 	watchedTypesMap := make(map[neutrontypes.InterchainQueryType]struct{})
 	for _, queryType := range watchedTypes {
 		watchedTypesMap[queryType] = struct{}{}
 	}
+
 	return &Subscriber{
 		client:             client,
 		rpcAddress:         rpcAddress,
@@ -43,6 +51,8 @@ func NewSubscriber(
 		registry:           registry,
 		logger:             logger,
 		watchedTypes:       watchedTypesMap,
+
+		activeQueries: map[uint64]*neutrontypes.RegisteredQuery{},
 	}, nil
 }
 
@@ -57,98 +67,148 @@ type Subscriber struct {
 	registry           *registry.Registry
 	logger             *zap.Logger
 	watchedTypes       map[neutrontypes.InterchainQueryType]struct{}
-	subCancel          context.CancelFunc // subCancel controls subscriber event handling loop
+
+	activeQueries map[uint64]*neutrontypes.RegisteredQuery
 }
 
-// Subscribe subscribes on chain's events, transforms them to KV and TX messages and sends to
-// the corresponding channels. The subscriber can be stopped by closing the context. Message
-// channels are never closed to prevent listeners from seeing an erroneous message.
-func (s *Subscriber) Subscribe() (<-chan *relay.MessageKV, <-chan *relay.MessageTX, error) {
-	events, err := s.client.Subscribe(context.Background(), s.subscriberName(), s.subscribeQuery())
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not subscribe to events: %w", err)
-	}
-	s.logger.Debug("subscriber has subscribed to neutron events", zap.String("query", s.subscribeQuery()))
-
-	subCtx, subCancel := context.WithCancel(context.Background())
-	s.subCancel = subCancel
-	kvChan := make(chan *relay.MessageKV)
-	txChan := make(chan *relay.MessageTX)
-	go func() {
-		for {
-			select {
-			case <-subCtx.Done():
-				return
-			case event := <-events:
-				s.logger.Debug("received an event from Neutron")
-				msgs, err := s.extractMessages(event)
-				if err != nil {
-					s.logger.Error("failed to extract messages from incoming event", zap.Error(err))
-					continue
-				}
-				if len(msgs) == 0 {
-					s.logger.Debug("event has been skipped: it's not intended for us", zap.String("query", event.Query))
-					continue
-				}
-
-				s.logger.Debug("handling event from Neutron", zap.Int("messages", len(msgs)))
-				for _, msg := range msgs {
-					if !s.isWatchedMsgType(msg.messageType) {
-						s.logger.Debug(
-							"message skipped due to submitter watched msg types configuration",
-							zap.String("msg_type", string(msg.messageType)),
-							zap.Uint64("query_id", msg.queryId),
-						)
-						continue
-					}
-
-					s.logger.Debug("handling a message from event", zap.String("message_type", string(msg.messageType)))
-					switch msg.messageType {
-					case neutrontypes.InterchainQueryTypeKV:
-						select {
-						case kvChan <- buildMessageKV(msg):
-							s.logger.Debug("a KV message sent from subscriber to consumer")
-						case <-subCtx.Done():
-							return
-						}
-					case neutrontypes.InterchainQueryTypeTX:
-						select {
-						case txChan <- buildMessageTX(msg):
-							s.logger.Debug("a TX message sent from subscriber to consumer")
-						case <-subCtx.Done():
-							return
-						}
-					}
-				}
-			}
-		}
-	}()
-	return kvChan, txChan, nil
-}
-
-// Unsubscribe stops subscription and closes the subscriber client.
-func (s *Subscriber) Unsubscribe() error {
-	s.subCancel()
-	if err := s.client.Unsubscribe(context.Background(), s.subscriberName(), s.subscribeQuery()); err != nil {
-		return err
-	}
-	if err := s.client.Stop(); err != nil {
-		return err
-	}
+// loadActiveQueries TODO(oopcode).
+func (s *Subscriber) loadActiveQueries() error {
+	// TODO(oopcode): implement
 	return nil
 }
 
+// Subscribe TODO(oopcode).
+func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+	if err := s.loadActiveQueries(); err != nil {
+		return fmt.Errorf("could not loadActiveQueries: %w", err)
+	}
+
+	updateEvents, err := s.client.Subscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated())
+	if err != nil {
+		return fmt.Errorf("could not subscribe to events: %w", err)
+	}
+
+	removeEvents, err := s.client.Subscribe(ctx, s.subscriberName(), s.subscribeQueryRemoved())
+	if err != nil {
+		return fmt.Errorf("could not subscribe to events: %w", err)
+	}
+
+	blockEvents, err := s.client.Subscribe(ctx, s.subscriberName(), s.subscribeQueryBlock())
+	if err != nil {
+		return fmt.Errorf("could not subscribe to events: %w", err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.unsubscribe()
+			return nil
+		case event := <-blockEvents:
+			if err := s.processBlockEvent(event, tasks); err != nil {
+				return fmt.Errorf("failed to processblockEvent: %w", err)
+			}
+		case event := <-updateEvents:
+			if err := s.processUpdateEvent(event, tasks); err != nil {
+				return fmt.Errorf("failed to processUpdateEvent: %w", err)
+			}
+		case event := <-removeEvents:
+			if err := s.processRemoveEvent(event, tasks); err != nil {
+				return fmt.Errorf("failed to processRemoveEvent: %w", err)
+			}
+		}
+	}
+}
+
+func (s *Subscriber) unsubscribe() {
+	ctx, cancel := context.WithTimeout(context.Background(), unsubscribeTimeout)
+	defer cancel()
+
+	if err := s.client.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated()); err != nil {
+		s.logger.Error("failed to Unsubscribe from tm events",
+			zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryUpdated()))
+	}
+
+	if err := s.client.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryRemoved()); err != nil {
+		s.logger.Error("failed to Unsubscribe from tm events",
+			zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryRemoved()))
+	}
+
+	if err := s.client.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryBlock()); err != nil {
+		s.logger.Error("failed to Unsubscribe from tm events",
+			zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryBlock()))
+	}
+}
+
+func (s *Subscriber) processBlockEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+	currentHeight, err := s.extractBlockHeight(event)
+	if err != nil {
+		return fmt.Errorf("failed to extractBlockHeight: %w", err)
+	}
+
+	for _, activeQuery := range s.activeQueries {
+		// Skip the ActiveQuery if we didn't reach the update time.
+		if currentHeight < (activeQuery.LastSubmittedResultLocalHeight + activeQuery.UpdatePeriod) {
+			continue
+		}
+
+		// Send the query to the task queue.
+		tasks.Enqueue(*activeQuery)
+
+		// Set the LastSubmittedResultLocalHeight to the current height.
+		activeQuery.LastSubmittedResultLocalHeight = currentHeight
+	}
+
+	return nil
+}
+
+// processUpdateEvent TODO(oopcode).
+func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+	// TODO(oopcode): implement
+	return nil
+}
+
+// processRemoveEvent TODO(oopcode).
+func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+	// TODO(oopcode): implement
+	return nil
+}
+
+// extractBlockHeight TODO(oopcode).
+func (s *Subscriber) extractBlockHeight(event tmtypes.ResultEvent) (uint64, error) {
+	// TODO(oopcode): implement
+	return 0, nil
+}
+
 // subscribeQuery returns the subscriber name.
+// Note: it doesn't matter what we return here because Tendermint will override it with
+// remote IP anyway.
 func (s *Subscriber) subscriberName() string {
 	return s.targetChainID + "-client"
 }
 
-// subscribeQuery returns a query to filter out interchain query events.
-func (s *Subscriber) subscribeQuery() string {
+// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+func (s *Subscriber) subscribeQueryUpdated() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.targetConnectionID,
 		moduleAttr, neutrontypes.ModuleName,
-		actionAttr, neutrontypes.AttributeValueQuery,
+		actionAttr, neutrontypes.AttributeValueQueryUpdated,
+	)
+}
+
+// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+func (s *Subscriber) subscribeQueryRemoved() string {
+	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
+		connectionIdAttr, s.targetConnectionID,
+		moduleAttr, neutrontypes.ModuleName,
+		actionAttr, neutrontypes.AttributeValueQueryRemoved,
+	)
+}
+
+// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+func (s *Subscriber) subscribeQueryBlock() string {
+	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
+		connectionIdAttr, s.targetConnectionID,
+		moduleAttr, neutrontypes.ModuleName,
 		eventAttr, types.EventNewBlockHeader,
 	)
 }
@@ -178,7 +238,7 @@ func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessag
 		queryIdStr := events[queryIdAttr][idx]
 		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
 		if err != nil {
-			s.logger.Debug("failed to parse query ID as uint", zap.String("query_id", queryIdStr), zap.Error(err))
+			s.logger.Debug("failed to parse ActiveQuery ID as uint", zap.String("query_id", queryIdStr), zap.Error(err))
 			continue
 		}
 
@@ -210,7 +270,7 @@ func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessag
 }
 
 // isWatchedMsgType returns true if the given message type was added to the subscriber's watched
-// query types list.
+// ActiveQuery types list.
 func (s *Subscriber) isWatchedMsgType(msgType neutrontypes.InterchainQueryType) bool {
 	_, ex := s.watchedTypes[msgType]
 	return ex

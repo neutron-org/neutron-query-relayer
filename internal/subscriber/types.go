@@ -6,22 +6,22 @@ import (
 )
 
 // buildMessageKV creates a MessageKV out of the given queryEventMessage.
-func buildMessageKV(msg *queryEventMessage) *relay.MessageKV {
+func buildMessageKV(queryID uint64, kvKeys types.KVKeys) *relay.MessageKV {
 	return &relay.MessageKV{
-		QueryId: msg.queryId,
-		KVKeys:  msg.kvKeys,
+		QueryId: queryID,
+		KVKeys:  kvKeys,
 	}
 }
 
 // buildMessageTX creates a MessageTX out of the given queryEventMessage.
-func buildMessageTX(msg *queryEventMessage) *relay.MessageTX {
+func buildMessageTX(queryID uint64, transactionsFilter string) *relay.MessageTX {
 	return &relay.MessageTX{
-		QueryId:            msg.queryId,
-		TransactionsFilter: msg.transactionsFilter,
+		QueryId:            queryID,
+		TransactionsFilter: transactionsFilter,
 	}
 }
 
-// queryEventMessage is a general structure of an interchain query message.
+// queryEventMessage is a general structure of an interchain ActiveQuery message.
 type queryEventMessage struct {
 	queryId            uint64
 	messageType        types.InterchainQueryType

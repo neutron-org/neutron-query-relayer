@@ -13,7 +13,7 @@ const (
 	eventAttr = "tm.event"
 
 	// connectionIdAttr is the key of the Neutron's custom message event's attribute that contains the
-	// connectionID of the event's query.
+	// connectionID of the event's ActiveQuery.
 	connectionIdAttr = "message." + types.AttributeKeyConnectionID
 	// queryIdAttr is the key of the Neutron's custom message event's attribute that contains the
 	// incoming ICQ ID.
