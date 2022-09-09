@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const TxCheckThreads = 4 // XXX: maybe this value should be configurable by user?
+const TxCheckerNumWorkers = 4 // XXX: maybe this value should be configurable by user?
 
 var (
 	retryAttempts = retry.Attempts(4)
@@ -59,8 +59,8 @@ func (tc *TxSubmitChecker) Run(ctx context.Context) {
 		go tc.queueTx(*tx)
 	}
 
-	for i := 0; i < TxCheckThreads; i++ {
-		go tc.workerThread(ctx)
+	for i := 0; i < TxCheckerNumWorkers; i++ {
+		go tc.worker(ctx)
 	}
 
 	for tx := range tc.inChan {
@@ -85,7 +85,7 @@ func (tc *TxSubmitChecker) queueTx(tx relay.PendingSubmittedTxInfo) {
 	tc.queue <- tx
 }
 
-func (tc *TxSubmitChecker) workerThread(ctx context.Context) {
+func (tc *TxSubmitChecker) worker(ctx context.Context) {
 	for {
 		select {
 		case tx := <-tc.queue:
