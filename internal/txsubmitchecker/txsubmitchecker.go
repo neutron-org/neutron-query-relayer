@@ -144,9 +144,8 @@ func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(neutronHash []byte, timeo
 func (tc *TxSubmitChecker) updateTxStatus(tx *relay.PendingSubmittedTxInfo, status relay.SubmittedTxInfo) {
 	err := tc.storage.SetTxStatus(tx.QueryID, tx.SubmittedTxHash, tx.NeutronHash, status)
 	if err != nil {
-		// XXX: I expect storage to work all the time, am I shooting myself in a foot?
-		tc.logger.Fatal(fmt.Sprintf("failed to update %s status in storage", tx.NeutronHash), zap.Error(err))
+		tc.logger.Error(fmt.Sprintf("failed to update %s status in storage", tx.NeutronHash), zap.Error(err))
+	} else {
+		tc.logger.Info(fmt.Sprintf("tx submit checker: set job %s status to %v", tx.NeutronHash, status.Status))
 	}
-
-	tc.logger.Info(fmt.Sprintf("tx submit checker: set job %s status to %v", tx.NeutronHash, status))
 }
