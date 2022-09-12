@@ -46,14 +46,27 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
-	queriesTasksQueue := queue.New[neutrontypes.RegisteredQuery]()
+	var (
+		queriesTasksQueue = queue.New[neutrontypes.RegisteredQuery]()
+		subscriber        = app.NewDefaultSubscriber(logger, cfg)
+		relayer           = app.NewDefaultRelayer(ctx, logger, cfg, subscriber)
+	)
 
-	// TODO(oopcode): initialise & run the subscriber (currently done in NewDefaultRelayer)
-
-	relayer := app.NewDefaultRelayer(ctx, logger, cfg)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
+		// The subscriber writes to the tasks queue.
+		if err := subscriber.Subscribe(ctx, queriesTasksQueue); err != nil {
+			logger.Error("Relayer exited with an error", zap.Error(err))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		// The relayer reads from the tasks queue.
 		if err := relayer.Run(ctx, queriesTasksQueue); err != nil {
 			logger.Error("Relayer exited with an error", zap.Error(err))
 		}
