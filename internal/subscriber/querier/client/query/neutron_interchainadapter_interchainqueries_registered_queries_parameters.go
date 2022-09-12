@@ -60,8 +60,11 @@ func NewNeutronInterchainadapterInterchainqueriesRegisteredQueriesParamsWithHTTP
 */
 type NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams struct {
 
-	// Owner.
-	Owner *string
+	// ConnectionID.
+	ConnectionID *string
+
+	// Owners.
+	Owners []string
 
 	/* PaginationCountTotal.
 
@@ -162,15 +165,26 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) SetHT
 	o.HTTPClient = client
 }
 
-// WithOwner adds the owner to the neutron interchainadapter interchainqueries registered queries params
-func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) WithOwner(owner *string) *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams {
-	o.SetOwner(owner)
+// WithConnectionID adds the connectionID to the neutron interchainadapter interchainqueries registered queries params
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) WithConnectionID(connectionID *string) *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams {
+	o.SetConnectionID(connectionID)
 	return o
 }
 
-// SetOwner adds the owner to the neutron interchainadapter interchainqueries registered queries params
-func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) SetOwner(owner *string) {
-	o.Owner = owner
+// SetConnectionID adds the connectionId to the neutron interchainadapter interchainqueries registered queries params
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) SetConnectionID(connectionID *string) {
+	o.ConnectionID = connectionID
+}
+
+// WithOwners adds the owners to the neutron interchainadapter interchainqueries registered queries params
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) WithOwners(owners []string) *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams {
+	o.SetOwners(owners)
+	return o
+}
+
+// SetOwners adds the owners to the neutron interchainadapter interchainqueries registered queries params
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) SetOwners(owners []string) {
+	o.Owners = owners
 }
 
 // WithPaginationCountTotal adds the paginationCountTotal to the neutron interchainadapter interchainqueries registered queries params
@@ -236,20 +250,31 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) Write
 	}
 	var res []error
 
-	if o.Owner != nil {
+	if o.ConnectionID != nil {
 
-		// query param owner
-		var qrOwner string
+		// query param connection_id
+		var qrConnectionID string
 
-		if o.Owner != nil {
-			qrOwner = *o.Owner
+		if o.ConnectionID != nil {
+			qrConnectionID = *o.ConnectionID
 		}
-		qOwner := qrOwner
-		if qOwner != "" {
+		qConnectionID := qrConnectionID
+		if qConnectionID != "" {
 
-			if err := r.SetQueryParam("owner", qOwner); err != nil {
+			if err := r.SetQueryParam("connection_id", qConnectionID); err != nil {
 				return err
 			}
+		}
+	}
+
+	if o.Owners != nil {
+
+		// binding items for owners
+		joinedOwners := o.bindParamOwners(reg)
+
+		// query array param owners
+		if err := r.SetQueryParam("owners", joinedOwners...); err != nil {
+			return err
 		}
 	}
 
@@ -342,4 +367,21 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) Write
 		return errors.CompositeValidationError(res...)
 	}
 	return nil
+}
+
+// bindParamNeutronInterchainadapterInterchainqueriesRegisteredQueries binds the parameter owners
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams) bindParamOwners(formats strfmt.Registry) []string {
+	ownersIR := o.Owners
+
+	var ownersIC []string
+	for _, ownersIIR := range ownersIR { // explode []string
+
+		ownersIIV := ownersIIR // string as string
+		ownersIC = append(ownersIC, ownersIIV)
+	}
+
+	// items.CollectionFormat: "multi"
+	ownersIS := swag.JoinByFormat(ownersIC, "multi")
+
+	return ownersIS
 }

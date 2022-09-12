@@ -1,8 +1,8 @@
 swagger: '2.0'
 info:
   title: HTTP API Console
-  description: ''
   version: '0.0.1'
+  description: ''
 paths:
   /neutron/interchainqueries/interchainqueries/params:
     get:
@@ -1198,7 +1198,14 @@ paths:
                           "value": "1.212s"
                         }
       parameters:
-        - name: owner
+        - name: owners
+          in: query
+          required: false
+          type: array
+          items:
+            type: string
+          collectionFormat: multi
+        - name: connection_id
           in: query
           required: false
           type: string

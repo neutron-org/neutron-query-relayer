@@ -72,6 +72,7 @@ func (r *Relayer) Run(ctx context.Context, tasks *queue.Queue[neutrontypes.Regis
 		default:
 			// TODO(oopcode): busy loop?
 			if tasks.Empty() {
+				time.Sleep(time.Millisecond * 100)
 				continue
 			}
 
