@@ -1,6 +1,7 @@
 package subscriber
 
 import (
+	"context"
 	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -8,10 +9,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func (s *Subscriber) getNeutronRegisteredQuery(queryId string) (*neutrontypes.RegisteredQuery, error) {
+var paginationLimit = "100"
+
+func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQuery(
 		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueryParams{
 			QueryID: &queryId,
+			Context: ctx,
 		},
 	)
 	if err != nil {
@@ -27,11 +31,13 @@ func (s *Subscriber) getNeutronRegisteredQuery(queryId string) (*neutrontypes.Re
 }
 
 // getActiveQueries TODO(oopcode).
-func (s *Subscriber) getNeutronRegisteredQueries() (map[string]*neutrontypes.RegisteredQuery, error) {
+func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
+	// TODO: actually use pagination.
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
 		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
 			Owners:       s.registry.GetAddresses(),
 			ConnectionID: &s.targetConnectionID,
+			Context:      ctx,
 		},
 	)
 	if err != nil {
@@ -42,10 +48,15 @@ func (s *Subscriber) getNeutronRegisteredQueries() (map[string]*neutrontypes.Reg
 		payload = res.GetPayload()
 		out     = map[string]*neutrontypes.RegisteredQuery{}
 	)
+
 	for _, restQuery := range payload.RegisteredQueries {
 		neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ToNeutronRegisteredQuery: %w", err)
+		}
+
+		if !s.isWatchedMsgType(neutronQuery.QueryType) {
+			continue
 		}
 
 		out[restQuery.ID] = neutronQuery
@@ -107,8 +118,8 @@ func (s *Subscriber) subscribeQueryBlock() string {
 
 // isWatchedMsgType returns true if the given message type was added to the subscriber's watched
 // ActiveQuery types list.
-func (s *Subscriber) isWatchedMsgType(msgType neutrontypes.InterchainQueryType) bool {
-	_, ex := s.watchedTypes[msgType]
+func (s *Subscriber) isWatchedMsgType(msgType string) bool {
+	_, ex := s.watchedTypes[neutrontypes.InterchainQueryType(msgType)]
 	return ex
 }
 

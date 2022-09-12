@@ -59,7 +59,8 @@ func main() {
 
 		// The subscriber writes to the tasks queue.
 		if err := subscriber.Subscribe(ctx, queriesTasksQueue); err != nil {
-			logger.Error("Relayer exited with an error", zap.Error(err))
+			logger.Error("Subscriber exited with an error", zap.Error(err))
+			cancel()
 		}
 	}()
 
@@ -70,6 +71,7 @@ func main() {
 		// The relayer reads from the tasks queue.
 		if err := relayer.Run(ctx, queriesTasksQueue); err != nil {
 			logger.Error("Relayer exited with an error", zap.Error(err))
+			cancel()
 		}
 	}()
 

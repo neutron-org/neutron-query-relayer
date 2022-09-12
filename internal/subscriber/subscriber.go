@@ -18,7 +18,7 @@ import (
 var (
 	unsubscribeTimeout = time.Second * 5
 	restClientBasePath = "/"
-	restClientSchemes  = []string{"https"}
+	restClientSchemes  = []string{"http"}
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
@@ -47,7 +47,7 @@ func NewSubscriber(
 	return &Subscriber{
 		rpcClient: rpcClient,
 		restClient: restClient.NewHTTPClientWithConfig(nil, &restClient.TransportConfig{
-			Host:     rpcAddress,
+			Host:     "127.0.0.1:1316", // TODO(oopcode): add config variable
 			BasePath: restClientBasePath,
 			Schemes:  restClientSchemes,
 		}),
@@ -82,7 +82,7 @@ type Subscriber struct {
 
 // Subscribe TODO(oopcode).
 func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
-	queries, err := s.getNeutronRegisteredQueries()
+	queries, err := s.getNeutronRegisteredQueries(ctx)
 	if err != nil {
 		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
 	}
@@ -113,7 +113,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutronty
 				return fmt.Errorf("failed to processblockEvent: %w", err)
 			}
 		case event := <-updateEvents:
-			if err := s.processUpdateEvent(event); err != nil {
+			if err := s.processUpdateEvent(ctx, event); err != nil {
 				return fmt.Errorf("failed to processUpdateEvent: %w", err)
 			}
 		case event := <-removeEvents:
@@ -145,12 +145,12 @@ func (s *Subscriber) unsubscribe() {
 }
 
 func (s *Subscriber) processBlockEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
-	// TODO(oopcode): watchedTypes
-
 	currentHeight, err := s.extractBlockHeight(event)
 	if err != nil {
 		return fmt.Errorf("failed to extractBlockHeight: %w", err)
 	}
+
+	fmt.Println("-----", event.Events)
 
 	for _, activeQuery := range s.activeQueries {
 		// Skip the ActiveQuery if we didn't reach the update time.
@@ -169,7 +169,7 @@ func (s *Subscriber) processBlockEvent(event tmtypes.ResultEvent, tasks *queue.Q
 }
 
 // processUpdateEvent TODO(oopcode).
-func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent) error {
+func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
 	ok, err := s.checkEvents(event)
 	if err != nil {
 		return fmt.Errorf("failed to checkEvents: %w", err)
@@ -186,15 +186,19 @@ func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent) error {
 			continue
 		}
 
-		// Load all information about the query directly from ToNeutronRegisteredQuery.
+		// Load all information about the neutronQuery directly from ToNeutronRegisteredQuery.
 		var queryID = events[queryIdAttr][idx]
-		query, err := s.getNeutronRegisteredQuery(queryID)
+		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
 			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
 		}
 
-		// Save the updated query information to state.
-		s.activeQueries[queryID] = query
+		if !s.isWatchedMsgType(neutronQuery.QueryType) {
+			continue
+		}
+
+		// Save the updated neutronQuery information to state.
+		s.activeQueries[queryID] = neutronQuery
 	}
 
 	return nil
