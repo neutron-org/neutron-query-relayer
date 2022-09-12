@@ -52,8 +52,7 @@ func (tc *TxSubmitChecker) Run(ctx context.Context) error {
 	// hence we block on this read operation right in the beginning
 	pending, err := tc.storage.GetAllPendingTxs()
 	if err != nil {
-		tc.logger.Error("failed to read pending txs from storage", zap.Error(err))
-		return err
+		return fmt.Errorf("failed to read pending txs from storage: %w", err)
 	}
 
 	// these goroutines will eventually submit all pending txs into queue
@@ -128,7 +127,7 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 				})
 			}
 		case <-ctx.Done():
-			tc.logger.Info("worker: Received termination signal, gracefully shutting down...")
+			tc.logger.Info("worker has been stopped by context")
 			return
 		}
 	}
