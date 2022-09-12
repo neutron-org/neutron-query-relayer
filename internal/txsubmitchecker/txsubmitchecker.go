@@ -124,7 +124,7 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 			} else {
 				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
 					Status:  relay.ErrorOnCommit,
-					Message: fmt.Sprintf("%d %s", txResponse.TxResult.Code, txResponse.TxResult.Log),
+					Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
 				})
 			}
 		case <-ctx.Done():
