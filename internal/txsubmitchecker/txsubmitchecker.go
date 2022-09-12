@@ -47,13 +47,15 @@ func NewTxSubmitChecker(
 	}
 }
 
-func (tc *TxSubmitChecker) Run(ctx context.Context) {
+func (tc *TxSubmitChecker) Run(ctx context.Context) error {
 	// we don't want to start jobs before we read all pending txs from database,
 	// hence we block on this read operation right in the beginning
 	pending, err := tc.storage.GetAllPendingTxs()
 	if err != nil {
-		tc.logger.Fatal("failed to read pending txs from storage", zap.Error(err))
+		tc.logger.Error("failed to read pending txs from storage", zap.Error(err))
+		return err
 	}
+
 	// these goroutines will eventually submit all pending txs into queue
 	for _, tx := range pending {
 		go tc.queueTx(*tx)
@@ -63,9 +65,13 @@ func (tc *TxSubmitChecker) Run(ctx context.Context) {
 		go tc.worker(ctx)
 	}
 
-	for tx := range tc.inChan {
-		go tc.queueTx(tx)
-	}
+	go func() {
+		for tx := range tc.inChan {
+			go tc.queueTx(tx)
+		}
+	}()
+
+	return nil
 }
 
 func (tc *TxSubmitChecker) queueTx(tx relay.PendingSubmittedTxInfo) {
@@ -86,6 +92,8 @@ func (tc *TxSubmitChecker) queueTx(tx relay.PendingSubmittedTxInfo) {
 }
 
 func (tc *TxSubmitChecker) worker(ctx context.Context) {
+	tc.logger.Info("init worker thread")
+
 	for {
 		select {
 		case tx := <-tc.queue:

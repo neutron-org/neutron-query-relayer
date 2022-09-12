@@ -65,7 +65,12 @@ func (r *Relayer) Run(ctx context.Context) error {
 	}
 	r.logger.Info("successfully subscribed to neutron chain events")
 
-	go r.txSubmitChecker.Run(ctx)
+	err = r.txSubmitChecker.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to initialize tx submit checker: %w", err)
+	}
+
+	r.logger.Info("successfully initialized tx submit checker")
 
 	for {
 		var (
