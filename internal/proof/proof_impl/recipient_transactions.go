@@ -31,9 +31,8 @@ func cryptoProofFromMerkleProof(mp merkle.Proof) *crypto.Proof {
 }
 
 // SearchTransactions gets proofs for query type = 'tx'
-// (NOTE: there is no such query function in cosmos-sdk)
-func (p ProoferImpl) SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) ([]*relay.Transaction, error) {
-	query, err := queryFromTxFilter(txFilter)
+func (p ProoferImpl) SearchTransactions(ctx context.Context, filter neutrontypes.TransactionsFilter) ([]*relay.Transaction, error) {
+	query, err := constructQuery(filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not compose query: %v", err)
 	}
@@ -94,21 +93,27 @@ func (p ProoferImpl) proofDelivery(ctx context.Context, blockHeight int64, txInd
 
 // queryFromTxFilter creates query from transactions filter like
 // `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
-func queryFromTxFilter(params neutrontypes.TransactionsFilter) (string, error) {
+func constructQuery(params neutrontypes.TransactionsFilter) (string, error) {
 	queryParamsList := make([]string, 0, len(params))
 	for _, row := range params {
 		sign, err := getOpSign(row.Op)
 		if err != nil {
 			return "", err
 		}
+
+		var attribute string
 		switch r := row.Value.(type) {
 		case string:
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s'%s'", row.Field, sign, r))
+			attribute = fmt.Sprintf("%s%s'%s'", row.Field, sign, r)
 		case float64:
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r)))
+			attribute = fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r))
 		case uint64:
-			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, r))
+			attribute = fmt.Sprintf("%s%s%d", row.Field, sign, r)
+		default:
+			return "", fmt.Errorf("unsupported row.Value type")
 		}
+
+		queryParamsList = append(queryParamsList, attribute)
 	}
 	return strings.Join(queryParamsList, " AND "), nil
 }
