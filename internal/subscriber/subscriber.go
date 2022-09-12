@@ -71,17 +71,24 @@ type Subscriber struct {
 	activeQueries map[uint64]*neutrontypes.RegisteredQuery
 }
 
-// loadActiveQueries TODO(oopcode).
-func (s *Subscriber) loadActiveQueries() error {
+// getActiveQueries TODO(oopcode).
+func (s *Subscriber) getAllQueries() (map[uint64]*neutrontypes.RegisteredQuery, error) {
 	// TODO(oopcode): implement
-	return nil
+	return nil, nil
+}
+
+func (s *Subscriber) getQuery(ctx context.Context, queryId uint64) (*neutrontypes.RegisteredQuery, error) {
+	// TODO(oopcode): implement
+	return nil, nil
 }
 
 // Subscribe TODO(oopcode).
 func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
-	if err := s.loadActiveQueries(); err != nil {
-		return fmt.Errorf("could not loadActiveQueries: %w", err)
+	queries, err := s.getAllQueries()
+	if err != nil {
+		return fmt.Errorf("could not getAllQueries: %w", err)
 	}
+	s.activeQueries = queries
 
 	updateEvents, err := s.client.Subscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated())
 	if err != nil {
@@ -108,11 +115,11 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutronty
 				return fmt.Errorf("failed to processblockEvent: %w", err)
 			}
 		case event := <-updateEvents:
-			if err := s.processUpdateEvent(event, tasks); err != nil {
+			if err := s.processUpdateEvent(ctx, event); err != nil {
 				return fmt.Errorf("failed to processUpdateEvent: %w", err)
 			}
 		case event := <-removeEvents:
-			if err := s.processRemoveEvent(event, tasks); err != nil {
+			if err := s.processRemoveEvent(event); err != nil {
 				return fmt.Errorf("failed to processRemoveEvent: %w", err)
 			}
 		}
@@ -162,21 +169,109 @@ func (s *Subscriber) processBlockEvent(event tmtypes.ResultEvent, tasks *queue.Q
 }
 
 // processUpdateEvent TODO(oopcode).
-func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
-	// TODO(oopcode): implement
+func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
+	ok, err := s.checkEvents(event)
+	if err != nil {
+		return fmt.Errorf("failed to checkEvents: %w", err)
+	}
+	if !ok {
+		return nil
+	}
+
+	// There can be multiple events of the same type associated with our connection id in a
+	// single tmtypes.ResultEvent value. We need to process all of them.
+	var events = event.Events
+	for idx := range events[connectionIdAttr] {
+		if !s.isWatchedAddress(events[ownerAttr][idx]) {
+			continue
+		}
+
+		queryId, err := s.parseQueryID(events, idx)
+		if err != nil {
+			s.logger.Debug("failed to parseQueryID", zap.Error(err),
+				zap.String("query_id", events[queryIdAttr][idx]))
+			continue
+		}
+
+		// Load all information about the query directly from Neutron.
+		query, err := s.getQuery(ctx, queryId)
+		if err != nil {
+			return fmt.Errorf("failed to getQuery: %w", err)
+		}
+
+		// Save the updated query information to state.
+		s.activeQueries[queryId] = query
+	}
+
 	return nil
 }
 
 // processRemoveEvent TODO(oopcode).
-func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
-	// TODO(oopcode): implement
+func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
+	ok, err := s.checkEvents(event)
+	if err != nil {
+		return fmt.Errorf("failed to checkEvents: %w", err)
+	}
+	if !ok {
+		return nil
+	}
+
+	// There can be multiple events of the same type associated with our connection id in a
+	// single tmtypes.ResultEvent value. We need to process all of them.
+	var events = event.Events
+	for idx := range events[connectionIdAttr] {
+		if !s.isWatchedAddress(events[ownerAttr][idx]) {
+			continue
+		}
+
+		queryId, err := s.parseQueryID(events, idx)
+		if err != nil {
+			s.logger.Debug("failed to parseQueryID", zap.Error(err),
+				zap.String("query_id", events[queryIdAttr][idx]))
+			continue
+		}
+
+		// Delete the query from the active queries list.
+		delete(s.activeQueries, queryId)
+	}
+
 	return nil
+}
+
+func (s *Subscriber) parseQueryID(events map[string][]string, idx int) (uint64, error) {
+	queryIdStr := events[queryIdAttr][idx]
+	queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
+	if err != nil {
+
+		return 0, fmt.Errorf("failed to ParseUint: %w", err)
+	}
+
+	return queryId, nil
 }
 
 // extractBlockHeight TODO(oopcode).
 func (s *Subscriber) extractBlockHeight(event tmtypes.ResultEvent) (uint64, error) {
 	// TODO(oopcode): implement
 	return 0, nil
+}
+
+// checkEvents TODO(oopcode).
+func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
+	events := event.Events
+
+	icqEventsCount := len(events[connectionIdAttr])
+	if icqEventsCount == 0 {
+		return false, nil
+	}
+
+	if len(events[kvKeyAttr]) != icqEventsCount ||
+		len(events[transactionsFilterAttr]) != icqEventsCount ||
+		len(events[queryIdAttr]) != icqEventsCount ||
+		len(events[typeAttr]) != icqEventsCount {
+		return false, fmt.Errorf("events attributes length does not match for events=%v", events)
+	}
+
+	return true, nil
 }
 
 // subscribeQuery returns the subscriber name.
@@ -215,6 +310,7 @@ func (s *Subscriber) subscribeQueryBlock() string {
 // to a slice of queryEventMessage.
 func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessage, error) {
 	events := e.Events
+
 	icqEventsCount := len(events[connectionIdAttr])
 	if icqEventsCount == 0 {
 		return nil, nil
