@@ -13,3 +13,6 @@ build:
 
 build-docker:
 	docker build . -t neutron-org/neutron-query-relayer --ssh default
+
+generate-openapi:
+	@cd ./internal/subscriber/querier ; swagger generate client -f openapi.yml
