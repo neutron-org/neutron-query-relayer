@@ -69,15 +69,15 @@ func (tc *TxSubmitChecker) Run(ctx context.Context) {
 }
 
 func (tc *TxSubmitChecker) queueTx(tx relay.PendingSubmittedTxInfo) {
-	tc.logger.Info(fmt.Sprintf("tx submit checker: new job: %s", tx.NeutronHash))
+	tc.logger.Info("new job", zap.String("neutron_hash", tx.NeutronHash))
 	age := time.Since(tx.SubmitTime)
 	if age < 0 {
-		tc.logger.Warn(fmt.Sprintf(
-			"tx %s has negative age of %d milliseconds (submitted at %s)",
-			tx.NeutronHash,
-			age.Milliseconds(),
-			tx.SubmitTime.Format(time.RFC3339Nano),
-		))
+		tc.logger.Warn(
+			"tx has negative age",
+			zap.String("neutron_hash", tx.NeutronHash),
+			zap.Int64("age_nsecs", age.Nanoseconds()),
+			zap.Time("submitted_at", tx.SubmitTime),
+		)
 	}
 	if age >= 0 && age < tc.checkDelay {
 		time.Sleep(tc.checkDelay - age)
@@ -92,7 +92,8 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 			neutronHash, err := hex.DecodeString(tx.NeutronHash)
 			if err != nil {
 				tc.logger.Error(
-					fmt.Sprintf("Failed to decode neutron hash %s (this must never happen)", tx.NeutronHash),
+					"failed to decode hash",
+					zap.String("neutron_hash", tx.NeutronHash),
 					zap.Error(err),
 				)
 				continue
@@ -100,7 +101,11 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 
 			txResponse, err := tc.retryGetTxStatusWithTimeout(neutronHash, 10*time.Second)
 			if err != nil {
-				tc.logger.Warn(fmt.Sprintf("Failed to call rpc://Tx(%s)", tx.NeutronHash), zap.Error(err))
+				tc.logger.Warn(
+					"failed to get tx status from rpc",
+					zap.String("neutron_hash", tx.NeutronHash),
+					zap.Error(err),
+				)
 				continue
 			}
 
@@ -115,13 +120,16 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 				})
 			}
 		case <-ctx.Done():
-			tc.logger.Info("Received termination signal, gracefully shutting down...")
+			tc.logger.Info("worker: Received termination signal, gracefully shutting down...")
 			return
 		}
 	}
 }
 
-func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(neutronHash []byte, timeout time.Duration) (*coretypes.ResultTx, error) {
+func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(
+	neutronHash []byte,
+	timeout time.Duration,
+) (*coretypes.ResultTx, error) {
 	var result *coretypes.ResultTx
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -144,8 +152,16 @@ func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(neutronHash []byte, timeo
 func (tc *TxSubmitChecker) updateTxStatus(tx *relay.PendingSubmittedTxInfo, status relay.SubmittedTxInfo) {
 	err := tc.storage.SetTxStatus(tx.QueryID, tx.SubmittedTxHash, tx.NeutronHash, status)
 	if err != nil {
-		tc.logger.Error(fmt.Sprintf("failed to update %s status in storage", tx.NeutronHash), zap.Error(err))
+		tc.logger.Error(
+			"failed to update tx status in storage",
+			zap.String("neutron_hash", tx.NeutronHash),
+			zap.Error(err),
+		)
 	} else {
-		tc.logger.Info(fmt.Sprintf("tx submit checker: set job %s status to %v", tx.NeutronHash, status.Status))
+		tc.logger.Info(
+			"set tx status",
+			zap.String("neutron_hash", tx.NeutronHash),
+			zap.String("status", string(status.Status)),
+		)
 	}
 }
