@@ -19,9 +19,9 @@ import (
 const TxHeight = "tx.height"
 
 // Relayer is controller for the whole app:
-// 1. takes events from Neutron chain
+// 1. takes events from ToNeutronRegisteredQuery chain
 // 2. dispatches each query by type to fetch proof for the right query
-// 3. submits proof for a query back to the Neutron chain
+// 3. submits proof for a query back to the ToNeutronRegisteredQuery chain
 type Relayer struct {
 	cfg             config.NeutronQueryRelayerConfig
 	txQuerier       TXQuerier
@@ -56,8 +56,8 @@ func NewRelayer(
 }
 
 // Run starts the relaying process: subscribes on the incoming interchain query messages from the
-// Neutron and performs the queries by interacting with the target chain and submitting them to
-// the Neutron chain.
+// ToNeutronRegisteredQuery and performs the queries by interacting with the target chain and submitting them to
+// the ToNeutronRegisteredQuery chain.
 func (r *Relayer) Run(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
 	go r.txSubmitChecker.Run(ctx)
 
@@ -137,7 +137,7 @@ func (r *Relayer) buildTxQuery(m *MessageTX) (neutrontypes.TransactionsFilter, e
 
 // processMessageTX handles an incoming TX interchain query message. It fetches proven transactions
 // from the target chain using the message transactions filter value, and submits the result to the
-// Neutron chain.
+// ToNeutronRegisteredQuery chain.
 func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 	r.logger.Debug("running processMessageTX for msg", zap.Uint64("query_id", m.QueryId))
 	queryParams, err := r.buildTxQuery(m)

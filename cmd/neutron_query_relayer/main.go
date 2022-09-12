@@ -23,6 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("couldn't initialize logging config: %s", err)
 	}
+
 	logger, err := loggerConfig.Build()
 	if err != nil {
 		log.Fatalf("couldn't initialize logger: %s", err)

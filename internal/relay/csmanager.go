@@ -35,7 +35,7 @@ func NewConsensusStatesManager(targetChain *relayer.Chain,
 	}
 }
 
-// getConsensusStates returns light client consensus states from Neutron chain
+// getConsensusStates returns light client consensus states from ToNeutronRegisteredQuery chain
 func (r *CSManager) getConsensusStates(ctx context.Context) ([]clienttypes.ConsensusStateWithHeight, error) {
 	// Without this hack it doesn't want to work with NewQueryClient
 	provConcreteNeutronChain, ok := r.neutronChain.ChainProvider.(*cosmos.CosmosProvider)
@@ -62,11 +62,11 @@ func (r *CSManager) getConsensusStates(ctx context.Context) ([]clienttypes.Conse
 }
 
 // GetHeaderWithBestTrustedHeight returns an IBC Update Header which can be used to update an on chain
-// light client on the Neutron chain.
+// light client on the ToNeutronRegisteredQuery chain.
 //
 // It has the same purpose as r.targetChain.ChainProvider.GetIBCUpdateHeader() but the difference is
 // that GetHeaderWithBestTrustedHeight() trys to find the best TrustedHeight for the header
-// relying on existing light client's consensus states on the Neutron chain.
+// relying on existing light client's consensus states on the ToNeutronRegisteredQuery chain.
 //
 // The best trusted height for the height in this case is the closest one to some existed consensus state's height but not less
 func (r *CSManager) GetHeaderWithBestTrustedHeight(ctx context.Context, height uint64) (ibcexported.Header, error) {
