@@ -108,8 +108,8 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutronty
 		case <-ctx.Done():
 			s.unsubscribe()
 			return nil
-		case event := <-blockEvents:
-			if err := s.processBlockEvent(event, tasks); err != nil {
+		case <-blockEvents:
+			if err := s.processBlockEvent(ctx, tasks); err != nil {
 				return fmt.Errorf("failed to processblockEvent: %w", err)
 			}
 		case event := <-updateEvents:
@@ -144,13 +144,13 @@ func (s *Subscriber) unsubscribe() {
 	}
 }
 
-func (s *Subscriber) processBlockEvent(event tmtypes.ResultEvent, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
-	currentHeight, err := s.extractBlockHeight(event)
+func (s *Subscriber) processBlockEvent(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+	// Get last block height.
+	status, err := s.rpcClient.Status(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to extractBlockHeight: %w", err)
+		return fmt.Errorf("failed to get Status: %w", err)
 	}
-
-	fmt.Println("-----", event.Events)
+	currentHeight := uint64(status.SyncInfo.LatestBlockHeight)
 
 	for _, activeQuery := range s.activeQueries {
 		// Skip the ActiveQuery if we didn't reach the update time.

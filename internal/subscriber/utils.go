@@ -30,7 +30,8 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	return neutronQuery, nil
 }
 
-// getActiveQueries TODO(oopcode).
+// getActiveQueries retrieves the list of registered queries filtered by:
+//
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
 	// TODO: actually use pagination.
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
@@ -127,10 +128,4 @@ func (s *Subscriber) isWatchedMsgType(msgType string) bool {
 // are no registry watched addresses configured for the subscriber meaning all addresses are watched.
 func (s *Subscriber) isWatchedAddress(address string) bool {
 	return s.registry.IsEmpty() || s.registry.Contains(address)
-}
-
-// extractBlockHeight TODO(oopcode).
-func (s *Subscriber) extractBlockHeight(event tmtypes.ResultEvent) (uint64, error) {
-	// TODO(oopcode): implement
-	return 0, nil
 }
