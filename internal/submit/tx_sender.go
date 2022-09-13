@@ -122,7 +122,7 @@ func (txs *TxSender) Send(msgs []sdk.Msg) (string, error) {
 			if errInit != nil {
 				return "", fmt.Errorf("error calculating gas: failed to reinit sender: %w", errInit)
 			}
-			txs.logger.Info("sender reinitialized successfully(account sequence reset)")
+			txs.logger.Info("sender reinitialized successfully (account sequence reset)")
 		}
 		return "", fmt.Errorf("error calculating gas: %w", err)
 	}
@@ -155,7 +155,7 @@ func (txs *TxSender) Send(msgs []sdk.Msg) (string, error) {
 		if errInit != nil {
 			return "", fmt.Errorf("error broadcasting sync transaction: failed to reinit sender: %w", errInit)
 		}
-		txs.logger.Info("sender reinitialized successfully(account sequence reset)")
+		txs.logger.Info("sender reinitialized successfully (account sequence reset)")
 	}
 	return "", fmt.Errorf("error broadcasting sync transaction: log=%s", res.Log)
 }

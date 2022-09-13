@@ -80,7 +80,8 @@ type Subscriber struct {
 	activeQueries map[string]*neutrontypes.RegisteredQuery
 }
 
-// Subscribe TODO(oopcode).
+// Subscribe subscribes to 3 types of events: 1. a new block was created, 2. a query was updated (created / updated),
+// 3. a query was removed.
 func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
 	queries, err := s.getNeutronRegisteredQueries(ctx)
 	if err != nil {
@@ -168,7 +169,8 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks *queue.Queue[n
 	return nil
 }
 
-// processUpdateEvent TODO(oopcode).
+// processUpdateEvent retrieves up-to-date information about each updated query and saves
+// it to state. Note: an update event is emitted both on query creation and on query updates.
 func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
 	ok, err := s.checkEvents(event)
 	if err != nil {
@@ -182,18 +184,25 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 	// single tmtypes.ResultEvent value. We need to process all of them.
 	var events = event.Events
 	for idx := range events[connectionIdAttr] {
-		if !s.isWatchedAddress(events[ownerAttr][idx]) {
+		var (
+			owner   = events[ownerAttr][idx]
+			queryID = events[queryIdAttr][idx]
+		)
+		if !s.isWatchedAddress(owner) {
+			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
 			continue
 		}
 
 		// Load all information about the neutronQuery directly from ToNeutronRegisteredQuery.
-		var queryID = events[queryIdAttr][idx]
 		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
 			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
 		}
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
+			s.logger.Debug("Skipping query (wrong type)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
 			continue
 		}
 
@@ -218,12 +227,17 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 	// single tmtypes.ResultEvent value. We need to process all of them.
 	var events = event.Events
 	for idx := range events[connectionIdAttr] {
+		var (
+			owner   = events[ownerAttr][idx]
+			queryID = events[queryIdAttr][idx]
+		)
 		if !s.isWatchedAddress(events[ownerAttr][idx]) {
+			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
 			continue
 		}
 
 		// Delete the query from the active queries list.
-		var queryID = events[queryIdAttr][idx]
 		delete(s.activeQueries, queryID)
 	}
 

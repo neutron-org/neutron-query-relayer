@@ -30,10 +30,9 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	return neutronQuery, nil
 }
 
-// getActiveQueries retrieves the list of registered queries filtered by:
-//
+// getActiveQueries retrieves the list of registered queries filtered by owner, connection, and query type.
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
-	// TODO: actually use pagination.
+	// TODO: use pagination.
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
 		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
 			Owners:       s.registry.GetAddresses(),
