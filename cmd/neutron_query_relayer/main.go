@@ -3,19 +3,16 @@ package main
 import (
 	"context"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"github.com/zyedidia/generic/queue"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
-
-	"github.com/neutron-org/neutron-query-relayer/internal/config"
 )
 
 func main() {
@@ -48,7 +45,7 @@ func main() {
 	wg := &sync.WaitGroup{}
 
 	var (
-		queriesTasksQueue = queue.New[neutrontypes.RegisteredQuery]()
+		queriesTasksQueue = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 		subscriber        = app.NewDefaultSubscriber(logger, cfg)
 		relayer           = app.NewDefaultRelayer(ctx, logger, cfg, subscriber)
 	)
@@ -80,7 +77,8 @@ func main() {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 		s := <-sigs
-		logger.Info("Received termination signal, gracefully shutting down...", zap.String("signal", s.String()))
+		logger.Info("Received termination signal, gracefully shutting down...",
+			zap.String("signal", s.String()))
 		cancel()
 	}()
 

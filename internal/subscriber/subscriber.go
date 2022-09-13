@@ -8,16 +8,15 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/zyedidia/generic/queue"
 	"go.uber.org/zap"
 	"time"
 )
 
 var (
-	unsubscribeTimeout = time.Second * 5
 	restClientBasePath = "/"
-	restClientSchemes  = []string{"http"}
 	rpcWSEndpoint      = "/websocket"
+	unsubscribeTimeout = time.Second * 5
+	restClientSchemes  = []string{"http"}
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
@@ -84,7 +83,7 @@ type Subscriber struct {
 
 // Subscribe subscribes to 3 types of events: 1. a new block was created, 2. a query was updated (created / updated),
 // 3. a query was removed.
-func (s *Subscriber) Subscribe(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
 	queries, err := s.getNeutronRegisteredQueries(ctx)
 	if err != nil {
 		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
@@ -147,7 +146,7 @@ func (s *Subscriber) unsubscribe() {
 	}
 }
 
-func (s *Subscriber) processBlockEvent(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
 	// Get last block height.
 	status, err := s.rpcClient.Status(ctx)
 	if err != nil {
@@ -161,8 +160,8 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks *queue.Queue[n
 			continue
 		}
 
-		// Send the query to the task queue.
-		tasks.Enqueue(*activeQuery)
+		// Send the query to the tasks queue.
+		tasks <- *activeQuery
 
 		// Set the LastSubmittedResultLocalHeight to the current height.
 		activeQuery.LastSubmittedResultLocalHeight = currentHeight

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zyedidia/generic/queue"
 	"time"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
@@ -58,7 +57,7 @@ func NewRelayer(
 // Run starts the relaying process: subscribes on the incoming interchain query messages from the
 // ToNeutronRegisteredQuery and performs the queries by interacting with the target chain and submitting them to
 // the ToNeutronRegisteredQuery chain.
-func (r *Relayer) Run(ctx context.Context, tasks *queue.Queue[neutrontypes.RegisteredQuery]) error {
+func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQuery) error {
 	go r.txSubmitChecker.Run(ctx)
 
 	for {
@@ -70,13 +69,7 @@ func (r *Relayer) Run(ctx context.Context, tasks *queue.Queue[neutrontypes.Regis
 		)
 		select {
 		default:
-			// TODO: any better ideas?
-			if tasks.Empty() {
-				time.Sleep(time.Millisecond * 100)
-				continue
-			}
-
-			query := tasks.Dequeue()
+		case query := <-tasks:
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
