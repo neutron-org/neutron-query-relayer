@@ -59,7 +59,7 @@ func NewRelayer(
 // ToNeutronRegisteredQuery and performs the queries by interacting with the target chain and submitting them to
 // the ToNeutronRegisteredQuery chain.
 func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQuery) error {
-	err = r.txSubmitChecker.Run(ctx)
+	err := r.txSubmitChecker.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize tx submit checker: %w", err)
 	}
