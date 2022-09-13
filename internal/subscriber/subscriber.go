@@ -3,54 +3,56 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	restClient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
-	"time"
-
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
-	"go.uber.org/zap"
-
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/zyedidia/generic/queue"
+	"go.uber.org/zap"
+	"time"
 )
 
 var (
 	unsubscribeTimeout = time.Second * 5
 	restClientBasePath = "/"
 	restClientSchemes  = []string{"http"}
+	rpcWSEndpoint      = "/websocket"
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
 func NewSubscriber(
 	rpcAddress string,
+	restAddress string,
 	targetChainID string,
 	targetConnectionID string,
 	registry *registry.Registry,
 	watchedTypes []neutrontypes.InterchainQueryType,
 	logger *zap.Logger,
 ) (*Subscriber, error) {
-	rpcClient, err := http.New(rpcAddress, "/websocket")
+	rpcClient, err := http.New(rpcAddress, rpcWSEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("could not create new tendermint rpcClient: %w", err)
+	}
+
+	restClient, err := newRESTClient(restAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
 	}
 
 	if err = rpcClient.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
 	}
 
+	// Contains the types of queries that we are ready to serve (KV / TX).
 	watchedTypesMap := make(map[neutrontypes.InterchainQueryType]struct{})
 	for _, queryType := range watchedTypes {
 		watchedTypesMap[queryType] = struct{}{}
 	}
 
 	return &Subscriber{
-		rpcClient: rpcClient,
-		restClient: restClient.NewHTTPClientWithConfig(nil, &restClient.TransportConfig{
-			Host:     "127.0.0.1:1316", // TODO(oopcode): add config variable
-			BasePath: restClientBasePath,
-			Schemes:  restClientSchemes,
-		}),
+		rpcClient:  rpcClient,
+		restClient: restClient,
 
 		rpcAddress:         rpcAddress,
 		targetChainID:      targetChainID,
@@ -68,7 +70,7 @@ func NewSubscriber(
 // stream of split to KV and TX messages.
 type Subscriber struct {
 	rpcClient  *http.HTTP                 // Used to subscribe to events
-	restClient *restClient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
+	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
 	rpcAddress         string
 	targetChainID      string
@@ -206,14 +208,14 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 			continue
 		}
 
-		// Save the updated neutronQuery information to state.
+		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
 	}
 
 	return nil
 }
 
-// processRemoveEvent TODO(oopcode).
+// processRemoveEvent deletes an event that was removed on Neutron from memory.
 func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 	ok, err := s.checkEvents(event)
 	if err != nil {
@@ -228,14 +230,8 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 	var events = event.Events
 	for idx := range events[connectionIdAttr] {
 		var (
-			owner   = events[ownerAttr][idx]
 			queryID = events[queryIdAttr][idx]
 		)
-		if !s.isWatchedAddress(events[ownerAttr][idx]) {
-			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
-				zap.String("query_id", queryID))
-			continue
-		}
 
 		// Delete the query from the active queries list.
 		delete(s.activeQueries, queryID)

@@ -70,7 +70,7 @@ func (r *Relayer) Run(ctx context.Context, tasks *queue.Queue[neutrontypes.Regis
 		)
 		select {
 		default:
-			// TODO(oopcode): busy loop?
+			// TODO: any better ideas?
 			if tasks.Empty() {
 				time.Sleep(time.Millisecond * 100)
 				continue

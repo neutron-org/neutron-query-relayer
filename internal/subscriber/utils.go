@@ -3,13 +3,28 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	url2 "net/url"
+
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+
+	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-var paginationLimit = "100"
+func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
+	url, err := url2.Parse(restAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
+	}
+
+	return restclient.NewHTTPClientWithConfig(nil, &restclient.TransportConfig{
+		Host:     url.Host,
+		BasePath: restClientBasePath,
+		Schemes:  restClientSchemes,
+	}), nil
+}
 
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQuery(
@@ -65,7 +80,8 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	return out, nil
 }
 
-// checkEvents TODO(oopcode).
+// checkEvents verifies that 1. there is N events associated with the connection id that we are
+// interested in, 2. there is a matching number of other query-specific event attributes.
 func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
 	events := event.Events
 
