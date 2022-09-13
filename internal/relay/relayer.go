@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
@@ -121,19 +122,25 @@ func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 	return r.kvProcessor.ProcessAndSubmit(ctx, m)
 }
 
-func (r *Relayer) buildTxQuery(m *MessageTX) (neutrontypes.TransactionsFilter, error) {
+func (r *Relayer) buildTxQuery(m *MessageTX) (string, error) {
 	queryLastHeight, err := r.getLastQueryHeight(m.QueryId)
 	if err != nil {
-		return nil, fmt.Errorf("could not get last query height: %w", err)
+		return "", fmt.Errorf("could not get last query height: %w", err)
 	}
 
 	var params neutrontypes.TransactionsFilter
 	if err = json.Unmarshal([]byte(m.TransactionsFilter), &params); err != nil {
-		return nil, fmt.Errorf("could not unmarshal transactions filter: %w", err)
+		return "", fmt.Errorf("could not unmarshal transactions filter: %w", err)
 	}
 	// add filter by tx.height (tx.height>n)
 	params = append(params, neutrontypes.TransactionsFilterItem{Field: TxHeight, Op: "gt", Value: queryLastHeight})
-	return params, nil
+
+	queryString, err := queryFromTxFilter(params)
+	if err != nil {
+		return "", fmt.Errorf("failed to process tx query params: %w", err)
+	}
+
+	return queryString, nil
 }
 
 // processMessageTX handles an incoming TX interchain query message. It fetches proven transactions
@@ -141,25 +148,41 @@ func (r *Relayer) buildTxQuery(m *MessageTX) (neutrontypes.TransactionsFilter, e
 // Neutron chain.
 func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 	r.logger.Debug("running processMessageTX for msg", zap.Uint64("query_id", m.QueryId))
-	queryParams, err := r.buildTxQuery(m)
+	queryString, err := r.buildTxQuery(m)
 	if err != nil {
-		return fmt.Errorf("failed to build tx query params: %w", err)
+		return fmt.Errorf("failed to build tx query string: %w", err)
 	}
 
-	txs := r.txQuerier.SearchTransactions(ctx, queryParams)
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	txs, errs := r.txQuerier.SearchTransactions(cancelCtx, queryString)
+	lastProcessedHeight := uint64(0)
+	for tx := range txs {
+		if tx.Height > lastProcessedHeight {
+			err := r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
+			if err != nil {
+				// TODO: should we stop after a first error
+				return fmt.Errorf("failed to save last height of query: %w", err)
+			}
+		}
+		lastProcessedHeight = tx.Height
+		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx)
+		if err != nil {
+			// TODO: should we stop after a first error
+			return fmt.Errorf("failed to process txs: %w", err)
+		}
+	}
 
-	lastProcessedHeight, err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, txs)
-	if err != nil {
-		return fmt.Errorf("failed to process txs: %w", err)
+	select {
+	case stoppedWithErr := <-errs:
+		return fmt.Errorf("failed to query txs: %w", stoppedWithErr)
+	default:
+		err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
+		if err != nil {
+			return fmt.Errorf("failed to save last height of query: %w", err)
+		}
 	}
-	if r.txQuerier.Err() != nil {
-		return fmt.Errorf("failed to query txs: %w", r.txQuerier.Err())
-	}
-	err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
-	if err != nil {
-		return fmt.Errorf("failed to save last height of query: %w", err)
-	}
-	return err
+	return nil
 }
 
 // getLastQueryHeight returns last query height & no err if query exists in storage, also initializes query with height = 0  if not exists yet
@@ -176,4 +199,42 @@ func (r *Relayer) getLastQueryHeight(queryID uint64) (uint64, error) {
 		return 0, fmt.Errorf("failed to check query in storage: %w", err)
 	}
 	return height, nil
+}
+
+// QueryFromTxFilter creates query from transactions filter like
+// `key1{=,>,>=,<,<=}value1 AND key2{=,>,>=,<,<=}value2 AND ...`
+func queryFromTxFilter(params neutrontypes.TransactionsFilter) (string, error) {
+	queryParamsList := make([]string, 0, len(params))
+	for _, row := range params {
+		sign, err := getOpSign(row.Op)
+		if err != nil {
+			return "", err
+		}
+		switch r := row.Value.(type) {
+		case string:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s'%s'", row.Field, sign, r))
+		case float64:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, uint64(r)))
+		case uint64:
+			queryParamsList = append(queryParamsList, fmt.Sprintf("%s%s%d", row.Field, sign, r))
+		}
+	}
+	return strings.Join(queryParamsList, " AND "), nil
+}
+
+func getOpSign(op string) (string, error) {
+	switch strings.ToLower(op) {
+	case "eq":
+		return "=", nil
+	case "gt":
+		return ">", nil
+	case "gte":
+		return ">=", nil
+	case "lt":
+		return "<", nil
+	case "lte":
+		return "<=", nil
+	default:
+		return "", fmt.Errorf("unsupported operator %s", op)
+	}
 }
