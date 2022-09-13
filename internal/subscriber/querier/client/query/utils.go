@@ -14,17 +14,17 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesOKBodyRegiste
 
 	updatePeriod, err := strconv.ParseUint(o.UpdatePeriod, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
+		return nil, fmt.Errorf("failed to parse o.UpdatePeriod: %w", err)
 	}
 
 	lastSubmittedResultLocalHeight, err := strconv.ParseUint(o.LastSubmittedResultLocalHeight, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
 
 	lastSubmittedResultRemoteHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
 	}
 
 	var keys []*neutrontypes.KVKey
@@ -56,17 +56,17 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 
 	updatePeriod, err := strconv.ParseUint(o.UpdatePeriod, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
+		return nil, fmt.Errorf("failed to parse o.UpdatePeriod: %w", err)
 	}
 
 	lastSubmittedResultLocalHeight, err := strconv.ParseUint(o.LastSubmittedResultLocalHeight, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
 
 	lastSubmittedResultRemoteHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
 	}
 
 	var keys []*neutrontypes.KVKey

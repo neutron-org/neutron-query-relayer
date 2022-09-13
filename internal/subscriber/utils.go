@@ -13,6 +13,7 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
+// newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
 func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
 	url, err := url2.Parse(restAddr)
 	if err != nil {
@@ -26,6 +27,7 @@ func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
 	}), nil
 }
 
+// getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQuery(
 		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueryParams{

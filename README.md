@@ -139,3 +139,5 @@ client from `./internal/subscriber/querier/openapi.yml` by running:
 ```
 make generate-openapi
 ```
+
+The swagger specs can be taken from the Neutron [repo](https://github.com/neutron-org/neutron/blob/main/docs/static/openapi.yml) (you need to remove most of the generated specification). 
