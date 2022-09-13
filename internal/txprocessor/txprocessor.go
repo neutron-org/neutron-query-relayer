@@ -38,38 +38,28 @@ func NewTxProcessor(
 	return txProcessor
 }
 
-func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, txs <-chan relay.Transaction) (uint64, error) {
-	lastProcessedHeight := uint64(0)
-	for tx := range txs {
-		if tx.Height > lastProcessedHeight {
-			err := r.storage.SetLastQueryHeight(queryID, lastProcessedHeight)
-			if err != nil {
-				return 0, fmt.Errorf("failed to save last height of query: %w", err)
-			}
-		}
-		lastProcessedHeight = tx.Height
-		hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
-		txExists, err := r.storage.TxExists(queryID, hash)
-		if err != nil {
-			return 0, fmt.Errorf("failed to check tx existence: %w", err)
-		}
-
-		if txExists {
-			r.logger.Debug("transaction already submitted", zap.Uint64("query_id", queryID), zap.String("hash", hash))
-			continue
-		}
-
-		block, err := r.txToBlock(ctx, tx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to prepare block: %w", err)
-		}
-
-		err = r.submitTxWithProofs(queryID, block)
-		if err != nil {
-			return 0, fmt.Errorf("failed to submit block: %w", err)
-		}
+func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx relay.Transaction) error {
+	hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
+	txExists, err := r.storage.TxExists(queryID, hash)
+	if err != nil {
+		return fmt.Errorf("failed to check tx existence: %w", err)
 	}
-	return lastProcessedHeight, nil
+
+	if txExists {
+		r.logger.Debug("transaction already submitted", zap.Uint64("query_id", queryID), zap.String("hash", hash))
+		return nil
+	}
+
+	block, err := r.txToBlock(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("failed to prepare block: %w", err)
+	}
+
+	err = r.submitTxWithProofs(queryID, block)
+	if err != nil {
+		return fmt.Errorf("failed to submit block: %w", err)
+	}
+	return nil
 }
 
 func (r TXProcessor) GetSubmitNotificationChannel() <-chan relay.PendingSubmittedTxInfo {
