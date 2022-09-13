@@ -118,7 +118,7 @@ func (s *Subscriber) subscribeQueryUpdated() string {
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
 func (s *Subscriber) subscribeQueryRemoved() string {
-	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
+	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.targetConnectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryRemoved,
