@@ -40,7 +40,7 @@ func NewSubscriber(
 		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
 	}
 
-	// rpcClient is used to retrieve registered queries from Neutron.
+	// restClient is used to retrieve registered queries from Neutron.
 	restClient, err := newRESTClient(restAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
