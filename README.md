@@ -1,11 +1,37 @@
-# Description
-Interchain query relayer implementation for Neutron
+Interchain query relayer implementation for [Neutron](https://github.com/neutron-org/neutron).
 
-Makes interchain queries possible:
-1. Neutron manages interchain query registration;
+# Do you need it?
+
+Basically, relayer makes two types of things possible:
+1. query key value in target chain
+2. query newly submitted transactions in target chain.
+
+You need to run your own relayer instance if:
+- you want to make unique interchain queries, or you want to use queries with sudo callback handlers
+- you want to make tx queries - because it only works through sudo callback handlers
+
+> 💡 Relayer only supports making interchain queries from Neutron chain, because it needs [InterchainQueries](https://github.com/neutron-org/neutron/tree/main/x/interchainqueries) module in order to work
+
+# Requirements
+- Stable machine. If relayer does not run, your queries data won’t be updated;
+- ***?WHAT_CURRENCY?*** tokens on neutron account that relayer will use to submit proofs;
+- [OPTIONAL] Setup monitoring. Relayer instruments its main operations to ensure everything is functioning.
+  TODO: section about monitoring setup
+
+# How it works
+1. Neutron contracts manages interchain query registration;
 2. Relayer sees incoming ICQ events from Neutron;
-3. On each event, relayer gets proofs for all the needed data for query from the target chain;
-4. Relayer either sends query result to Neutron (for KV queries) or calls query owner's sudo handler (for TX queries if callback execution is allowed by configuration of the relayer).
+3. On each event, relayer either:
+  - (for KV queries) for each key gets values and proofs and sends query result to Neutron; it can also use sudo callback if enabled in relayer;
+  - (for TX queries) gets the latest unsent transactions with given query filter, gets proofs for each of them and then calls query owner's contract sudo handler (for TX queries if callback execution is allowed by configuration of the relayer);
+
+For examples of usage please look into [example contracts](https://github.com/neutron-org/neutron-contracts/tree/main/contracts/neutron_interchain_queries)
+
+#### Implementation details
+- All relayers are for private use
+- Transaction queries are supported via only sudo callback handlers
+- Transaction queries can only fetch transactions not older than trusting period due to limitations of light clients in tendermint
+- Key value queries supported as a queryable data and as sudo callback handlers
 
 # Running in development
 
