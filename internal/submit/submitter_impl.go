@@ -19,7 +19,7 @@ func NewSubmitterImpl(sender *TxSender, allowKVCallbacks bool, clientID string) 
 	return &SubmitterImpl{sender: sender, allowKVCallbacks: allowKVCallbacks, clientID: clientID}
 }
 
-// SubmitKVProof submits query with proof back to ToNeutronRegisteredQuery chain
+// SubmitKVProof submits query with proof back to Neutron chain
 func (si *SubmitterImpl) SubmitKVProof(
 	height,
 	revision,
@@ -37,7 +37,7 @@ func (si *SubmitterImpl) SubmitKVProof(
 	return err
 }
 
-// SubmitTxProof submits tx query with proof back to ToNeutronRegisteredQuery chain
+// SubmitTxProof submits tx query with proof back to Neutron chain
 func (si *SubmitterImpl) SubmitTxProof(queryId uint64, proof *neutrontypes.Block) (string, error) {
 	msgs, err := si.buildTxProofMsg(queryId, si.clientID, proof)
 	if err != nil {

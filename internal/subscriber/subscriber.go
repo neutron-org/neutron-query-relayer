@@ -195,7 +195,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 			continue
 		}
 
-		// Load all information about the neutronQuery directly from ToNeutronRegisteredQuery.
+		// Load all information about the neutronQuery directly from Neutron.
 		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
 			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)

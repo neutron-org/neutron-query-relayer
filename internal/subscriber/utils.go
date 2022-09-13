@@ -67,7 +67,7 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	for _, restQuery := range payload.RegisteredQueries {
 		neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get ToNeutronRegisteredQuery: %w", err)
+			return nil, fmt.Errorf("failed to cast ToNeutronRegisteredQuery: %w", err)
 		}
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {

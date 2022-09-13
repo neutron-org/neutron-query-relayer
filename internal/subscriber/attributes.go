@@ -12,22 +12,22 @@ const (
 	// eventAttr is the key of the tendermint's event attribute that contains the kind of event.
 	eventAttr = "tm.event"
 
-	// connectionIdAttr is the key of the ToNeutronRegisteredQuery's custom message event's attribute that contains the
+	// connectionIdAttr is the key of the Neutron's custom message event's attribute that contains the
 	// connectionID of the event's ActiveQuery.
 	connectionIdAttr = "neutron." + types.AttributeKeyConnectionID
-	// queryIdAttr is the key of the ToNeutronRegisteredQuery's custom message event's attribute that contains the
+	// queryIdAttr is the key of the Neutron's custom message event's attribute that contains the
 	// incoming ICQ ID.
 	queryIdAttr = "neutron." + types.AttributeKeyQueryID
-	// kvKeyAttr is the key of the ToNeutronRegisteredQuery's custom message event's attribute that contains the KV
+	// kvKeyAttr is the key of the Neutron's custom message event's attribute that contains the KV
 	// values for the incoming KV ICQ.
 	kvKeyAttr = "neutron." + types.AttributeKeyKVQuery
-	// transactionsFilterAttr is the key of the ToNeutronRegisteredQuery's custom message event's attribute that
+	// transactionsFilterAttr is the key of the Neutron's custom message event's attribute that
 	// contains the transaction filter value for the incoming TX ICQ.
 	transactionsFilterAttr = "neutron." + types.AttributeTransactionsFilterQuery
-	// typeAttr is the key of the ToNeutronRegisteredQuery's custom message event's attribute that contains the type
+	// typeAttr is the key of the Neutron's custom message event's attribute that contains the type
 	// of the incoming ICQ.
 	typeAttr = "neutron." + types.AttributeKeyQueryType
-	// ownerAttr is the key of the ToNeutronRegisteredQuery's custom message event's attribute that contains the
+	// ownerAttr is the key of the Neutron's custom message event's attribute that contains the
 	// address of the ICQ owner.
 	ownerAttr = "neutron." + types.AttributeKeyOwner
 )
