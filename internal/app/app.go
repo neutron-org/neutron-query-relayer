@@ -80,7 +80,7 @@ func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.Neutr
 	if cfg.AllowTxQueries {
 		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
 	}
-	subscriber, err := subscriber.NewSubscriber(
+	sub, err := subscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.TargetChain.ChainID,
 		cfg.TargetChain.ConnectionID,
@@ -117,7 +117,7 @@ func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.Neutr
 	relayer := relay.NewRelayer(
 		cfg,
 		txQuerier,
-		subscriber,
+		sub,
 		st,
 		txProcessor,
 		txSubmitChecker,

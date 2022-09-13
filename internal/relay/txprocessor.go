@@ -18,11 +18,8 @@ type TXQuerier interface {
 	// the returned channel can be closed due to one of the following cases:
 	// a) All transactions from an RPC call preprocessed successfully
 	// b) error encountered during the SearchTransactions method
-	SearchTransactions(ctx context.Context, txFilter neutrontypes.TransactionsFilter) <-chan Transaction
-	// Err is method to check the reason of `<-chan Transaction` closing,
-	// NonNil - error encountered during the SearchTransactions method
-	// Nil - SearchTransactions stopped with all transactions pre-processed successfully after a successful RPC call
-	Err() error
+	// After a txs channel is closed, it's necessary to check the errs channel for a possible errors in a SearchTransactions goroutine
+	SearchTransactions(ctx context.Context, query string) (<-chan Transaction, <-chan error)
 }
 
 // ChainClient is a minimal interface for tendermint client
@@ -33,6 +30,6 @@ type ChainClient interface {
 
 // TXProcessor precesses transactions from a remote chain and sends them to the neutron
 type TXProcessor interface {
-	ProcessAndSubmit(ctx context.Context, queryID uint64, txs <-chan Transaction) (uint64, error)
+	ProcessAndSubmit(ctx context.Context, queryID uint64, tx Transaction) error
 	GetSubmitNotificationChannel() <-chan PendingSubmittedTxInfo
 }
