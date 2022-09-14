@@ -23,13 +23,14 @@ const TxHeight = "tx.height"
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	cfg         config.NeutronQueryRelayerConfig
-	txQuerier   TXQuerier
-	subscriber  Subscriber
-	logger      *zap.Logger
-	storage     Storage
-	txProcessor TXProcessor
-	kvProcessor KVProcessor
+	cfg             config.NeutronQueryRelayerConfig
+	txQuerier       TXQuerier
+	subscriber      Subscriber
+	logger          *zap.Logger
+	storage         Storage
+	txProcessor     TXProcessor
+	txSubmitChecker TxSubmitChecker
+	kvProcessor     KVProcessor
 }
 
 func NewRelayer(
@@ -38,17 +39,19 @@ func NewRelayer(
 	subscriber Subscriber,
 	store Storage,
 	txProcessor TXProcessor,
+	txSubmitChecker TxSubmitChecker,
 	kvprocessor KVProcessor,
 	logger *zap.Logger,
 ) *Relayer {
 	return &Relayer{
-		cfg:         cfg,
-		txQuerier:   txQuerier,
-		subscriber:  subscriber,
-		logger:      logger,
-		storage:     store,
-		txProcessor: txProcessor,
-		kvProcessor: kvprocessor,
+		cfg:             cfg,
+		txQuerier:       txQuerier,
+		subscriber:      subscriber,
+		logger:          logger,
+		storage:         store,
+		txProcessor:     txProcessor,
+		txSubmitChecker: txSubmitChecker,
+		kvProcessor:     kvprocessor,
 	}
 }
 
@@ -62,6 +65,13 @@ func (r *Relayer) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to subscribe to neutron events: %w", err)
 	}
 	r.logger.Info("successfully subscribed to neutron chain events")
+
+	err = r.txSubmitChecker.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to initialize tx submit checker: %w", err)
+	}
+
+	r.logger.Info("successfully initialized tx submit checker")
 
 	for {
 		var (
