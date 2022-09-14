@@ -82,7 +82,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 				err = r.processMessageKV(ctx, msg)
 			case string(neutrontypes.InterchainQueryTypeTX):
 				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
-				err = r.processMessageTX(context.Background(), msg)
+				err = r.processMessageTX(ctx, msg)
 			default:
 				err = fmt.Errorf("unknown query type: %s", query.QueryType)
 			}

@@ -3,7 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	url2 "net/url"
+	"net/url"
 
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -15,7 +15,7 @@ import (
 
 // newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
 func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
-	url, err := url2.Parse(restAddr)
+	url, err := url.Parse(restAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
 	}
