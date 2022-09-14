@@ -169,15 +169,13 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 	txs, errs := r.txQuerier.SearchTransactions(cancelCtx, queryString)
 	lastProcessedHeight := uint64(0)
 	for tx := range txs {
-		if tx.Height > lastProcessedHeight {
+		if tx.Height > lastProcessedHeight && lastProcessedHeight > 0 {
 			err := r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
 			if err != nil {
 				// TODO: should we stop after a first error
 				return fmt.Errorf("failed to save last height of query: %w", err)
 			}
-			if lastProcessedHeight > 0 {
-				r.logger.Debug("block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight), zap.Uint64("next_height_to_process", tx.Height))
-			}
+			r.logger.Debug("block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight), zap.Uint64("next_height_to_process", tx.Height))
 		}
 		lastProcessedHeight = tx.Height
 		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx)

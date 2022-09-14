@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// NewDefaultRelayer returns relayer built with cfg
 func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) *relay.Relayer {
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
