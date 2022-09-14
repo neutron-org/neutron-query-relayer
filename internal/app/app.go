@@ -13,6 +13,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
+	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
 	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/txquerier"
 	neutronapp "github.com/neutron-org/neutron/app"
@@ -91,9 +92,9 @@ func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.Neutr
 		logger.Fatal("failed to init subscriber", zap.Error(err))
 	}
 
-	csManager := relay.NewConsensusStatesManager(targetChain, neutronChain)
+	trustedHeaderFetcher := trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
 
-	txProcessor := txprocessor.NewTxProcessor(csManager, st, proofSubmitter, logger)
+	txProcessor := txprocessor.NewTxProcessor(trustedHeaderFetcher, st, proofSubmitter, logger)
 
 	kvProcessor := kvprocessor.NewKVProcessor(
 		targetQuerier,

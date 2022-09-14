@@ -31,12 +31,13 @@ type TXQuerierSrv struct {
 // SearchTransactions gets txs with proofs for query type = 'tx'
 // (NOTE: there is no such query function in cosmos-sdk)
 func (t *TXQuerierSrv) SearchTransactions(ctx context.Context, query string) (<-chan relay.Transaction, <-chan error) {
-	var errs chan error
+	errs := make(chan error, 1)
 	txs := make(chan relay.Transaction, TxsChanSize)
 	page := 1 // NOTE: page index starts from 1
 
 	go func() {
 		defer close(txs)
+		defer close(errs)
 		for {
 			searchResult, err := t.chainClient.TxSearch(ctx, query, true, &page, &perPage, orderBy)
 			if err != nil {
@@ -64,7 +65,6 @@ func (t *TXQuerierSrv) SearchTransactions(ctx context.Context, query string) (<-
 				select {
 				case txs <- relay.Transaction{Tx: &txProof, Height: uint64(tx.Height)}:
 				case <-ctx.Done():
-					errs <- ctx.Err()
 					return
 				}
 			}

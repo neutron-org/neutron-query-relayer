@@ -15,9 +15,9 @@ type Transaction struct {
 // TXQuerier fetches transactions from a remote chain with specified txFilter
 type TXQuerier interface {
 	// SearchTransactions searches for transactions from remote chain.
-	// the returned channel can be closed due to one of the following cases:
+	// the returned transactions channel can be closed due to one of the following cases:
 	// a) All transactions from an RPC call preprocessed successfully
-	// b) error encountered during the SearchTransactions method
+	// b) error encountered during the SearchTransactions method (the error will be written into the returned errs channel)
 	// After a txs channel is closed, it's necessary to check the errs channel for a possible errors in a SearchTransactions goroutine
 	SearchTransactions(ctx context.Context, query string) (<-chan Transaction, <-chan error)
 }

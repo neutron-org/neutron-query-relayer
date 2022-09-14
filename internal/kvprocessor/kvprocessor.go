@@ -153,10 +153,10 @@ func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (ibce
 		p.logger.Info(
 			"failed to GetIBCUpdateHeader", zap.Error(err))
 	})); err != nil {
-		neutronmetrics.AddFailedTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
+		neutronmetrics.RecordActionDuration("GetIBCUpdateHeader", time.Since(start).Seconds())
 		return nil, err
 	}
-	neutronmetrics.AddSuccessTargetChainGetter("GetIBCUpdateHeader", time.Since(start).Seconds())
+	neutronmetrics.RecordActionDuration("GetIBCUpdateHeader", time.Since(start).Seconds())
 	return srcHeader, nil
 }
 
@@ -179,6 +179,6 @@ func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader ibcexpor
 	if !ok {
 		return nil, errors.New("failed to cast provider.RelayerMessage to cosmos.CosmosMessage")
 	}
-	neutronmetrics.AddSuccessTargetChainGetter("GetUpdateClientMsg", time.Since(start).Seconds())
+	neutronmetrics.RecordActionDuration("GetUpdateClientMsg", time.Since(start).Seconds())
 	return updateMsgUnpacked.Msg, nil
 }

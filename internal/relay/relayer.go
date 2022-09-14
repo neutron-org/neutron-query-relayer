@@ -25,7 +25,7 @@ const TxHeight = "tx.height"
 type Relayer struct {
 	cfg         config.NeutronQueryRelayerConfig
 	txQuerier   TXQuerier
-	trustedHeaderFetcher TrustedHeaderFetchersubscriber  Subscriber
+	subscriber  Subscriber
 	logger      *zap.Logger
 	storage     Storage
 	txProcessor TXProcessor
@@ -35,21 +35,20 @@ type Relayer struct {
 func NewRelayer(
 	cfg config.NeutronQueryRelayerConfig,
 	txQuerier TXQuerier,
-	trustedHeaderFetcher TrustedHeaderFetcher,
 	subscriber Subscriber,
 	store Storage,
 	txProcessor TXProcessor,
-	kvprocessor KVProcessor,
+	kvProcessor KVProcessor,
 	logger *zap.Logger,
 ) *Relayer {
 	return &Relayer{
 		cfg:         cfg,
 		txQuerier:   txQuerier,
-		trustedHeaderFetcher: trustedHeaderFetcher,subscriber:  subscriber,
+		subscriber:  subscriber,
 		logger:      logger,
 		storage:     store,
 		txProcessor: txProcessor,
-		kvProcessor: kvprocessor,
+		kvProcessor: kvProcessor,
 	}
 }
 
@@ -153,6 +152,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 	if err != nil {
 		return fmt.Errorf("failed to build tx query string: %w", err)
 	}
+	r.logger.Debug("tx query to search transactions", zap.Uint64("query_id", m.QueryId), zap.String("query", queryString))
 
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -165,6 +165,9 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 				// TODO: should we stop after a first error
 				return fmt.Errorf("failed to save last height of query: %w", err)
 			}
+			if lastProcessedHeight > 0 {
+				r.logger.Debug("block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight), zap.Uint64("next_height_to_process", tx.Height))
+			}
 		}
 		lastProcessedHeight = tx.Height
 		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx)
@@ -174,14 +177,19 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 		}
 	}
 
-	select {
-	case stoppedWithErr := <-errs:
+	stoppedWithErr := <-errs
+	if stoppedWithErr != nil {
 		return fmt.Errorf("failed to query txs: %w", stoppedWithErr)
-	default:
-		err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
-		if err != nil {
-			return fmt.Errorf("failed to save last height of query: %w", err)
-		}
+	}
+
+	err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
+	if err != nil {
+		return fmt.Errorf("failed to save last height of query: %w", err)
+	}
+	if lastProcessedHeight > 0 {
+		r.logger.Debug("the final block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight))
+	} else {
+		r.logger.Debug("no results found for the query", zap.Uint64("query_id", m.QueryId))
 	}
 	return nil
 }
