@@ -192,11 +192,11 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 		return fmt.Errorf("failed to query txs: %w", stoppedWithErr)
 	}
 
-	err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
-	if err != nil {
-		return fmt.Errorf("failed to save last height of query: %w", err)
-	}
 	if lastProcessedHeight > 0 {
+		err = r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
+		if err != nil {
+			return fmt.Errorf("failed to save last height of query: %w", err)
+		}
 		r.logger.Debug("the final block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight))
 	} else {
 		r.logger.Debug("no results found for the query", zap.Uint64("query_id", m.QueryId))
