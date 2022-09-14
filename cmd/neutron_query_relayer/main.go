@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"log"
 	"net/http"
@@ -42,16 +41,7 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-
-	relayer, notifChannel := app.NewDefaultRelayer(ctx, logger, cfg)
-
-	// DEMO PURPOSE ONLY
-	go func() {
-		for n := range notifChannel {
-			fmt.Println(n)
-		}
-	}()
-	// DEMO PURPOSE ONLY
+	relayer := app.NewDefaultRelayer(ctx, logger, cfg)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)

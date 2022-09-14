@@ -11,13 +11,14 @@ import (
 
 // NeutronQueryRelayerConfig describes configuration of the app
 type NeutronQueryRelayerConfig struct {
-	NeutronChain      *NeutronChainConfig      `split_words:"true"`
-	TargetChain       *TargetChainConfig       `split_words:"true"`
-	Registry          *registry.RegistryConfig `split_words:"true"`
-	AllowTxQueries    bool                     `required:"true" split_words:"true"`
-	AllowKVCallbacks  bool                     `required:"true" split_words:"true"`
-	MinKvUpdatePeriod uint64                   `split_words:"true" default:"0"`
-	StoragePath       string                   `split_words:"true"`
+	NeutronChain                *NeutronChainConfig      `split_words:"true"`
+	TargetChain                 *TargetChainConfig       `split_words:"true"`
+	Registry                    *registry.RegistryConfig `split_words:"true"`
+	AllowTxQueries              bool                     `required:"true" split_words:"true"`
+	AllowKVCallbacks            bool                     `required:"true" split_words:"true"`
+	MinKvUpdatePeriod           uint64                   `split_words:"true" default:"0"`
+	StoragePath                 string                   `split_words:"true"`
+	CheckSubmittedTxStatusDelay uint64                   `split_words:"true" default:"10"`
 }
 
 const EnvPrefix string = "RELAYER"
