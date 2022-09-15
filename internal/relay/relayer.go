@@ -25,7 +25,6 @@ const TxHeight = "tx.height"
 type Relayer struct {
 	cfg             config.NeutronQueryRelayerConfig
 	txQuerier       TXQuerier
-	subscriber      Subscriber
 	logger          *zap.Logger
 	storage         Storage
 	txProcessor     TXProcessor
@@ -36,7 +35,6 @@ type Relayer struct {
 func NewRelayer(
 	cfg config.NeutronQueryRelayerConfig,
 	txQuerier TXQuerier,
-	subscriber Subscriber,
 	store Storage,
 	txProcessor TXProcessor,
 	kvprocessor KVProcessor,
@@ -46,7 +44,6 @@ func NewRelayer(
 	return &Relayer{
 		cfg:             cfg,
 		txQuerier:       txQuerier,
-		subscriber:      subscriber,
 		logger:          logger,
 		storage:         store,
 		txProcessor:     txProcessor,

@@ -47,7 +47,7 @@ func main() {
 	var (
 		queriesTasksQueue = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 		subscriber        = app.NewDefaultSubscriber(logger, cfg)
-		relayer           = app.NewDefaultRelayer(ctx, logger, cfg, subscriber)
+		relayer           = app.NewDefaultRelayer(ctx, logger, cfg)
 	)
 
 	wg.Add(1)

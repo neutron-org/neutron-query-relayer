@@ -49,7 +49,6 @@ func NewDefaultRelayer(
 	ctx context.Context,
 	logger *zap.Logger,
 	cfg config.NeutronQueryRelayerConfig,
-	subscriber relay.Subscriber,
 ) *relay.Relayer {
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
@@ -103,11 +102,11 @@ func NewDefaultRelayer(
 	}
 
 	var (
-		proofSubmitter = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
-		txQuerier      = txquerier.NewTXQuerySrv(targetQuerier.Client)
+		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
+		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
-		txProcessor    = txprocessor.NewTxProcessor(csManager, st, proofSubmitter, logger)
-		kvProcessor    = kvprocessor.NewKVProcessor(
+		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, st, proofSubmitter, logger)
+		kvProcessor          = kvprocessor.NewKVProcessor(
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
 			logger,
@@ -126,11 +125,10 @@ func NewDefaultRelayer(
 		relayer = relay.NewRelayer(
 			cfg,
 			txQuerier,
-			subscriber,
 			st,
 			txProcessor,
-			txSubmitChecker,
 			kvProcessor,
+			txSubmitChecker,
 			logger,
 		)
 	)
