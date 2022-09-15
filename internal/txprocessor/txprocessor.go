@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -15,24 +14,24 @@ import (
 )
 
 type TXProcessor struct {
-	csManager relay.ConsensusManager
-	storage   relay.Storage
-	submitter relay.Submitter
-	logger    *zap.Logger
-	enqueue   chan<- relay.PendingSubmittedTxInfo
-	dequeue   <-chan relay.PendingSubmittedTxInfo
+	trustedHeaderFetcher relay.TrustedHeaderFetcher
+	storage              relay.Storage
+	submitter            relay.Submitter
+	logger               *zap.Logger
+	enqueue              chan<- relay.PendingSubmittedTxInfo
+	dequeue              <-chan relay.PendingSubmittedTxInfo
 }
 
 func NewTxProcessor(
-	csManager relay.ConsensusManager,
+	trustedHeaderFetcher relay.TrustedHeaderFetcher,
 	storage relay.Storage,
 	submitter relay.Submitter,
 	logger *zap.Logger) TXProcessor {
 	txProcessor := TXProcessor{
-		csManager: csManager,
-		storage:   storage,
-		submitter: submitter,
-		logger:    logger,
+		trustedHeaderFetcher: trustedHeaderFetcher,
+		storage:              storage,
+		submitter:            submitter,
+		logger:               logger,
 	}
 	txProcessor.enqueue, txProcessor.dequeue = makeQueue()
 	return txProcessor
@@ -46,7 +45,7 @@ func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx re
 	}
 
 	if txExists {
-		r.logger.Debug("transaction already submitted", zap.Uint64("query_id", queryID), zap.String("hash", hash))
+		r.logger.Debug("transaction already submitted", zap.Uint64("query_id", queryID), zap.String("hash", hash), zap.Uint64("height", tx.Height))
 		return nil
 	}
 
@@ -110,25 +109,11 @@ func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neut
 }
 
 func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
-	header, err := r.csManager.GetHeaderWithBestTrustedHeight(ctx, txStruct.Height)
+	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.Fetch(ctx, txStruct.Height)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get header for src chain: %w", err)
 	}
 
-	packedHeader, err = clienttypes.PackHeader(header)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to pack header: %w", err)
-	}
-
-	nextHeader, err := r.csManager.GetHeaderWithBestTrustedHeight(ctx, txStruct.Height+1)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get next header for src chain: %w", err)
-	}
-
-	packedNextHeader, err = clienttypes.PackHeader(nextHeader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to pack next header: %w", err)
-	}
 	return
 }
 

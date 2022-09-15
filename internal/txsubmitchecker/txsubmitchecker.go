@@ -106,7 +106,7 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 				continue
 			}
 
-			txResponse, err := tc.retryGetTxStatusWithTimeout(neutronHash, 10*time.Second)
+			txResponse, err := tc.retryGetTxStatusWithTimeout(ctx, neutronHash, 10*time.Second)
 			if err != nil {
 				tc.logger.Warn(
 					"failed to get tx status from rpc",
@@ -134,22 +134,23 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 }
 
 func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(
+	ctx context.Context,
 	neutronHash []byte,
 	timeout time.Duration,
 ) (*coretypes.ResultTx, error) {
 	var result *coretypes.ResultTx
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	if err := retry.Do(func() error {
 		var err error
-		result, err = tc.rpcClient.Tx(ctx, neutronHash, false)
+		result, err = tc.rpcClient.Tx(timeoutCtx, neutronHash, false)
 		if err != nil {
 			return err
 		}
 		return nil
-	}, retry.Context(ctx), retryAttempts, retryDelay, retryError); err != nil {
+	}, retry.Context(timeoutCtx), retryAttempts, retryDelay, retryError); err != nil {
 		return nil, err
 	}
 

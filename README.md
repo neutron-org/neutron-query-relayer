@@ -8,16 +8,25 @@ Makes interchain queries possible:
 2. Relayer sees incoming ICQ events from Neutron;
 3. On each event, relayer gets proofs for all the needed data for query from the target chain;
 4. Relayer either sends query result to Neutron (for KV queries) or calls query owner's sudo handler (for TX queries if
-   callback execution is allowed by relayer's configuration).
+   callback execution is allowed by configuration of the relayer).
 
-## Running in development
-
+# Running in development
+### Natively
 - export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs)` note: change rpc addresses to actual)
 - `make dev`
 
-For more configuration parameters see [env parameters section](###Common).
+For more configuration parameters see [Environment section](#Environment).
 
-## Testing
+### In Docker
+1. Build docker image 
+`make build-docker`
+2. Run
+`docker run --env-file .env.example -v $PWD/../neutron/data:/data -p 9999:9999 neutron-org/neutron-query-relayer`
+   - note: this command uses relative path to mount keys, run this from root path of `neutron-query-relayer`
+   - note: with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR` instead of `localhost`/`127.0.0.1`
+   - note: on Linux machines it is necessary to pass --add-host=host.docker.internal:host-gateway to Docker in order to make container able to access host network
+
+# Testing
 
 ### Run unit tests
 
@@ -72,15 +81,9 @@ Relayer:
 2. find the relayer container id
 3. `docker logs -f relayer_id`
 
-### Logging
+# Configuration
 
-We are using [zap.loger](https://github.com/uber-go/zap)
-By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (
-see .env.example for examples)
-
-## Environment Notes
-
-### Common
+### Environment 
 
 | Key                                              | type                                                          | description                                                                                                                                                                | optional |
 |--------------------------------------------------|---------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
@@ -118,18 +121,10 @@ see .env.example for examples)
 | `RELAYER_CHECK_SUBMITTED_TX_STATUS_DELAY`        | `uint`                                                        | delay in seconds to wait before transaction is checked for commit status                                                                                              | optional |
 | `RELAYER_QUERIES_TASK_QUEUE_CAPACITY`            | `int`                                                         | capacity of the channel that is used to send messages from subscriber to relayer (better set to a higher value to avoid problems with Tendermint websocket subscriptions). | optional |
 
-### Running via docker
+# Logging
 
-- with local chains use `host.docker.internal` in `RELAYER_NEUTRON_CHAIN_RPC_ADDR` and `RELAYER_TARGET_CHAIN_RPC_ADDR`
-  instead of `localhost`/`127.0.0.1`
-- Note that wallet data path is in the root of docker
-  container `RELAYER_TARGET_CHAIN_HOME_DIR=/data/test-2` `RELAYER_NEUTRON_CHAIN_HOME_DIR=/data/test-1`
-
-### Running without docker
-
-- consider to change  `RELAYER_NEUTRON_CHAIN_RPC_ADDR` & `RELAYER_TARGET_CHAIN_RPC_ADDR` to actual rpc addresses
-- `RELAYER_TARGET_CHAIN_HOME_DIR` `RELAYER_NEUTRON_CHAIN_HOME_DIR` also need to be changed (keys are generated
-  in `terminal 1`)
+We are using [zap.loger](https://github.com/uber-go/zap)
+By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
 
 ## Generate Openapi
 

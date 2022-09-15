@@ -13,6 +13,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
+	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
 	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/txquerier"
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
@@ -43,6 +44,7 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 	return subscriber
 }
 
+// NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
 	ctx context.Context,
 	logger *zap.Logger,
@@ -103,7 +105,7 @@ func NewDefaultRelayer(
 	var (
 		proofSubmitter = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier      = txquerier.NewTXQuerySrv(targetQuerier.Client)
-		csManager      = relay.NewConsensusStatesManager(targetChain, neutronChain)
+		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
 		txProcessor    = txprocessor.NewTxProcessor(csManager, st, proofSubmitter, logger)
 		kvProcessor    = kvprocessor.NewKVProcessor(
 			targetQuerier,
