@@ -84,7 +84,7 @@ func main() {
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}
 
-	proofSubmitter := submit.NewSubmitterImpl(txSender)
+	proofSubmitter := submit.NewSubmitterImpl(txSender, cfg.NeutronChain.ClientID)
 	proofFetcher := proof_impl.NewProofer(targetQuerier)
 	neutronChain, targetChain, err := loadChains(cfg, logger)
 	if err != nil {

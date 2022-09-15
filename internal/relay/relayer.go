@@ -222,7 +222,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 		}
 
 		proofStart := time.Now()
-		err = r.submitter.SubmitTxProof(ctx, m.QueryId, r.neutronChain.PathEnd.ClientID, &neutrontypes.Block{
+		err = r.submitter.SubmitTxProof(ctx, m.QueryId, &neutrontypes.Block{
 			Header:          header,
 			NextBlockHeader: nextHeader,
 			Tx:              tx.Tx,
