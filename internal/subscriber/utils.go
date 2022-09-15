@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"net/url"
 
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -89,6 +90,7 @@ func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
 
 	icqEventsCount := len(events[connectionIdAttr])
 	if icqEventsCount == 0 {
+		s.logger.Debug("no connection id attributes received", zap.Any("events", events))
 		return false, nil
 	}
 
