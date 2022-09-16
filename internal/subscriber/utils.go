@@ -38,7 +38,7 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQueries: %w", err)
+		return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQuery: %w", err)
 	}
 
 	neutronQuery, err := res.GetPayload().RegisteredQuery.ToNeutronRegisteredQuery()
