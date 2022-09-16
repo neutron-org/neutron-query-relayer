@@ -17,7 +17,6 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.19
-	github.com/zyedidia/generic v1.1.0
 	go.uber.org/zap v1.21.0
 )
 
