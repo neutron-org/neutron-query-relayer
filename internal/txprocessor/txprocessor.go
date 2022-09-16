@@ -18,8 +18,7 @@ type TXProcessor struct {
 	storage              relay.Storage
 	submitter            relay.Submitter
 	logger               *zap.Logger
-	enqueue              chan<- relay.PendingSubmittedTxInfo
-	dequeue              <-chan relay.PendingSubmittedTxInfo
+	dequeue              chan relay.PendingSubmittedTxInfo
 }
 
 func NewTxProcessor(
@@ -33,7 +32,7 @@ func NewTxProcessor(
 		submitter:            submitter,
 		logger:               logger,
 	}
-	txProcessor.enqueue, txProcessor.dequeue = makeQueue()
+	txProcessor.dequeue = make(chan relay.PendingSubmittedTxInfo)
 	return txProcessor
 }
 
@@ -85,7 +84,7 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 	if err != nil {
 		return fmt.Errorf("failed to store tx: %w", err)
 	}
-	r.enqueue <- relay.PendingSubmittedTxInfo{
+	r.dequeue <- relay.PendingSubmittedTxInfo{
 		QueryID:         queryID,
 		SubmittedTxHash: hash,
 		NeutronHash:     neutronTxHash,
@@ -115,25 +114,4 @@ func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transact
 	}
 
 	return
-}
-
-// makeQueue creates an "infinite" channel
-func makeQueue() (enqueue chan<- relay.PendingSubmittedTxInfo, dequeue <-chan relay.PendingSubmittedTxInfo) {
-	enq, deq := make(chan relay.PendingSubmittedTxInfo), make(chan relay.PendingSubmittedTxInfo)
-	var queue []relay.PendingSubmittedTxInfo
-	go func() {
-		for {
-			if len(queue) == 0 {
-				queue = append(queue, <-enq)
-			}
-
-			select {
-			case v := <-enq:
-				queue = append(queue, v)
-			case deq <- queue[0]:
-				queue = queue[1:]
-			}
-		}
-	}()
-	return enq, deq
 }
