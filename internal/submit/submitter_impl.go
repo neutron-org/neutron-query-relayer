@@ -39,7 +39,7 @@ func (si *SubmitterImpl) SubmitKVProof(
 
 // SubmitTxProof submits tx query with proof back to Neutron chain
 func (si *SubmitterImpl) SubmitTxProof(queryId uint64, proof *neutrontypes.Block) (string, error) {
-	msgs, err := si.buildTxProofMsg(queryId, si.clientID, proof)
+	msgs, err := si.buildTxProofMsg(queryId, proof)
 	if err != nil {
 		return "", fmt.Errorf("could not build tx proof msg: %w", err)
 	}
