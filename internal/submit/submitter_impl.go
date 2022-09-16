@@ -60,7 +60,7 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 		AllowKvCallbacks: allowKVCallbacks,
 	}
 
-	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
+	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: si.clientID}
 
 	err = msg.ValidateBasic()
 	if err != nil {
@@ -70,7 +70,7 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 	return []sdk.Msg{&msg}, nil
 }
 
-func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof *neutrontypes.Block) ([]sdk.Msg, error) {
+func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, proof *neutrontypes.Block) ([]sdk.Msg, error) {
 	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building tx proof msg: %w", err)
@@ -81,7 +81,7 @@ func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof 
 		KvResults: nil,
 		Block:     proof,
 	}
-	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: clientID}
+	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: si.clientID}
 
 	err = msg.ValidateBasic()
 	if err != nil {
