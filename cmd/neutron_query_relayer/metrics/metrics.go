@@ -47,31 +47,32 @@ var (
 	}, []string{labelType})
 )
 
-func IncFailedRequests() {
+func incFailedRequests() {
 	relayerRequests.With(prometheus.Labels{
 		labelType: typeFailed,
 	}).Inc()
 }
 
-func IncSuccessRequests() {
+func incSuccessRequests() {
 	relayerRequests.With(prometheus.Labels{
 		labelType: typeSuccess,
 	}).Inc()
 }
 
-func IncFailedProofs() {
+func incFailedProofs() {
 	relayerProofs.With(prometheus.Labels{
 		labelType: typeFailed,
 	}).Inc()
 }
 
-func IncSuccessProofs() {
+func incSuccessProofs() {
 	relayerProofs.With(prometheus.Labels{
 		labelType: typeSuccess,
 	}).Inc()
 }
 
 func AddFailedRequest(message string, dur float64) {
+	incFailedRequests()
 	requestTime.With(prometheus.Labels{
 		labelMethod: message,
 		labelType:   typeFailed,
@@ -79,6 +80,7 @@ func AddFailedRequest(message string, dur float64) {
 }
 
 func AddSuccessRequest(message string, dur float64) {
+	incSuccessRequests()
 	requestTime.With(prometheus.Labels{
 		labelMethod: message,
 		labelType:   typeSuccess,
@@ -86,6 +88,7 @@ func AddSuccessRequest(message string, dur float64) {
 }
 
 func AddFailedProof(message string, dur float64) {
+	incFailedProofs()
 	proofNeutronTime.With(prometheus.Labels{
 		labelMethod: message,
 		labelType:   typeFailed,
@@ -93,6 +96,7 @@ func AddFailedProof(message string, dur float64) {
 }
 
 func AddSuccessProof(message string, dur float64) {
+	incSuccessProofs()
 	proofNeutronTime.With(prometheus.Labels{
 		labelMethod: message,
 		labelType:   typeSuccess,

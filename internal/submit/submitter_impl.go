@@ -1,7 +1,6 @@
 package submit
 
 import (
-	"context"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -11,42 +10,41 @@ import (
 
 // SubmitterImpl can submit proofs using `sender` as the transaction transport mechanism
 type SubmitterImpl struct {
-	sender   *TxSender
-	clientID string
+	sender           *TxSender
+	allowKVCallbacks bool
+	clientID         string
 }
 
-func NewSubmitterImpl(sender *TxSender, clientID string) *SubmitterImpl {
-	return &SubmitterImpl{sender: sender, clientID: clientID}
+func NewSubmitterImpl(sender *TxSender, allowKVCallbacks bool, clientID string) *SubmitterImpl {
+	return &SubmitterImpl{sender: sender, allowKVCallbacks: allowKVCallbacks, clientID: clientID}
 }
 
-// SubmitProof submits query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitProof(
-	ctx context.Context,
+// SubmitKVProof submits query with proof back to Neutron chain
+func (si *SubmitterImpl) SubmitKVProof(
 	height,
 	revision,
 	queryId uint64,
-	allowKVCallbacks bool,
 	proof []*neutrontypes.StorageValue,
 	updateClientMsg sdk.Msg,
 ) error {
-	msgs, err := si.buildProofMsg(height, revision, queryId, allowKVCallbacks, proof)
+	msgs, err := si.buildProofMsg(height, revision, queryId, si.allowKVCallbacks, proof)
 	if err != nil {
 		return fmt.Errorf("could not build proof msg: %w", err)
 	}
 
 	msgs = append([]sdk.Msg{updateClientMsg}, msgs...)
-
-	return si.sender.Send(ctx, msgs)
+	_, err = si.sender.Send(msgs)
+	return err
 }
 
 // SubmitTxProof submits tx query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof *neutrontypes.Block) error {
+func (si *SubmitterImpl) SubmitTxProof(queryId uint64, proof *neutrontypes.Block) (string, error) {
 	msgs, err := si.buildTxProofMsg(queryId, proof)
 	if err != nil {
-		return fmt.Errorf("could not build tx proof msg: %w", err)
+		return "", fmt.Errorf("could not build tx proof msg: %w", err)
 	}
 
-	return si.sender.Send(ctx, msgs)
+	return si.sender.Send(msgs)
 }
 
 func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKVCallbacks bool, proof []*neutrontypes.StorageValue) ([]sdk.Msg, error) {
