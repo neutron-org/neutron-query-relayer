@@ -94,9 +94,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 	s.activeQueries = queries
 
 	// Make sure we try to unsubscribe from events if an error occurs.
-	defer func() {
-		s.unsubscribe()
-	}()
+	defer s.unsubscribe()
 
 	updateEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryUpdatedSubscription())
 	if err != nil {

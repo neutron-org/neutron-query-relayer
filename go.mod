@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/avast/retry-go/v4 v4.0.5
-	github.com/cosmos/cosmos-sdk v0.45.4
+	github.com/cosmos/cosmos-sdk v0.45.5
 	github.com/cosmos/cosmos-sdk/api v0.1.0
 	github.com/cosmos/ibc-go/v3 v3.0.0
 	github.com/cosmos/relayer/v2 v2.0.0-beta7
@@ -13,8 +13,8 @@ require (
 	github.com/go-openapi/strfmt v0.21.3
 	github.com/go-openapi/swag v0.22.3
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/neutron-org/neutron v0.0.0-20220912131534-1dc17fe3d8a9
-	github.com/prometheus/client_golang v1.12.1
+	github.com/neutron-org/neutron v0.0.0-20220916150924-ec7dc591745d
+	github.com/prometheus/client_golang v1.12.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.19
 	github.com/zyedidia/generic v1.1.0
@@ -25,7 +25,7 @@ require (
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/99designs/keyring v1.1.6 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
-	github.com/CosmWasm/wasmd v0.27.0 // indirect
+	github.com/CosmWasm/wasmd v0.28.0 // indirect
 	github.com/CosmWasm/wasmvm v1.0.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -125,7 +125,7 @@ require (
 	github.com/rs/zerolog v1.26.1 // indirect
 	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa // indirect
 	github.com/spf13/afero v1.8.2 // indirect
-	github.com/spf13/cast v1.4.1 // indirect
+	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/cobra v1.4.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
