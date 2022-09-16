@@ -235,35 +235,19 @@ func (s *Subscriber) unsubscribe() {
 
 	wg := &sync.WaitGroup{}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	for _, subscription := range []string{s.subscribeQueryUpdated(), s.subscribeQueryRemoved(), s.subscribeQueryBlock()} {
+		wg.Add(1)
+		go func(subscription string) {
+			defer wg.Done()
 
-		if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated()); err != nil {
-			s.logger.Error("failed to Unsubscribe from tm events",
-				zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryUpdated()))
-		}
-	}()
+			if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), subscription); err != nil {
+				s.logger.Error("failed to Unsubscribe from tm events",
+					zap.Error(err), zap.String("subscription", subscription))
+			}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryRemoved()); err != nil {
-			s.logger.Error("failed to Unsubscribe from tm events",
-				zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryRemoved()))
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryBlock()); err != nil {
-			s.logger.Error("failed to Unsubscribe from tm events",
-				zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryBlock()))
-		}
-	}()
+			s.logger.Debug("unsubscribed", zap.String("subscription", subscription))
+		}(subscription)
+	}
 
 	wg.Wait()
 }
