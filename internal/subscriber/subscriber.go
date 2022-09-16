@@ -116,7 +116,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Info("Context cancelled, exiting")
+			s.logger.Info("Context cancelled, shittung down subscriber...")
 			return nil
 		case <-blockEvents:
 			if err := s.processBlockEvent(ctx, tasks); err != nil {
