@@ -1,7 +1,6 @@
 Interchain query relayer implementation for [Neutron](https://github.com/neutron-org/neutron).
 
 # Do you need it?
-
 Basically, relayer makes two types of things possible:
 1. query key value in target chain
 2. query newly submitted transactions in target chain.
@@ -19,11 +18,12 @@ You need to run your own relayer instance if:
   TODO: section about monitoring setup
 
 # How it works
-1. Neutron contracts manages interchain query registration;
-2. Relayer sees incoming ICQ events from Neutron;
-3. On each event, relayer either:
+- Neutron contracts manages interchain query registration;
+- Relayer maintains all query data in memory and subscribes to changes in queries
+- Relayer schedules ICQ events according to saved queries;
+- For each scheduled event, relayer either:
   - (for KV queries) for each key gets values and proofs and sends query result to Neutron; it can also use sudo callback if enabled in relayer;
-  - (for TX queries) gets the latest unsent transactions with given query filter, gets proofs for each of them and then calls query owner's contract sudo handler (for TX queries if callback execution is allowed by configuration of the relayer);
+  - (for TX queries) gets the last transactions since last update with given query filter, gets proofs for each of them and then calls query owner's contract sudo handler (for TX queries if callback execution is allowed by configuration of the relayer);
 
 For examples of usage please look into [example contracts](https://github.com/neutron-org/neutron-contracts/tree/main/contracts/neutron_interchain_queries)
 
@@ -32,6 +32,7 @@ For examples of usage please look into [example contracts](https://github.com/ne
 - Transaction queries are supported via only sudo callback handlers
 - Transaction queries can only fetch transactions not older than trusting period due to limitations of light clients in tendermint
 - Key value queries supported as a queryable data and as sudo callback handlers
+- Every transaction can be submitted only once per query_id. Uniq key tx_hash+query_id
 
 # Running in development
 
