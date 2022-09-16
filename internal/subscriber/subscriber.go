@@ -2,7 +2,6 @@ package subscriber
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
@@ -10,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
@@ -86,7 +86,7 @@ type Subscriber struct {
 
 // Subscribe subscribes to 3 types of events: 1. a new block was created, 2. a query was updated (created / updated),
 // 3. a query was removed.
-func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) (err error) {
+func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
 	queries, err := s.getNeutronRegisteredQueries(ctx)
 	if err != nil {
 		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
@@ -95,9 +95,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 
 	// Make sure we try to unsubscribe from events if an error occurs.
 	defer func() {
-		if err != nil {
-			s.unsubscribe()
-		}
+		s.unsubscribe()
 	}()
 
 	updateEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated())
@@ -118,9 +116,10 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("context cancelled")
+			s.logger.Info("Context cancelled, exiting")
+			return nil
 		case <-blockEvents:
-			if err = s.processBlockEvent(ctx, tasks); err != nil {
+			if err := s.processBlockEvent(ctx, tasks); err != nil {
 				return fmt.Errorf("failed to processBlockEvent: %w", err)
 			}
 		case event := <-updateEvents:
@@ -234,18 +233,37 @@ func (s *Subscriber) unsubscribe() {
 	ctx, cancel := context.WithTimeout(context.Background(), unsubscribeTimeout)
 	defer cancel()
 
-	if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated()); err != nil {
-		s.logger.Error("failed to Unsubscribe from tm events",
-			zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryUpdated()))
-	}
+	wg := &sync.WaitGroup{}
 
-	if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryRemoved()); err != nil {
-		s.logger.Error("failed to Unsubscribe from tm events",
-			zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryRemoved()))
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryBlock()); err != nil {
-		s.logger.Error("failed to Unsubscribe from tm events",
-			zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryBlock()))
-	}
+		if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated()); err != nil {
+			s.logger.Error("failed to Unsubscribe from tm events",
+				zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryUpdated()))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryRemoved()); err != nil {
+			s.logger.Error("failed to Unsubscribe from tm events",
+				zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryRemoved()))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), s.subscribeQueryBlock()); err != nil {
+			s.logger.Error("failed to Unsubscribe from tm events",
+				zap.Error(err), zap.String("ActiveQuery", s.subscribeQueryBlock()))
+		}
+	}()
+
+	wg.Wait()
 }

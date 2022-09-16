@@ -71,7 +71,6 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 			err       error
 		)
 		select {
-		default:
 		case query := <-tasks:
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
@@ -91,6 +90,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 				neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
 			}
 		case <-ctx.Done():
+			r.logger.Info("Context cancelled, exiting")
 			return r.stop()
 		}
 	}

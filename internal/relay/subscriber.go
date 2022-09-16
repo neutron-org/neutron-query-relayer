@@ -8,7 +8,8 @@ import (
 
 // Subscriber is an interface that provides a stream of ICQ messages to be processed.
 type Subscriber interface {
-	// Subscribe provides a stream of ICQ messages to be processed split by query type.
+	// Subscribe starts sending neutrontypes.RegisteredQuery values to the tasks channel when
+	// respective queries need to be updated.
 	Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error
 }
 
