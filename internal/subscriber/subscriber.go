@@ -3,46 +3,67 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"strconv"
-
-	"github.com/tendermint/tendermint/rpc/client/http"
-	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
-	"go.uber.org/zap"
+	"sync"
+	"time"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	"github.com/tendermint/tendermint/rpc/client/http"
+	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
+	"go.uber.org/zap"
+)
+
+var (
+	restClientBasePath = "/"
+	rpcWSEndpoint      = "/websocket"
+	unsubscribeTimeout = time.Second * 5
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
 func NewSubscriber(
 	rpcAddress string,
+	restAddress string,
 	targetChainID string,
 	targetConnectionID string,
 	registry *registry.Registry,
 	watchedTypes []neutrontypes.InterchainQueryType,
 	logger *zap.Logger,
 ) (*Subscriber, error) {
-	client, err := http.New(rpcAddress, "/websocket")
+	// rpcClient is used to subscribe to Neutron events.
+	rpcClient, err := http.New(rpcAddress, rpcWSEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("could not create new tendermint client: %w", err)
+		return nil, fmt.Errorf("could not create new tendermint rpcClient: %w", err)
 	}
-	if err = client.Start(); err != nil {
-		return nil, fmt.Errorf("could not start tendermint client: %w", err)
+
+	if err = rpcClient.Start(); err != nil {
+		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
 	}
+
+	// restClient is used to retrieve registered queries from Neutron.
+	restClient, err := newRESTClient(restAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
+	}
+
+	// Contains the types of queries that we are ready to serve (KV / TX).
 	watchedTypesMap := make(map[neutrontypes.InterchainQueryType]struct{})
 	for _, queryType := range watchedTypes {
 		watchedTypesMap[queryType] = struct{}{}
 	}
+
 	return &Subscriber{
-		client:             client,
+		rpcClient:  rpcClient,
+		restClient: restClient,
+
 		rpcAddress:         rpcAddress,
 		targetChainID:      targetChainID,
 		targetConnectionID: targetConnectionID,
 		registry:           registry,
 		logger:             logger,
 		watchedTypes:       watchedTypesMap,
+
+		activeQueries: map[string]*neutrontypes.RegisteredQuery{},
 	}, nil
 }
 
@@ -50,174 +71,187 @@ func NewSubscriber(
 // filters them in accordance with the Registry configuration and watchedTypes, and provides a
 // stream of split to KV and TX messages.
 type Subscriber struct {
-	client             *http.HTTP
+	rpcClient  *http.HTTP                 // Used to subscribe to events
+	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
+
 	rpcAddress         string
 	targetChainID      string
 	targetConnectionID string
 	registry           *registry.Registry
 	logger             *zap.Logger
 	watchedTypes       map[neutrontypes.InterchainQueryType]struct{}
-	subCancel          context.CancelFunc // subCancel controls subscriber event handling loop
+
+	activeQueries map[string]*neutrontypes.RegisteredQuery
 }
 
-// Subscribe subscribes on chain's events, transforms them to KV and TX messages and sends to
-// the corresponding channels. The subscriber can be stopped by closing the context. Message
-// channels are never closed to prevent listeners from seeing an erroneous message.
-func (s *Subscriber) Subscribe() (<-chan *relay.MessageKV, <-chan *relay.MessageTX, error) {
-	events, err := s.client.Subscribe(context.Background(), s.subscriberName(), s.subscribeQuery())
+// Subscribe subscribes to 3 types of events: 1. a new block was created, 2. a query was updated (created / updated),
+// 3. a query was removed.
+func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
+	queries, err := s.getNeutronRegisteredQueries(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not subscribe to events: %w", err)
+		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
 	}
-	s.logger.Debug("subscriber has subscribed to neutron events", zap.String("query", s.subscribeQuery()))
+	s.activeQueries = queries
 
-	subCtx, subCancel := context.WithCancel(context.Background())
-	s.subCancel = subCancel
-	kvChan := make(chan *relay.MessageKV)
-	txChan := make(chan *relay.MessageTX)
-	go func() {
-		for {
-			select {
-			case <-subCtx.Done():
-				return
-			case event := <-events:
-				s.logger.Debug("received an event from Neutron")
-				msgs, err := s.extractMessages(event)
-				if err != nil {
-					s.logger.Error("failed to extract messages from incoming event", zap.Error(err))
-					continue
-				}
-				if len(msgs) == 0 {
-					s.logger.Debug("event has been skipped: it's not intended for us", zap.String("query", event.Query))
-					continue
-				}
+	// Make sure we try to unsubscribe from events if an error occurs.
+	defer s.unsubscribe()
 
-				s.logger.Debug("handling event from Neutron", zap.Int("messages", len(msgs)))
-				for _, msg := range msgs {
-					if !s.isWatchedMsgType(msg.messageType) {
-						s.logger.Debug(
-							"message skipped due to submitter watched msg types configuration",
-							zap.String("msg_type", string(msg.messageType)),
-							zap.Uint64("query_id", msg.queryId),
-						)
-						continue
-					}
+	updateEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryUpdatedSubscription())
+	if err != nil {
+		return fmt.Errorf("could not subscribe to events: %w", err)
+	}
 
-					s.logger.Debug("handling a message from event", zap.String("message_type", string(msg.messageType)))
-					switch msg.messageType {
-					case neutrontypes.InterchainQueryTypeKV:
-						select {
-						case kvChan <- buildMessageKV(msg):
-							s.logger.Debug("a KV message sent from subscriber to consumer")
-						case <-subCtx.Done():
-							return
-						}
-					case neutrontypes.InterchainQueryTypeTX:
-						select {
-						case txChan <- buildMessageTX(msg):
-							s.logger.Debug("a TX message sent from subscriber to consumer")
-						case <-subCtx.Done():
-							return
-						}
-					}
-				}
+	removeEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryRemovedSubscription())
+	if err != nil {
+		return fmt.Errorf("could not subscribe to events: %w", err)
+	}
+
+	blockEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getNewBlockHeaderSubscription())
+	if err != nil {
+		return fmt.Errorf("could not subscribe to events: %w", err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.logger.Info("Context cancelled, shittung down subscriber...")
+			return nil
+		case <-blockEvents:
+			if err := s.processBlockEvent(ctx, tasks); err != nil {
+				return fmt.Errorf("failed to processBlockEvent: %w", err)
+			}
+		case event := <-updateEvents:
+			if err = s.processUpdateEvent(ctx, event); err != nil {
+				return fmt.Errorf("failed to processUpdateEvent: %w", err)
+			}
+		case event := <-removeEvents:
+			if err = s.processRemoveEvent(event); err != nil {
+				return fmt.Errorf("failed to processRemoveEvent: %w", err)
 			}
 		}
-	}()
-	return kvChan, txChan, nil
+	}
 }
 
-// Unsubscribe stops subscription and closes the subscriber client.
-func (s *Subscriber) Unsubscribe() error {
-	s.subCancel()
-	if err := s.client.Unsubscribe(context.Background(), s.subscriberName(), s.subscribeQuery()); err != nil {
-		return err
+func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
+	// Get last block height.
+	status, err := s.rpcClient.Status(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Status: %w", err)
 	}
-	if err := s.client.Stop(); err != nil {
-		return err
+	currentHeight := uint64(status.SyncInfo.LatestBlockHeight)
+
+	for _, activeQuery := range s.activeQueries {
+		// Skip the ActiveQuery if we didn't reach the update time.
+		if currentHeight < (activeQuery.LastSubmittedResultLocalHeight + activeQuery.UpdatePeriod) {
+			continue
+		}
+
+		// Send the query to the tasks queue.
+		tasks <- *activeQuery
+
+		// Set the LastSubmittedResultLocalHeight to the current height.
+		activeQuery.LastSubmittedResultLocalHeight = currentHeight
 	}
+
 	return nil
 }
 
-// subscribeQuery returns the subscriber name.
-func (s *Subscriber) subscriberName() string {
-	return s.targetChainID + "-client"
-}
-
-// subscribeQuery returns a query to filter out interchain query events.
-func (s *Subscriber) subscribeQuery() string {
-	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.targetConnectionID,
-		moduleAttr, neutrontypes.ModuleName,
-		actionAttr, neutrontypes.AttributeValueQuery,
-		eventAttr, types.EventNewBlockHeader,
-	)
-}
-
-// extractMessages validates events received from the target chain, filters them, and transforms
-// to a slice of queryEventMessage.
-func (s *Subscriber) extractMessages(e tmtypes.ResultEvent) ([]*queryEventMessage, error) {
-	events := e.Events
-	icqEventsCount := len(events[connectionIdAttr])
-	if icqEventsCount == 0 {
-		return nil, nil
+// processUpdateEvent retrieves up-to-date information about each updated query and saves
+// it to state. Note: an update event is emitted both on query creation and on query updates.
+func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
+	ok, err := s.checkEvents(event)
+	if err != nil {
+		return fmt.Errorf("failed to checkEvents: %w", err)
+	}
+	if !ok {
+		return nil
 	}
 
-	if len(events[kvKeyAttr]) != icqEventsCount ||
-		len(events[transactionsFilterAttr]) != icqEventsCount ||
-		len(events[queryIdAttr]) != icqEventsCount ||
-		len(events[typeAttr]) != icqEventsCount {
-		return nil, fmt.Errorf("events attributes length does not match for events=%v", events)
-	}
-
-	messages := make([]*queryEventMessage, 0, icqEventsCount)
+	// There can be multiple events of the same type associated with our connection id in a
+	// single tmtypes.ResultEvent value. We need to process all of them.
+	var events = event.Events
 	for idx := range events[connectionIdAttr] {
-		if !s.isWatchedAddress(events[ownerAttr][idx]) {
+		var (
+			owner   = events[ownerAttr][idx]
+			queryID = events[queryIdAttr][idx]
+		)
+		if !s.isWatchedAddress(owner) {
+			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
 			continue
 		}
 
-		queryIdStr := events[queryIdAttr][idx]
-		queryId, err := strconv.ParseUint(queryIdStr, 10, 64)
+		// Load all information about the neutronQuery directly from Neutron.
+		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
-			s.logger.Debug("failed to parse query ID as uint", zap.String("query_id", queryIdStr), zap.Error(err))
+			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
+		}
+
+		if !s.isWatchedMsgType(neutronQuery.QueryType) {
+			s.logger.Debug("Skipping query (wrong type)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
 			continue
 		}
 
-		messageType := neutrontypes.InterchainQueryType(events[typeAttr][idx])
-		switch messageType {
-		case neutrontypes.InterchainQueryTypeKV:
-			kvKeyAttrVal := events[kvKeyAttr][idx]
-			kvKeys, err := neutrontypes.KVKeysFromString(kvKeyAttrVal)
-			if err != nil {
-				s.logger.Debug(fmt.Sprintf("invalid %s attr", kvKeyAttr), zap.String(kvKeyAttr, kvKeyAttrVal), zap.Error(err))
-				continue
-			}
-			messages = append(messages, &queryEventMessage{
-				queryId:     queryId,
-				messageType: messageType,
-				kvKeys:      kvKeys,
-			})
-		case neutrontypes.InterchainQueryTypeTX:
-			messages = append(messages, &queryEventMessage{
-				queryId:            queryId,
-				messageType:        messageType,
-				transactionsFilter: events[transactionsFilterAttr][idx],
-			})
-		default:
-			s.logger.Debug("unknown query_type", zap.String("query_type", string(messageType)))
-		}
+		// Save the updated query information to memory.
+		s.activeQueries[queryID] = neutronQuery
 	}
-	return messages, nil
+
+	return nil
 }
 
-// isWatchedMsgType returns true if the given message type was added to the subscriber's watched
-// query types list.
-func (s *Subscriber) isWatchedMsgType(msgType neutrontypes.InterchainQueryType) bool {
-	_, ex := s.watchedTypes[msgType]
-	return ex
+// processRemoveEvent deletes an event that was removed on Neutron from memory.
+func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
+	ok, err := s.checkEvents(event)
+	if err != nil {
+		return fmt.Errorf("failed to checkEvents: %w", err)
+	}
+	if !ok {
+		return nil
+	}
+
+	// There can be multiple events of the same type associated with our connection id in a
+	// single tmtypes.ResultEvent value. We need to process all of them.
+	var events = event.Events
+	for idx := range events[connectionIdAttr] {
+		var (
+			queryID = events[queryIdAttr][idx]
+		)
+
+		// Delete the query from the active queries list.
+		delete(s.activeQueries, queryID)
+	}
+
+	return nil
 }
 
-// isWatchedAddress returns true if the address is within the registry watched addresses or there
-// are no registry watched addresses configured for the subscriber meaning all addresses are watched.
-func (s *Subscriber) isWatchedAddress(address string) bool {
-	return s.registry.IsEmpty() || s.registry.Contains(address)
+// unsubscribes from all previously registered subscriptions. Please note that
+// this method does not return an error and does not panic.
+func (s *Subscriber) unsubscribe() {
+	ctx, cancel := context.WithTimeout(context.Background(), unsubscribeTimeout)
+	defer cancel()
+
+	var (
+		wg            = &sync.WaitGroup{}
+		subscriptions = []string{
+			s.getQueryUpdatedSubscription(),
+			s.getQueryRemovedSubscription(),
+			s.getNewBlockHeaderSubscription(),
+		}
+	)
+	for _, subscription := range subscriptions {
+		wg.Add(1)
+		go func(subscription string) {
+			defer wg.Done()
+
+			if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), subscription); err != nil {
+				s.logger.Error("failed to Unsubscribe from tm events",
+					zap.Error(err), zap.String("subscription", subscription))
+			}
+
+			s.logger.Debug("unsubscribed", zap.String("subscription", subscription))
+		}(subscription)
+	}
+
+	wg.Wait()
 }

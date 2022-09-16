@@ -19,6 +19,7 @@ type NeutronQueryRelayerConfig struct {
 	MinKvUpdatePeriod           uint64                   `split_words:"true" default:"0"`
 	StoragePath                 string                   `split_words:"true"`
 	CheckSubmittedTxStatusDelay uint64                   `split_words:"true" default:"10"`
+	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`
 }
 
 const EnvPrefix string = "RELAYER"
@@ -26,6 +27,7 @@ const EnvPrefix string = "RELAYER"
 type NeutronChainConfig struct {
 	ChainPrefix    string        `required:"true" split_words:"true"`
 	RPCAddr        string        `required:"true" split_words:"true"`
+	RESTAddr       string        `required:"true" split_words:"true"`
 	ChainID        string        `required:"true" split_words:"true"`
 	HomeDir        string        `required:"true" split_words:"true"`
 	SignKeyName    string        `required:"true" split_words:"true"`

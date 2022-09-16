@@ -3,17 +3,16 @@ package main
 import (
 	"context"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
-
-	"github.com/neutron-org/neutron-query-relayer/internal/config"
 )
 
 func main() {
@@ -21,6 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("couldn't initialize logging config: %s", err)
 	}
+
 	logger, err := loggerConfig.Build()
 	if err != nil {
 		log.Fatalf("couldn't initialize logger: %s", err)
@@ -35,20 +35,40 @@ func main() {
 		}
 	}()
 	logger.Info("metrics handler set up")
+
 	cfg, err := config.NewNeutronQueryRelayerConfig()
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	relayer := app.NewDefaultRelayer(ctx, logger, cfg)
-
 	wg := &sync.WaitGroup{}
+
+	var (
+		queriesTasksQueue = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
+		subscriber        = app.NewDefaultSubscriber(logger, cfg)
+		relayer           = app.NewDefaultRelayer(ctx, logger, cfg)
+	)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := relayer.Run(ctx); err != nil {
+
+		// The subscriber writes to the tasks queue.
+		if err := subscriber.Subscribe(ctx, queriesTasksQueue); err != nil {
+			logger.Error("Subscriber exited with an error", zap.Error(err))
+			cancel()
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		// The relayer reads from the tasks queue.
+		if err := relayer.Run(ctx, queriesTasksQueue); err != nil {
 			logger.Error("Relayer exited with an error", zap.Error(err))
+			cancel()
 		}
 	}()
 
@@ -57,7 +77,8 @@ func main() {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 		s := <-sigs
-		logger.Info("Received termination signal, gracefully shutting down...", zap.String("signal", s.String()))
+		logger.Info("Received termination signal, gracefully shutting down...",
+			zap.String("signal", s.String()))
 		cancel()
 	}()
 

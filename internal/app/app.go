@@ -11,7 +11,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
-	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
+	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
 	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
@@ -22,8 +22,34 @@ import (
 	"go.uber.org/zap"
 )
 
-// NewDefaultRelayer returns relayer built with cfg
-func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) *relay.Relayer {
+func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) relay.Subscriber {
+	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
+	if cfg.AllowTxQueries {
+		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
+	}
+
+	subscriber, err := relaysubscriber.NewSubscriber(
+		cfg.NeutronChain.RPCAddr,
+		cfg.NeutronChain.RESTAddr,
+		cfg.TargetChain.ChainID,
+		cfg.TargetChain.ConnectionID,
+		registry.New(cfg.Registry),
+		watchedMsgTypes,
+		logger,
+	)
+	if err != nil {
+		logger.Fatal("failed to get a NewSubscriber", zap.Error(err))
+	}
+
+	return subscriber
+}
+
+// NewDefaultRelayer returns a relayer built with cfg.
+func NewDefaultRelayer(
+	ctx context.Context,
+	logger *zap.Logger,
+	cfg config.NeutronQueryRelayerConfig,
+) *relay.Relayer {
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
@@ -75,56 +101,36 @@ func NewDefaultRelayer(ctx context.Context, logger *zap.Logger, cfg config.Neutr
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
-	proofSubmitter := submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
-
-	txQuerier := txquerier.NewTXQuerySrv(targetQuerier.Client)
-	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
-	if cfg.AllowTxQueries {
-		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
-	}
-	sub, err := subscriber.NewSubscriber(
-		cfg.NeutronChain.RPCAddr,
-		cfg.TargetChain.ChainID,
-		cfg.TargetChain.ConnectionID,
-		registry.New(cfg.Registry),
-		watchedMsgTypes,
-		logger,
-	)
-	if err != nil {
-		logger.Fatal("failed to init subscriber", zap.Error(err))
-	}
-
-	trustedHeaderFetcher := trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
-
-	txProcessor := txprocessor.NewTxProcessor(trustedHeaderFetcher, st, proofSubmitter, logger)
-
-	kvProcessor := kvprocessor.NewKVProcessor(
-		targetQuerier,
-		cfg.MinKvUpdatePeriod,
-		logger,
-		proofSubmitter,
-		st,
-		targetChain,
-		neutronChain,
-	)
-
-	txSubmitChecker := txsubmitchecker.NewTxSubmitChecker(
-		txProcessor.GetSubmitNotificationChannel(),
-		st,
-		neutronClient,
-		logger,
-		cfg.CheckSubmittedTxStatusDelay,
-	)
-
-	relayer := relay.NewRelayer(
-		cfg,
-		txQuerier,
-		sub,
-		st,
-		txProcessor,
-		kvProcessor,
-		txSubmitChecker,
-		logger,
+	var (
+		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
+		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
+		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
+		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, st, proofSubmitter, logger)
+		kvProcessor          = kvprocessor.NewKVProcessor(
+			targetQuerier,
+			cfg.MinKvUpdatePeriod,
+			logger,
+			proofSubmitter,
+			st,
+			targetChain,
+			neutronChain,
+		)
+		txSubmitChecker = txsubmitchecker.NewTxSubmitChecker(
+			txProcessor.GetSubmitNotificationChannel(),
+			st,
+			neutronClient,
+			logger,
+			cfg.CheckSubmittedTxStatusDelay,
+		)
+		relayer = relay.NewRelayer(
+			cfg,
+			txQuerier,
+			st,
+			txProcessor,
+			kvProcessor,
+			txSubmitChecker,
+			logger,
+		)
 	)
 	return relayer
 }

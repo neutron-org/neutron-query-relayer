@@ -25,7 +25,6 @@ const TxHeight = "tx.height"
 type Relayer struct {
 	cfg             config.NeutronQueryRelayerConfig
 	txQuerier       TXQuerier
-	subscriber      Subscriber
 	logger          *zap.Logger
 	storage         Storage
 	txProcessor     TXProcessor
@@ -36,7 +35,6 @@ type Relayer struct {
 func NewRelayer(
 	cfg config.NeutronQueryRelayerConfig,
 	txQuerier TXQuerier,
-	subscriber Subscriber,
 	store Storage,
 	txProcessor TXProcessor,
 	kvprocessor KVProcessor,
@@ -46,7 +44,6 @@ func NewRelayer(
 	return &Relayer{
 		cfg:             cfg,
 		txQuerier:       txQuerier,
-		subscriber:      subscriber,
 		logger:          logger,
 		storage:         store,
 		txProcessor:     txProcessor,
@@ -58,15 +55,8 @@ func NewRelayer(
 // Run starts the relaying process: subscribes on the incoming interchain query messages from the
 // Neutron and performs the queries by interacting with the target chain and submitting them to
 // the Neutron chain.
-func (r *Relayer) Run(ctx context.Context) error {
-	r.logger.Info("subscribing to neutron chain events...")
-	kvChan, txChan, err := r.subscriber.Subscribe()
-	if err != nil {
-		return fmt.Errorf("failed to subscribe to neutron events: %w", err)
-	}
-	r.logger.Info("successfully subscribed to neutron chain events")
-
-	err = r.txSubmitChecker.Run(ctx)
+func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQuery) error {
+	err := r.txSubmitChecker.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize tx submit checker: %w", err)
 	}
@@ -81,24 +71,27 @@ func (r *Relayer) Run(ctx context.Context) error {
 			err       error
 		)
 		select {
-		case msg := <-kvChan:
-			start = time.Now()
-			queryType = neutrontypes.InterchainQueryTypeKV
-			queryID = msg.QueryId
-			err = r.processMessageKV(context.Background(), msg)
-		case msg := <-txChan:
-			start = time.Now()
-			queryType = neutrontypes.InterchainQueryTypeTX
-			queryID = msg.QueryId
-			err = r.processMessageTX(context.Background(), msg)
+		case query := <-tasks:
+			switch query.QueryType {
+			case string(neutrontypes.InterchainQueryTypeKV):
+				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
+				err = r.processMessageKV(ctx, msg)
+			case string(neutrontypes.InterchainQueryTypeTX):
+				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
+				err = r.processMessageTX(ctx, msg)
+			default:
+				err = fmt.Errorf("unknown query type: %s", query.QueryType)
+			}
+
+			if err != nil {
+				r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
+				neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
+			} else {
+				neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
+			}
 		case <-ctx.Done():
+			r.logger.Info("Context cancelled, shittung down relayer...")
 			return r.stop()
-		}
-		if err != nil {
-			r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
-			neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
-		} else {
-			neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
 		}
 	}
 }
@@ -113,16 +106,10 @@ func (r *Relayer) stop() error {
 		r.logger.Info("relayer's storage has been closed")
 	}
 
-	if err := r.subscriber.Unsubscribe(); err != nil {
-		r.logger.Error("failed to unsubscribe", zap.Error(err))
-		failed = true
-	} else {
-		r.logger.Info("subscriber has been stopped")
-	}
-
 	if failed {
 		return fmt.Errorf("error occurred while stopping relayer, see recent logs for more info")
 	}
+
 	return nil
 }
 

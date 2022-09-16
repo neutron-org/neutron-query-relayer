@@ -16,6 +16,7 @@ func NewRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, erro
 	if err != nil {
 		return nil, fmt.Errorf("could not create http client with address=%s: %w", addr, err)
 	}
+
 	httpClient.Timeout = timeout
 	rpcClient, err := rpcclienthttp.NewWithClient(addr, socketEndpoint, httpClient)
 	if err != nil {
@@ -23,7 +24,6 @@ func NewRPCClient(addr string, timeout time.Duration) (*rpcclienthttp.HTTP, erro
 	}
 
 	err = rpcClient.Start()
-
 	if err != nil {
 		return nil, fmt.Errorf("could not start rpc client with address=%s: %w", addr, err)
 	}
