@@ -108,7 +108,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 		return fmt.Errorf("could not subscribe to events: %w", err)
 	}
 
-	blockEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryBlockSubscription())
+	blockEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getNewBlockHeaderSubscription())
 	if err != nil {
 		return fmt.Errorf("could not subscribe to events: %w", err)
 	}
@@ -238,7 +238,7 @@ func (s *Subscriber) unsubscribe() {
 		subscriptions = []string{
 			s.getQueryUpdatedSubscription(),
 			s.getQueryRemovedSubscription(),
-			s.getQueryBlockSubscription(),
+			s.getNewBlockHeaderSubscription(),
 		}
 	)
 	for _, subscription := range subscriptions {

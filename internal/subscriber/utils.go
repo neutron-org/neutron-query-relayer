@@ -130,7 +130,7 @@ func (s *Subscriber) getQueryRemovedSubscription() string {
 }
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
-func (s *Subscriber) getQueryBlockSubscription() string {
+func (s *Subscriber) getNewBlockHeaderSubscription() string {
 	return fmt.Sprintf("%s='%s'",
 		eventAttr, types.EventNewBlockHeader,
 	)
