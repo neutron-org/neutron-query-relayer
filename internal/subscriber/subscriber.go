@@ -98,17 +98,17 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 		s.unsubscribe()
 	}()
 
-	updateEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.subscribeQueryUpdated())
+	updateEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryUpdatedSubscription())
 	if err != nil {
 		return fmt.Errorf("could not subscribe to events: %w", err)
 	}
 
-	removeEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.subscribeQueryRemoved())
+	removeEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryRemovedSubscription())
 	if err != nil {
 		return fmt.Errorf("could not subscribe to events: %w", err)
 	}
 
-	blockEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.subscribeQueryBlock())
+	blockEvents, err := s.rpcClient.Subscribe(ctx, s.subscriberName(), s.getQueryBlockSubscription())
 	if err != nil {
 		return fmt.Errorf("could not subscribe to events: %w", err)
 	}
@@ -233,9 +233,15 @@ func (s *Subscriber) unsubscribe() {
 	ctx, cancel := context.WithTimeout(context.Background(), unsubscribeTimeout)
 	defer cancel()
 
-	wg := &sync.WaitGroup{}
-
-	for _, subscription := range []string{s.subscribeQueryUpdated(), s.subscribeQueryRemoved(), s.subscribeQueryBlock()} {
+	var (
+		wg            = &sync.WaitGroup{}
+		subscriptions = []string{
+			s.getQueryUpdatedSubscription(),
+			s.getQueryRemovedSubscription(),
+			s.getQueryBlockSubscription(),
+		}
+	)
+	for _, subscription := range subscriptions {
 		wg.Add(1)
 		go func(subscription string) {
 			defer wg.Done()

@@ -112,7 +112,7 @@ func (s *Subscriber) subscriberName() string {
 }
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
-func (s *Subscriber) subscribeQueryUpdated() string {
+func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.targetConnectionID,
 		moduleAttr, neutrontypes.ModuleName,
@@ -121,7 +121,7 @@ func (s *Subscriber) subscribeQueryUpdated() string {
 }
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
-func (s *Subscriber) subscribeQueryRemoved() string {
+func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.targetConnectionID,
 		moduleAttr, neutrontypes.ModuleName,
@@ -130,7 +130,7 @@ func (s *Subscriber) subscribeQueryRemoved() string {
 }
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
-func (s *Subscriber) subscribeQueryBlock() string {
+func (s *Subscriber) getQueryBlockSubscription() string {
 	return fmt.Sprintf("%s='%s'",
 		eventAttr, types.EventNewBlockHeader,
 	)
