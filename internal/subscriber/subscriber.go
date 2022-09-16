@@ -3,21 +3,21 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 )
 
 var (
 	restClientBasePath = "/"
 	rpcWSEndpoint      = "/websocket"
 	unsubscribeTimeout = time.Second * 5
-	restClientSchemes  = []string{"http"}
 )
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.

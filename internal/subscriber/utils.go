@@ -3,8 +3,9 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"net/url"
+
+	"go.uber.org/zap"
 
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -24,7 +25,7 @@ func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
 	return restclient.NewHTTPClientWithConfig(nil, &restclient.TransportConfig{
 		Host:     url.Host,
 		BasePath: restClientBasePath,
-		Schemes:  restClientSchemes,
+		Schemes:  []string{url.Scheme},
 	}), nil
 }
 
