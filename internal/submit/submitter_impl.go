@@ -11,11 +11,12 @@ import (
 
 // SubmitterImpl can submit proofs using `sender` as the transaction transport mechanism
 type SubmitterImpl struct {
-	sender *TxSender
+	sender   *TxSender
+	clientID string
 }
 
-func NewSubmitterImpl(sender *TxSender) *SubmitterImpl {
-	return &SubmitterImpl{sender: sender}
+func NewSubmitterImpl(sender *TxSender, clientID string) *SubmitterImpl {
+	return &SubmitterImpl{sender: sender, clientID: clientID}
 }
 
 // SubmitProof submits query with proof back to Neutron chain
@@ -39,8 +40,8 @@ func (si *SubmitterImpl) SubmitProof(
 }
 
 // SubmitTxProof submits tx query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, clientID string, proof *neutrontypes.Block) error {
-	msgs, err := si.buildTxProofMsg(queryId, clientID, proof)
+func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof *neutrontypes.Block) error {
+	msgs, err := si.buildTxProofMsg(queryId, proof)
 	if err != nil {
 		return fmt.Errorf("could not build tx proof msg: %w", err)
 	}
@@ -61,7 +62,7 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 		AllowKvCallbacks: allowKVCallbacks,
 	}
 
-	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult}
+	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: si.clientID}
 
 	err = msg.ValidateBasic()
 	if err != nil {
@@ -71,7 +72,7 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 	return []sdk.Msg{&msg}, nil
 }
 
-func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof *neutrontypes.Block) ([]sdk.Msg, error) {
+func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, proof *neutrontypes.Block) ([]sdk.Msg, error) {
 	senderAddr, err := si.sender.SenderAddr()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch sender addr for building tx proof msg: %w", err)
@@ -82,7 +83,7 @@ func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, clientID string, proof 
 		KvResults: nil,
 		Block:     proof,
 	}
-	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: clientID}
+	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: si.clientID}
 
 	err = msg.ValidateBasic()
 	if err != nil {
