@@ -2,11 +2,12 @@ package relay
 
 import (
 	"context"
+
 	"github.com/neutron-org/neutron/x/interchainqueries/types"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-// Subscriber is an interface that provides a stream of ICQ messages to be processed.
+// Subscriber is an interface that subscribes to Neutron and provides chain data in real time.
 type Subscriber interface {
 	// Subscribe starts sending neutrontypes.RegisteredQuery values to the tasks channel when
 	// respective queries need to be updated.
