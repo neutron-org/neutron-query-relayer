@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -27,19 +28,19 @@ func main() {
 	}
 	logger.Info("neutron-query-relayer starts...")
 
+	cfg, err := config.NewNeutronQueryRelayerConfig()
+	if err != nil {
+		logger.Fatal("cannot initialize relayer config", zap.Error(err))
+	}
+
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		err := http.ListenAndServe(":9999", nil)
+		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
 		if err != nil {
 			logger.Fatal("failed to serve metrics", zap.Error(err))
 		}
 	}()
 	logger.Info("metrics handler set up")
-
-	cfg, err := config.NewNeutronQueryRelayerConfig()
-	if err != nil {
-		logger.Fatal("cannot initialize relayer config", zap.Error(err))
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
