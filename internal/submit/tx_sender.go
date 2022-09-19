@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	tmtypes "github.com/tendermint/tendermint/types"
-	"go.uber.org/zap"
 	"strings"
 	"sync"
+
+	tmtypes "github.com/tendermint/tendermint/types"
+	"go.uber.org/zap"
 
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
 	"github.com/cosmos/cosmos-sdk/client"

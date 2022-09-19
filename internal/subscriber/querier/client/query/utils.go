@@ -2,8 +2,9 @@ package query
 
 import (
 	"fmt"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"strconv"
+
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {

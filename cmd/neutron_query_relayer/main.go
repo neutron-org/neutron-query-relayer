@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
-	"github.com/neutron-org/neutron-query-relayer/internal/app"
-	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 func main() {

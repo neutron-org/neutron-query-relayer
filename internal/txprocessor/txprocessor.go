@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
+
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	tmtypes "github.com/tendermint/tendermint/types"
+	"go.uber.org/zap"
+
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	tmtypes "github.com/tendermint/tendermint/types"
-	"go.uber.org/zap"
-	"time"
 )
 
 type TXProcessor struct {
