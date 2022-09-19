@@ -3,7 +3,10 @@ package app
 import (
 	"context"
 	"fmt"
+
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"go.uber.org/zap"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
@@ -19,7 +22,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"go.uber.org/zap"
 )
 
 func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) relay.Subscriber {
@@ -149,7 +151,7 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutr
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain, neutronapp.Bech32MainPrefix)
+	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)

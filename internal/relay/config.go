@@ -8,14 +8,15 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	neutronapp "github.com/neutron-org/neutron/app"
 )
 
-func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, accountPrefix string) (*relayer.Chain, error) {
+func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
 		Key:            cfg.SignKeyName,
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
-		AccountPrefix:  accountPrefix,
+		AccountPrefix:  neutronapp.Bech32MainPrefix,
 		KeyringBackend: cfg.KeyringBackend,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
