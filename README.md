@@ -1,5 +1,7 @@
 Interchain query relayer implementation for [Neutron](https://github.com/neutron-org/neutron).
 
+More on relayer's configuration and inner can be read in [neutron-docs](https://github.com/neutron-org/neutron-docs/blob/main/docs/relaying/icq-relayer-guide.md) 
+
 # Do you need it?
 
 Basically, relayer makes two types of things possible:
