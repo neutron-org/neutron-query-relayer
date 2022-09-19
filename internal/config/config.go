@@ -25,7 +25,6 @@ type NeutronQueryRelayerConfig struct {
 const EnvPrefix string = "RELAYER"
 
 type NeutronChainConfig struct {
-	ChainPrefix    string        `required:"true" split_words:"true"`
 	RPCAddr        string        `required:"true" split_words:"true"`
 	RESTAddr       string        `required:"true" split_words:"true"`
 	ChainID        string        `required:"true" split_words:"true"`
