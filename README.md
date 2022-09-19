@@ -1,6 +1,7 @@
 Interchain query relayer implementation for [Neutron](https://github.com/neutron-org/neutron).
 
 # Do you need it?
+
 Basically, relayer makes two types of things possible:
 1. query key value in target chain
 2. query newly submitted transactions in target chain.
@@ -12,12 +13,14 @@ You need to run your own relayer instance if:
 > 💡 Relayer only supports making interchain queries from Neutron chain, because it needs [InterchainQueries](https://github.com/neutron-org/neutron/tree/main/x/interchainqueries) module in order to work
 
 # Requirements
+
 - Stable machine. If relayer does not run, your queries data won’t be updated;
 - ***?WHAT_CURRENCY?*** tokens on neutron account that relayer will use to submit proofs;
 - [OPTIONAL] Setup monitoring. Relayer instruments its main operations to ensure everything is functioning.
   TODO: section about monitoring setup
 
 # How it works
+- 
 - Neutron contracts manages interchain query registration;
 - Relayer maintains all query data in memory and subscribes to changes in queries
 - Relayer schedules ICQ events according to saved queries;
@@ -28,20 +31,24 @@ You need to run your own relayer instance if:
 For examples of usage please look into [example contracts](https://github.com/neutron-org/neutron-contracts/tree/main/contracts/neutron_interchain_queries)
 
 #### Implementation details
+
 - All relayers are for private use
 - Transaction queries are supported via only sudo callback handlers
 - Transaction queries can only fetch transactions not older than trusting period due to limitations of light clients in tendermint
-- Key value queries supported as a queryable data and as sudo callback handlers
 - Every transaction can be submitted only once per query_id. Uniq key tx_hash+query_id
+- Key value queries supported as a queryable data and as sudo callback handlers
 
 # Running in development
+
 ### Natively
+
 - export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs)` note: change rpc addresses to actual)
 - `make dev`
 
 For more configuration parameters see [Environment section](#Environment).
 
 ### In Docker
+
 1. Build docker image 
 `make build-docker`
 2. Run
