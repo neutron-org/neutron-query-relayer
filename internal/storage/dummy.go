@@ -1,12 +1,15 @@
 package storage
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+)
 
 type DummyStorage struct {
 	KVUpdateMap map[uint64]uint64
 }
 
-func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, status string) (err error) {
+func (s *DummyStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, status relay.SubmittedTxInfo) (err error) {
 	return fmt.Errorf("SetTxStatus is not yet implemented for DummyStorage")
 }
 
@@ -19,12 +22,16 @@ func (s *DummyStorage) TxExists(queryID uint64, hash string) (exists bool, err e
 	return false, fmt.Errorf("TxExists is not yet implemented for DummyStorages")
 }
 
-func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) {
+func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, error) {
 	if val, ok := s.KVUpdateMap[queryID]; ok {
-		return val, true, nil
+		return val, nil
 	} else {
-		return 0, false, nil
+		return 0, nil
 	}
+}
+
+func (s *DummyStorage) GetAllPendingTxs() ([]*relay.PendingSubmittedTxInfo, error) {
+	return nil, fmt.Errorf("GetAllPendingTxs is not yet implemented for DummyStorages")
 }
 
 func (s *DummyStorage) Close() error {
