@@ -149,7 +149,7 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutr
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain)
+	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain, neutronapp.Bech32MainPrefix)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)

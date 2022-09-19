@@ -37,7 +37,6 @@ type NeutronChainConfig struct {
 	ConnectionID   string        `required:"true" split_words:"true"`
 	ClientID       string        `required:"true" split_words:"true"`
 	Debug          bool          `required:"true" split_words:"true"`
-	AccountPrefix  string        `required:"true" split_words:"true"`
 	KeyringBackend string        `required:"true" split_words:"true"`
 	OutputFormat   string        `required:"true" split_words:"true"`
 	SignModeStr    string        `required:"true" split_words:"true"`
