@@ -1,44 +1,6 @@
 Interchain query relayer implementation for [Neutron](https://github.com/neutron-org/neutron).
 
-More on relayer's configuration and inner can be read in [neutron-docs](https://github.com/neutron-org/neutron-docs/blob/main/docs/relaying/icq-relayer-guide.md) 
-
-# Do you need it?
-
-Basically, relayer makes two types of things possible:
-1. query key value in target chain
-2. query newly submitted transactions in target chain.
-
-You need to run your own relayer instance if:
-- you want to make unique interchain queries, or you want to use queries with sudo callback handlers
-- you want to make tx queries - because it only works through sudo callback handlers
-
-> 💡 Relayer only supports making interchain queries from Neutron chain, because it needs [InterchainQueries](https://github.com/neutron-org/neutron/tree/main/x/interchainqueries) module in order to work
-
-# Requirements
-
-- Stable machine. If relayer does not run, your queries data won’t be updated;
-- ***?WHAT_CURRENCY?*** tokens on neutron account that relayer will use to submit proofs;
-- [OPTIONAL] Setup monitoring. Relayer instruments its main operations to ensure everything is functioning.
-  TODO: section about monitoring setup
-
-# How it works
-- 
-- Neutron contracts manages interchain query registration;
-- Relayer maintains all query data in memory and subscribes to changes in queries
-- Relayer schedules ICQ events according to saved queries;
-- For each scheduled event, relayer either:
-  - (for KV queries) for each key gets values and proofs and sends query result to Neutron; it can also use sudo callback if enabled in relayer;
-  - (for TX queries) gets the last transactions since last update with given query filter, gets proofs for each of them and then calls query owner's contract sudo handler (for TX queries if callback execution is allowed by configuration of the relayer);
-
-For examples of usage please look into [example contracts](https://github.com/neutron-org/neutron-contracts/tree/main/contracts/neutron_interchain_queries)
-
-#### Implementation details
-
-- All relayers are for private use
-- Transaction queries are supported via only sudo callback handlers
-- Transaction queries can only fetch transactions not older than trusting period due to limitations of light clients in tendermint
-- Every transaction can be submitted only once per query_id. Uniq key tx_hash+query_id
-- Key value queries supported as a queryable data and as sudo callback handlers
+More on relayer in [neutron-docs](https://neutron-org.github.io/neutron-docs/relaying/icq-relayer)
 
 # Running in development
 
