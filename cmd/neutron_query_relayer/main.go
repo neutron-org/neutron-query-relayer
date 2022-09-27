@@ -2,29 +2,43 @@ package main
 
 import (
 	"context"
-	"github.com/neutron-org/neutron-query-relayer/internal/app"
-	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	nlogger "github.com/neutron-org/neutron-logger"
+	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
+)
+
+const (
+	mainContext = "main"
 )
 
 func main() {
-	loggerConfig, err := config.NewLoggerConfig()
+	logRegistry, err := nlogger.NewRegistry(
+		mainContext,
+		app.SubscriberContext,
+		app.RelayerContext,
+		app.TargetChainProviderContext,
+		app.NeutronChainProviderContext,
+		app.TxSenderContext,
+		app.TxProcessorContext,
+		app.TxSubmitCheckerContext,
+		app.TrustedHeadersFetcherContext,
+		app.KVProcessorContext,
+	)
 	if err != nil {
-		log.Fatalf("couldn't initialize logging config: %s", err)
+		log.Fatalf("couldn't initialize loggers registry: %s", err)
 	}
-
-	logger, err := loggerConfig.Build()
-	if err != nil {
-		log.Fatalf("couldn't initialize logger: %s", err)
-	}
+	logger := logRegistry.Get(mainContext)
 	logger.Info("neutron-query-relayer starts...")
 
 	http.Handle("/metrics", promhttp.Handler())
@@ -44,11 +58,15 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
-	var (
-		queriesTasksQueue = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
-		subscriber        = app.NewDefaultSubscriber(logger, cfg)
-		relayer           = app.NewDefaultRelayer(ctx, logger, cfg)
-	)
+	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
+	if err != nil {
+		logger.Fatal("failed to create subscriber", zap.Error(err))
+	}
+	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry)
+	if err != nil {
+		logger.Fatal("failed to create relayer", zap.Error(err))
+	}
+	queriesTasksQueue := make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 
 	wg.Add(1)
 	go func() {
