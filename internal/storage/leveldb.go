@@ -3,11 +3,13 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/syndtr/goleveldb/leveldb/util"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )

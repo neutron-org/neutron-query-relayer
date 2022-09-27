@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
+
 	"github.com/avast/retry-go/v4"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	abci "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
-	"time"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 )
 
 const TxCheckerNumWorkers = 4 // XXX: maybe this value should be configurable by user?

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 )
 
