@@ -123,8 +123,7 @@ Relayer:
 
 # Logging
 
-We are using [zap.loger](https://github.com/uber-go/zap)
-By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
+We are using a little bit modified [zap.loger](https://github.com/uber-go/zap), the modification can be seen at the [neutron-logger repository](https://github.com/neutron-org/neutron-logger). The default version of the logger used in the application is a little bit modified [zap.NewProduction](https://github.com/uber-go/zap/blob/master/logger.go#L94). The logger level can be set via the `LOGGER_LEVEL` env variable. If there is a need for a more significant customisation of the logger behaviour, see the neutron-logger repository readme.
 
 ## Generate Openapi
 
