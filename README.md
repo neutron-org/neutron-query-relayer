@@ -1,23 +1,18 @@
-# Description
+Interchain query relayer implementation for [Neutron](https://github.com/neutron-org/neutron).
 
-Interchain query relayer implementation for Neutron
-
-Makes interchain queries possible:
-
-1. Neutron manages interchain query registration;
-2. Relayer sees incoming ICQ events from Neutron;
-3. On each event, relayer gets proofs for all the needed data for query from the target chain;
-4. Relayer either sends query result to Neutron (for KV queries) or calls query owner's sudo handler (for TX queries if
-   callback execution is allowed by configuration of the relayer).
+More on relayer in [neutron-docs](https://neutron-org.github.io/neutron-docs/relaying/icq-relayer)
 
 # Running in development
+
 ### Natively
+
 - export environment you need (e.g. `export $(grep -v '^#' .env.example | xargs)` note: change rpc addresses to actual)
 - `make dev`
 
 For more configuration parameters see [Environment section](#Environment).
 
 ### In Docker
+
 1. Build docker image 
 `make build-docker`
 2. Run
@@ -87,7 +82,6 @@ Relayer:
 
 | Key                                              | type              | description                                                                                                                                                                | optional |
 |--------------------------------------------------|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `RELAYER_NEUTRON_CHAIN_CHAIN_PREFIX`             | `string`          | chain prefix of neutron chain                                                                                                                                              | required |
 | `RELAYER_NEUTRON_CHAIN_RPC_ADDR`                 | `string`          | rpc address of neutron chain                                                                                                                                               | required |
 | `RELAYER_NEUTRON_CHAIN_REST_ADDR`                | `string`          | rest address of neutron chain                                                                                                                                              | required |
 | `RELAYER_NEUTRON_CHAIN_CHAIN_ID `                | `string`          | neutron chain id                                                                                                                                                           | required |
@@ -100,16 +94,15 @@ Relayer:
 | `RELAYER_NEUTRON_CHAIN_CONNECTION_ID`            | `string`          | neutron chain connection ID                                                                                                                                                | required |
 | `RELAYER_NEUTRON_CHAIN_CLIENT_ID `               | `string`          | IBC client ID for an IBC connection between Neutron chain and target chain (where the result was obtained from)                                                            | required |
 | `RELAYER_NEUTRON_CHAIN_DEBUG `                   | `bool`            | flag to run neutron chain provider in debug mode                                                                                                                           | required |
-| `RELAYER_NEUTRON_CHAIN_ACCOUNT_PREFIX `          | `string`          | neutron chain account prefix                                                                                                                                               | required |
 | `RELAYER_NEUTRON_CHAIN_KEYRING_BACKEND`          | `string`          | [see](https://docs.cosmos.network/master/run-node/keyring.html#the-kwallet-backend)                                                                                        | required |
-| `RELAYER_NEUTRON_CHAIN_OUTPUT_FORMAT`            | `json`  OR `yaml` | target chain provider output format                                                                                                                                        | required |
+| `RELAYER_NEUTRON_CHAIN_OUTPUT_FORMAT`            | `json`  OR `yaml` | neutron chain provider output format                                                                                                                                       | required |
 | `RELAYER_NEUTRON_CHAIN_SIGN_MODE_STR `           | `string`          | [see](https://docs.cosmos.network/master/core/transactions.html#signing-transactions) also consider use short variation, e.g. `direct`                                     | required |
 | `RELAYER_TARGET_CHAIN_RPC_ADDR`                  | `string`          | rpc address of target chain                                                                                                                                                | required |
 | `RELAYER_TARGET_CHAIN_CHAIN_ID `                 | `string`          | target chain id                                                                                                                                                            | required |
 | `RELAYER_TARGET_CHAIN_ACCOUNT_PREFIX `           | `string`          | target chain account prefix                                                                                                                                                | required |
 | `RELAYER_TARGET_CHAIN_VALIDATOR_ACCOUNT_PREFIX ` | `string`          | target chain validator account prefix                                                                                                                                      | required |
 | `RELAYER_TARGET_CHAIN_TIMEOUT `                  | `time`            | timeout of target chain provider                                                                                                                                           | required |
-| `RELAYER_TARGET_CHAIN_CONNECTION_ID`             | `time`            | target chain connetcion ID                                                                                                                                                 | required |
+| `RELAYER_TARGET_CHAIN_CONNECTION_ID`             | `time`            | target chain connection ID                                                                                                                                                 | required |
 | `RELAYER_TARGET_CHAIN_CLIENT_ID `                | `string`          | IBC client ID for an IBC connection between Neutron chain and target chain (where the result was obtained from)                                                            | required |
 | `RELAYER_TARGET_CHAIN_DEBUG `                    | `bool`            | flag to run target chain provider in debug mode                                                                                                                            | required |
 | `RELAYER_TARGET_CHAIN_OUTPUT_FORMAT`             | `json`  or `yaml` | target chain provider output format                                                                                                                                        | required |

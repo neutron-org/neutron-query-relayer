@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	tmtypes "github.com/tendermint/tendermint/types"
-	"go.uber.org/zap"
 	"strings"
 	"sync"
+
+	tmtypes "github.com/tendermint/tendermint/types"
+	"go.uber.org/zap"
 
 	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -41,7 +42,6 @@ type TxSender struct {
 	txConfig      client.TxConfig
 	rpcClient     rpcclient.Client
 	chainID       string
-	addressPrefix string
 	signKeyName   string
 	gasPrices     string
 	gasLimit      uint64
@@ -57,7 +57,14 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 	return keybase, nil
 }
 
-func NewTxSender(ctx context.Context, rpcClient rpcclient.Client, marshaller codec.ProtoCodecMarshaler, keybase keyring.Keyring, cfg config.NeutronChainConfig, logger *zap.Logger) (*TxSender, error) {
+func NewTxSender(
+	ctx context.Context,
+	rpcClient rpcclient.Client,
+	marshaller codec.ProtoCodecMarshaler,
+	keybase keyring.Keyring,
+	cfg config.NeutronChainConfig,
+	logger *zap.Logger,
+) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
@@ -68,18 +75,17 @@ func NewTxSender(ctx context.Context, rpcClient rpcclient.Client, marshaller cod
 		WithGasPrices(cfg.GasPrices)
 
 	txs := &TxSender{
-		lock:          sync.Mutex{},
-		ctx:           ctx,
-		keybase:       keybase,
-		txConfig:      txConfig,
-		baseTxf:       baseTxf,
-		rpcClient:     rpcClient,
-		chainID:       cfg.ChainID,
-		addressPrefix: cfg.ChainPrefix,
-		signKeyName:   cfg.SignKeyName,
-		gasPrices:     cfg.GasPrices,
-		gasLimit:      cfg.GasLimit,
-		logger:        logger,
+		lock:        sync.Mutex{},
+		ctx:         ctx,
+		keybase:     keybase,
+		txConfig:    txConfig,
+		baseTxf:     baseTxf,
+		rpcClient:   rpcClient,
+		chainID:     cfg.ChainID,
+		signKeyName: cfg.SignKeyName,
+		gasPrices:   cfg.GasPrices,
+		gasLimit:    cfg.GasLimit,
+		logger:      logger,
 	}
 	err := txs.refreshAccountInfo()
 	if err != nil {

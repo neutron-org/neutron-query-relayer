@@ -2,8 +2,10 @@ package relay
 
 import (
 	"context"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 // Transaction represents single searched tx with height

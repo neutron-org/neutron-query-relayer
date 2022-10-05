@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"github.com/syndtr/goleveldb/leveldb"
 
 	"go.uber.org/zap"
 )

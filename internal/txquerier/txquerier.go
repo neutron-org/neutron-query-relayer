@@ -3,12 +3,14 @@ package txquerier
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var TxsChanSize = 100

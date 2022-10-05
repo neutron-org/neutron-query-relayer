@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
+	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var (

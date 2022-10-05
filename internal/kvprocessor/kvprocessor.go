@@ -4,18 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+	"go.uber.org/zap"
+
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"go.uber.org/zap"
-	"time"
 )
 
 // KVProcessor is implementation of relay.KVProcessor that processes event query KV type.

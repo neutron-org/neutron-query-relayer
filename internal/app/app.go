@@ -3,7 +3,10 @@ package app
 import (
 	"context"
 	"fmt"
+
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"go.uber.org/zap"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
@@ -19,7 +22,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"go.uber.org/zap"
 )
 
 func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) relay.Subscriber {
