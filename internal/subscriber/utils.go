@@ -2,6 +2,7 @@ package subscriber
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -68,6 +69,12 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 		payload = res.GetPayload()
 		out     = map[string]*neutrontypes.RegisteredQuery{}
 	)
+	kekw, err := json.Marshal(payload)
+	if err != nil {
+		s.logger.Error("cannot marshal", zap.Error(err))
+	} else {
+		s.logger.Info("get queries payload", zap.String("kekw", string(kekw)))
+	}
 
 	for _, restQuery := range payload.RegisteredQueries {
 		neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
