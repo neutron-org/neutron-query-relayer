@@ -88,6 +88,7 @@ type Subscriber struct {
 // Subscribe subscribes to 3 types of events: 1. a new block was created, 2. a query was updated (created / updated),
 // 3. a query was removed.
 func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
+	s.logger.Info("Subscriber#Subscribe()")
 	queries, err := s.getNeutronRegisteredQueries(ctx)
 	if err != nil {
 		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
@@ -134,6 +135,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 }
 
 func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
+	s.logger.Info("processBlockEvent")
 	// Get last block height.
 	status, err := s.rpcClient.Status(ctx)
 	if err != nil {
@@ -160,6 +162,7 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutronty
 // processUpdateEvent retrieves up-to-date information about each updated query and saves
 // it to state. Note: an update event is emitted both on query creation and on query updates.
 func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
+	s.logger.Info("processUpdateEvent")
 	ok, err := s.checkEvents(event)
 	if err != nil {
 		return fmt.Errorf("failed to checkEvents: %w", err)
@@ -196,6 +199,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 
 		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
+		s.logger.Info("update neutronQuery", zap.Uint64("queryId", neutronQuery.Id))
 	}
 
 	return nil
@@ -203,6 +207,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 
 // processRemoveEvent deletes an event that was removed on Neutron from memory.
 func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
+	s.logger.Info("processRemoveEvent")
 	ok, err := s.checkEvents(event)
 	if err != nil {
 		return fmt.Errorf("failed to checkEvents: %w", err)
@@ -221,6 +226,7 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 
 		// Delete the query from the active queries list.
 		delete(s.activeQueries, queryID)
+		s.logger.Info("remove neutronQuery", zap.String("queryId", queryID))
 	}
 
 	return nil
