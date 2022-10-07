@@ -61,9 +61,8 @@ func setupProxy(targetAddr string, logger *zap.Logger) (string, error) {
 		return "", fmt.Errorf("%s is not a valid url: %w", targetAddr, err)
 	}
 
-	if targetUrl.Scheme == "http" || targetUrl.Scheme == "tcp" {
-		// early return: no need to set up proxy
-		return targetAddr, nil
+	if targetUrl.Scheme == "tcp" {
+		targetUrl.Scheme = "http"
 	}
 	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
 	originalDirector := proxy.Director
