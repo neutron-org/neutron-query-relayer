@@ -56,20 +56,20 @@ const socketEndpoint = "/websocket"
  * TODO: delete this function when this fix reaches stable version of tendermint⠀⠀
  */
 func setupProxy(targetAddr string, logger *zap.Logger) (string, error) {
-	u, err := url.Parse(targetAddr)
+	targetUrl, err := url.Parse(targetAddr)
 	if err != nil {
 		return "", fmt.Errorf("%s is not a valid url: %w", targetAddr, err)
 	}
 
-	if u.Scheme == "http" || u.Scheme == "tcp" {
+	if targetUrl.Scheme == "http" || targetUrl.Scheme == "tcp" {
 		// early return: no need to set up proxy
 		return targetAddr, nil
 	}
-	proxy := httputil.NewSingleHostReverseProxy(u)
+	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
 	originalDirector := proxy.Director
 	proxy.Director = func(request *http.Request) {
 		originalDirector(request)
-		request.Host = u.Host
+		request.Host = targetUrl.Host
 	}
 
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
