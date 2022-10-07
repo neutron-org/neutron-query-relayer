@@ -25,7 +25,7 @@ var (
 func NewSubscriber(
 	rpcAddress string,
 	restAddress string,
-	targetConnectionID string,
+	connectionID string,
 	registry *registry.Registry,
 	watchedTypes []neutrontypes.InterchainQueryType,
 	logger *zap.Logger,
@@ -56,11 +56,11 @@ func NewSubscriber(
 		rpcClient:  rpcClient,
 		restClient: restClient,
 
-		rpcAddress:         rpcAddress,
-		targetConnectionID: targetConnectionID,
-		registry:           registry,
-		logger:             logger,
-		watchedTypes:       watchedTypesMap,
+		rpcAddress:   rpcAddress,
+		connectionID: connectionID,
+		registry:     registry,
+		logger:       logger,
+		watchedTypes: watchedTypesMap,
 
 		activeQueries: map[string]*neutrontypes.RegisteredQuery{},
 	}, nil
@@ -73,11 +73,11 @@ type Subscriber struct {
 	rpcClient  *http.HTTP                 // Used to subscribe to events
 	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
-	rpcAddress         string
-	targetConnectionID string
-	registry           *registry.Registry
-	logger             *zap.Logger
-	watchedTypes       map[neutrontypes.InterchainQueryType]struct{}
+	rpcAddress   string
+	connectionID string
+	registry     *registry.Registry
+	logger       *zap.Logger
+	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
 
 	activeQueries map[string]*neutrontypes.RegisteredQuery
 }

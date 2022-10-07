@@ -33,7 +33,7 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 	subscriber, err := relaysubscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.NeutronChain.RESTAddr,
-		cfg.TargetChain.ConnectionID,
+		cfg.NeutronChain.ConnectionID,
 		registry.New(cfg.Registry),
 		watchedMsgTypes,
 		logger,

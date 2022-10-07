@@ -55,7 +55,7 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
 		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
 			Owners:       s.registry.GetAddresses(),
-			ConnectionID: &s.targetConnectionID,
+			ConnectionID: &s.connectionID,
 			Context:      ctx,
 		},
 	)
@@ -115,7 +115,7 @@ func (s *Subscriber) subscriberName() string {
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
 func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.targetConnectionID,
+		connectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryUpdated,
 	)
@@ -124,7 +124,7 @@ func (s *Subscriber) getQueryUpdatedSubscription() string {
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
 func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.targetConnectionID,
+		connectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryRemoved,
 	)
