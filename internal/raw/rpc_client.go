@@ -61,8 +61,9 @@ func setupProxy(targetAddr string, logger *zap.Logger) (string, error) {
 		return "", fmt.Errorf("%s is not a valid url: %w", targetAddr, err)
 	}
 
-	if u.Scheme == "tcp" {
-		u.Scheme = "http"
+	if u.Scheme == "http" || u.Scheme == "tcp" {
+		// early return: no need to set up proxy
+		return targetAddr, nil
 	}
 	proxy := httputil.NewSingleHostReverseProxy(u)
 	originalDirector := proxy.Director
@@ -76,7 +77,7 @@ func setupProxy(targetAddr string, logger *zap.Logger) (string, error) {
 		return "", fmt.Errorf("failed to bind to random port on 127.0.0.1: %w", err)
 	}
 
-	proxyAddr := listener.Addr()
+	proxyAddr := fmt.Sprintf("http://%s", listener.Addr().String())
 	go func() {
 		err := http.Serve(listener, proxy)
 		if err != nil {
@@ -84,7 +85,11 @@ func setupProxy(targetAddr string, logger *zap.Logger) (string, error) {
 		}
 	}()
 
-	return fmt.Sprintf("http://%s", proxyAddr.String()), nil
+	logger.Warn("set up tendermint-workaround proxy",
+		zap.String("target", targetAddr),
+		zap.String("listen", proxyAddr),
+	)
+	return proxyAddr, nil
 }
 
 // NewRPCClient returns connected client for RPC queries into blockchain
