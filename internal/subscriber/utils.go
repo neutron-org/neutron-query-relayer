@@ -105,11 +105,11 @@ func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
 	return true, nil
 }
 
-// subscribeQuery returns the subscriber name.
+// subscriberName returns the subscriber name.
 // Note: it doesn't matter what we return here because Tendermint will override it with
 // remote IP anyway.
 func (s *Subscriber) subscriberName() string {
-	return s.targetChainID + "-rpcClient"
+	return "neutron-rpcClient"
 }
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.

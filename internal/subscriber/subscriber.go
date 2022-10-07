@@ -25,7 +25,6 @@ var (
 func NewSubscriber(
 	rpcAddress string,
 	restAddress string,
-	targetChainID string,
 	targetConnectionID string,
 	registry *registry.Registry,
 	watchedTypes []neutrontypes.InterchainQueryType,
@@ -58,7 +57,6 @@ func NewSubscriber(
 		restClient: restClient,
 
 		rpcAddress:         rpcAddress,
-		targetChainID:      targetChainID,
 		targetConnectionID: targetConnectionID,
 		registry:           registry,
 		logger:             logger,
@@ -76,7 +74,6 @@ type Subscriber struct {
 	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
 	rpcAddress         string
-	targetChainID      string
 	targetConnectionID string
 	registry           *registry.Registry
 	logger             *zap.Logger
