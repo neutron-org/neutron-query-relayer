@@ -55,7 +55,7 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
 		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
 			Owners:       s.registry.GetAddresses(),
-			ConnectionID: &s.targetConnectionID,
+			ConnectionID: &s.connectionID,
 			Context:      ctx,
 		},
 	)
@@ -105,17 +105,17 @@ func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
 	return true, nil
 }
 
-// subscribeQuery returns the subscriber name.
+// subscriberName returns the subscriber name.
 // Note: it doesn't matter what we return here because Tendermint will override it with
 // remote IP anyway.
 func (s *Subscriber) subscriberName() string {
-	return s.targetChainID + "-rpcClient"
+	return "neutron-rpcClient"
 }
 
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
 func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.targetConnectionID,
+		connectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryUpdated,
 	)
@@ -124,7 +124,7 @@ func (s *Subscriber) getQueryUpdatedSubscription() string {
 // subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
 func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.targetConnectionID,
+		connectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryRemoved,
 	)
