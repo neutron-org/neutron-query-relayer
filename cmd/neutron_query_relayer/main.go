@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
@@ -48,10 +49,23 @@ func main() {
 	wg := &sync.WaitGroup{}
 
 	var (
-		queriesTasksQueue = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
-		subscriber        = app.NewDefaultSubscriber(logger, cfg)
-		relayer           = app.NewDefaultRelayer(ctx, logger, cfg)
+		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
+		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
+		subscriber             = app.NewDefaultSubscriber(cfg, logger)
+		txSubmitChecker        = app.NewDefaultTxSubmitChecker(cfg, logger)
+		relayer                = app.NewDefaultRelayer(ctx, cfg, logger)
 	)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := txSubmitChecker.Run(ctx, submittedTxsTasksQueue)
+		if err != nil {
+			logger.Error("TxSubmitChecker exited with an error", zap.Error(err))
+			cancel()
+		}
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -69,7 +83,7 @@ func main() {
 		defer wg.Done()
 
 		// The relayer reads from the tasks queue.
-		if err := relayer.Run(ctx, queriesTasksQueue); err != nil {
+		if err := relayer.Run(ctx, queriesTasksQueue, submittedTxsTasksQueue); err != nil {
 			logger.Error("Relayer exited with an error", zap.Error(err))
 			cancel()
 		}

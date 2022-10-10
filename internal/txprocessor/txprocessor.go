@@ -20,7 +20,6 @@ type TXProcessor struct {
 	storage              relay.Storage
 	submitter            relay.Submitter
 	logger               *zap.Logger
-	dequeue              chan relay.PendingSubmittedTxInfo
 }
 
 func NewTxProcessor(
@@ -34,11 +33,11 @@ func NewTxProcessor(
 		submitter:            submitter,
 		logger:               logger,
 	}
-	txProcessor.dequeue = make(chan relay.PendingSubmittedTxInfo)
+
 	return txProcessor
 }
 
-func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx relay.Transaction) error {
+func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx relay.Transaction, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) error {
 	hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
 	txExists, err := r.storage.TxExists(queryID, hash)
 	if err != nil {
@@ -55,18 +54,14 @@ func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx re
 		return fmt.Errorf("failed to prepare block: %w", err)
 	}
 
-	err = r.submitTxWithProofs(queryID, block)
+	err = r.submitTxWithProofs(queryID, block, submittedTxsTasksQueue)
 	if err != nil {
 		return fmt.Errorf("failed to submit block: %w", err)
 	}
 	return nil
 }
 
-func (r TXProcessor) GetSubmitNotificationChannel() <-chan relay.PendingSubmittedTxInfo {
-	return r.dequeue
-}
-
-func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Block) error {
+func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Block, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) error {
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
@@ -76,6 +71,7 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 		if errSetStatus != nil {
 			return fmt.Errorf("failed to store tx: %w", errSetStatus)
 		}
+
 		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", neutrontypes.InterchainQueryTypeTX, queryID, err)
 	}
 
@@ -86,7 +82,8 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 	if err != nil {
 		return fmt.Errorf("failed to store tx: %w", err)
 	}
-	r.dequeue <- relay.PendingSubmittedTxInfo{
+
+	submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
 		QueryID:         queryID,
 		SubmittedTxHash: hash,
 		NeutronHash:     neutronTxHash,

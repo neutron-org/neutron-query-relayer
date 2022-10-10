@@ -39,31 +39,26 @@ func NewRelayer(
 	store Storage,
 	txProcessor TXProcessor,
 	kvprocessor KVProcessor,
-	txSubmitChecker TxSubmitChecker,
 	logger *zap.Logger,
 ) *Relayer {
 	return &Relayer{
-		cfg:             cfg,
-		txQuerier:       txQuerier,
-		logger:          logger,
-		storage:         store,
-		txProcessor:     txProcessor,
-		txSubmitChecker: txSubmitChecker,
-		kvProcessor:     kvprocessor,
+		cfg:         cfg,
+		txQuerier:   txQuerier,
+		logger:      logger,
+		storage:     store,
+		txProcessor: txProcessor,
+		kvProcessor: kvprocessor,
 	}
 }
 
 // Run starts the relaying process: subscribes on the incoming interchain query messages from the
 // Neutron and performs the queries by interacting with the target chain and submitting them to
 // the Neutron chain.
-func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQuery) error {
-	err := r.txSubmitChecker.Run(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to initialize tx submit checker: %w", err)
-	}
-
-	r.logger.Info("successfully initialized tx submit checker")
-
+func (r *Relayer) Run(
+	ctx context.Context,
+	queriesTasksQueue <-chan neutrontypes.RegisteredQuery, // Input tasks come from this channel
+	submittedTxsTasksQueue chan PendingSubmittedTxInfo, // Tasks for the TxSubmitChecker are sent to this channel
+) error {
 	for {
 		var (
 			start     time.Time
@@ -72,14 +67,14 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 			err       error
 		)
 		select {
-		case query := <-tasks:
+		case query := <-queriesTasksQueue:
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
 				err = r.processMessageKV(ctx, msg)
 			case string(neutrontypes.InterchainQueryTypeTX):
 				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
-				err = r.processMessageTX(ctx, msg)
+				err = r.processMessageTX(ctx, msg, submittedTxsTasksQueue)
 			default:
 				err = fmt.Errorf("unknown query type: %s", query.QueryType)
 			}
@@ -144,13 +139,15 @@ func (r *Relayer) buildTxQuery(m *MessageTX) (string, error) {
 // processMessageTX handles an incoming TX interchain query message. It fetches proven transactions
 // from the target chain using the message transactions filter value, and submits the result to the
 // Neutron chain.
-func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
+func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX, submittedTxsTasksQueue chan PendingSubmittedTxInfo) error {
 	r.logger.Debug("running processMessageTX for msg", zap.Uint64("query_id", m.QueryId))
 	queryString, err := r.buildTxQuery(m)
 	if err != nil {
 		return fmt.Errorf("failed to build tx query string: %w", err)
 	}
-	r.logger.Debug("tx query to search transactions", zap.Uint64("query_id", m.QueryId), zap.String("query", queryString))
+	r.logger.Debug("tx query to search transactions",
+		zap.Uint64("query_id", m.QueryId),
+		zap.String("query", queryString))
 
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -163,10 +160,13 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 				// TODO: should we stop after a first error
 				return fmt.Errorf("failed to save last height of query: %w", err)
 			}
-			r.logger.Debug("block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight), zap.Uint64("next_height_to_process", tx.Height))
+			r.logger.Debug("block completely processed",
+				zap.Uint64("query_id", m.QueryId),
+				zap.Uint64("processed_height", lastProcessedHeight),
+				zap.Uint64("next_height_to_process", tx.Height))
 		}
 		lastProcessedHeight = tx.Height
-		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx)
+		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx, submittedTxsTasksQueue)
 		if err != nil {
 			// TODO: should we stop after a first error
 			return fmt.Errorf("failed to process txs: %w", err)
@@ -183,10 +183,13 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX) error {
 		if err != nil {
 			return fmt.Errorf("failed to save last height of query: %w", err)
 		}
-		r.logger.Debug("the final block completely processed", zap.Uint64("query_id", m.QueryId), zap.Uint64("processed_height", lastProcessedHeight))
+		r.logger.Debug("the final block completely processed",
+			zap.Uint64("query_id", m.QueryId),
+			zap.Uint64("processed_height", lastProcessedHeight))
 	} else {
 		r.logger.Debug("no results found for the query", zap.Uint64("query_id", m.QueryId))
 	}
+
 	return nil
 }
 

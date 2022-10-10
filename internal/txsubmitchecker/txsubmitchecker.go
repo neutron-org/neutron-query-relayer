@@ -24,7 +24,6 @@ var (
 )
 
 type TxSubmitChecker struct {
-	inChan     <-chan relay.PendingSubmittedTxInfo
 	queue      chan relay.PendingSubmittedTxInfo
 	storage    relay.Storage
 	rpcClient  rpcclient.Client
@@ -33,25 +32,23 @@ type TxSubmitChecker struct {
 }
 
 func NewTxSubmitChecker(
-	inQueue <-chan relay.PendingSubmittedTxInfo,
 	storage relay.Storage,
 	rpcClient rpcclient.Client,
 	logger *zap.Logger,
 	checkSubmittedTxStatusDelay uint64,
 ) *TxSubmitChecker {
 	return &TxSubmitChecker{
-		inQueue,
-		make(chan relay.PendingSubmittedTxInfo),
-		storage,
-		rpcClient,
-		logger,
-		time.Duration(checkSubmittedTxStatusDelay) * time.Second,
+		queue:      make(chan relay.PendingSubmittedTxInfo),
+		storage:    storage,
+		rpcClient:  rpcClient,
+		logger:     logger,
+		checkDelay: time.Duration(checkSubmittedTxStatusDelay) * time.Second,
 	}
 }
 
-func (tc *TxSubmitChecker) Run(ctx context.Context) error {
+func (tc *TxSubmitChecker) Run(ctx context.Context, submittedTxsTasksQueue <-chan relay.PendingSubmittedTxInfo) error {
 	// we don't want to start jobs before we read all pending txs from database,
-	// hence we block on this read operation right in the beginning
+	// hence we block on this read operation right in the beginning.
 	pending, err := tc.storage.GetAllPendingTxs()
 	if err != nil {
 		return fmt.Errorf("failed to read pending txs from storage: %w", err)
@@ -66,11 +63,9 @@ func (tc *TxSubmitChecker) Run(ctx context.Context) error {
 		go tc.worker(ctx)
 	}
 
-	go func() {
-		for tx := range tc.inChan {
-			go tc.queueTx(tx)
-		}
-	}()
+	for tx := range submittedTxsTasksQueue {
+		go tc.queueTx(tx)
+	}
 
 	return nil
 }
