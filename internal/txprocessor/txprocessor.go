@@ -37,7 +37,12 @@ func NewTxProcessor(
 	return txProcessor
 }
 
-func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx relay.Transaction, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) error {
+func (r TXProcessor) ProcessAndSubmit(
+	ctx context.Context,
+	queryID uint64,
+	tx relay.Transaction,
+	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
+) error {
 	hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
 	txExists, err := r.storage.TxExists(queryID, hash)
 	if err != nil {
@@ -45,7 +50,10 @@ func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx re
 	}
 
 	if txExists {
-		r.logger.Debug("transaction already submitted", zap.Uint64("query_id", queryID), zap.String("hash", hash), zap.Uint64("height", tx.Height))
+		r.logger.Debug("transaction already submitted",
+			zap.Uint64("query_id", queryID),
+			zap.String("hash", hash),
+			zap.Uint64("height", tx.Height))
 		return nil
 	}
 
@@ -58,6 +66,7 @@ func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx re
 	if err != nil {
 		return fmt.Errorf("failed to submit block: %w", err)
 	}
+
 	return nil
 }
 
@@ -67,12 +76,14 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
 	if err != nil {
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
-		errSetStatus := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
+		errSetStatus := r.storage.SetTxStatus(
+			queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
 		if errSetStatus != nil {
 			return fmt.Errorf("failed to store tx: %w", errSetStatus)
 		}
 
-		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", neutrontypes.InterchainQueryTypeTX, queryID, err)
+		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w",
+			neutrontypes.InterchainQueryTypeTX, queryID, err)
 	}
 
 	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
@@ -83,6 +94,9 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 		return fmt.Errorf("failed to store tx: %w", err)
 	}
 
+	// TODO(oopcode): with current implementation, submitted transactions will be processed immediately
+	// (I removed the second queue implementation in TxSubmitChecker). We need to either send values to
+	// this channel in a goroutine after sleep, or patch TxSubmitChecker).
 	submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
 		QueryID:         queryID,
 		SubmittedTxHash: hash,
@@ -106,7 +120,8 @@ func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neut
 	return &block, nil
 }
 
-func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
+func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (
+	packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
 	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.Fetch(ctx, txStruct.Height)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get header for src chain: %w", err)

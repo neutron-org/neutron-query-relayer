@@ -15,8 +15,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 )
 
-const TxCheckerNumWorkers = 4 // XXX: maybe this value should be configurable by user?
-
 var (
 	retryAttempts = retry.Attempts(4)
 	retryDelay    = retry.Delay(1 * time.Second)
@@ -24,7 +22,6 @@ var (
 )
 
 type TxSubmitChecker struct {
-	queue      chan relay.PendingSubmittedTxInfo
 	storage    relay.Storage
 	rpcClient  rpcclient.Client
 	logger     *zap.Logger
@@ -38,7 +35,6 @@ func NewTxSubmitChecker(
 	checkSubmittedTxStatusDelay uint64,
 ) *TxSubmitChecker {
 	return &TxSubmitChecker{
-		queue:      make(chan relay.PendingSubmittedTxInfo),
 		storage:    storage,
 		rpcClient:  rpcClient,
 		logger:     logger,
@@ -47,87 +43,62 @@ func NewTxSubmitChecker(
 }
 
 func (tc *TxSubmitChecker) Run(ctx context.Context, submittedTxsTasksQueue <-chan relay.PendingSubmittedTxInfo) error {
-	// we don't want to start jobs before we read all pending txs from database,
-	// hence we block on this read operation right in the beginning.
+	// Read and process all pending submitted transactions on startup.
 	pending, err := tc.storage.GetAllPendingTxs()
 	if err != nil {
 		return fmt.Errorf("failed to read pending txs from storage: %w", err)
 	}
 
-	// these goroutines will eventually submit all pending txs into queue
 	for _, tx := range pending {
-		go tc.queueTx(*tx)
+		if err := tc.processSubmittedTx(ctx, tx); err != nil {
+			tc.logger.Error("Failed to processSubmittedTx (on startup)",
+				zap.Error(err), zap.String("tx_neutron_hash", tx.NeutronHash),
+				zap.String("tx_submitted_hash", tx.SubmittedTxHash))
+		}
 	}
-
-	for i := 0; i < TxCheckerNumWorkers; i++ {
-		go tc.worker(ctx)
-	}
-
-	for tx := range submittedTxsTasksQueue {
-		go tc.queueTx(tx)
-	}
-
-	return nil
-}
-
-func (tc *TxSubmitChecker) queueTx(tx relay.PendingSubmittedTxInfo) {
-	tc.logger.Info("new job", zap.String("neutron_hash", tx.NeutronHash))
-	age := time.Since(tx.SubmitTime)
-	if age < 0 {
-		tc.logger.Warn(
-			"tx has negative age",
-			zap.String("neutron_hash", tx.NeutronHash),
-			zap.Int64("age_nsecs", age.Nanoseconds()),
-			zap.Time("submitted_at", tx.SubmitTime),
-		)
-	}
-	if age >= 0 && age < tc.checkDelay {
-		time.Sleep(tc.checkDelay - age)
-	}
-	tc.queue <- tx
-}
-
-func (tc *TxSubmitChecker) worker(ctx context.Context) {
-	tc.logger.Info("init worker thread")
 
 	for {
 		select {
-		case tx := <-tc.queue:
-			neutronHash, err := hex.DecodeString(tx.NeutronHash)
-			if err != nil {
-				tc.logger.Error(
-					"failed to decode hash",
-					zap.String("neutron_hash", tx.NeutronHash),
-					zap.Error(err),
-				)
-				continue
-			}
-
-			txResponse, err := tc.retryGetTxStatusWithTimeout(ctx, neutronHash, 10*time.Second)
-			if err != nil {
-				tc.logger.Warn(
-					"failed to get tx status from rpc",
-					zap.String("neutron_hash", tx.NeutronHash),
-					zap.Error(err),
-				)
-				continue
-			}
-
-			if txResponse.TxResult.Code == abci.CodeTypeOK {
-				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
-					Status: relay.Committed,
-				})
-			} else {
-				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
-					Status:  relay.ErrorOnCommit,
-					Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
-				})
+		case tx := <-submittedTxsTasksQueue:
+			if err := tc.processSubmittedTx(ctx, &tx); err != nil {
+				tc.logger.Error("Failed to processSubmittedTx",
+					zap.Error(err), zap.String("tx_neutron_hash", tx.NeutronHash),
+					zap.String("tx_submitted_hash", tx.SubmittedTxHash))
 			}
 		case <-ctx.Done():
-			tc.logger.Info("worker has been stopped by context")
-			return
+			tc.logger.Info("Context cancelled, shutting down TxSubmitChecker...")
+			if err := tc.storage.Close(); err != nil {
+				tc.logger.Error("Failed to close TxSubmitChecker storage", zap.Error(err))
+			}
+
+			return nil
 		}
 	}
+}
+
+func (tc *TxSubmitChecker) processSubmittedTx(ctx context.Context, tx *relay.PendingSubmittedTxInfo) error {
+	neutronHash, err := hex.DecodeString(tx.NeutronHash)
+	if err != nil {
+		return fmt.Errorf("failed to DecodeString: %w", err)
+	}
+
+	txResponse, err := tc.retryGetTxStatusWithTimeout(ctx, neutronHash, 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to retryGetTxStatusWithTimeout: %w", err)
+	}
+
+	if txResponse.TxResult.Code == abci.CodeTypeOK {
+		tc.updateTxStatus(tx, relay.SubmittedTxInfo{
+			Status: relay.Committed,
+		})
+	} else {
+		tc.updateTxStatus(tx, relay.SubmittedTxInfo{
+			Status:  relay.ErrorOnCommit,
+			Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
+		})
+	}
+
+	return nil
 }
 
 func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(
