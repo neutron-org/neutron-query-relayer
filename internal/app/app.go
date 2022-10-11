@@ -51,7 +51,6 @@ func NewDefaultRelayer(
 	logger *zap.Logger,
 	cfg config.NeutronQueryRelayerConfig,
 ) *relay.Relayer {
-	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
@@ -130,6 +129,7 @@ func NewDefaultRelayer(
 			txProcessor,
 			kvProcessor,
 			txSubmitChecker,
+			targetChain,
 			logger,
 		)
 	)
