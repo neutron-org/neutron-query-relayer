@@ -73,7 +73,12 @@ func (r TXProcessor) ProcessAndSubmit(
 	return nil
 }
 
-func (r TXProcessor) submitTxWithProofs(ctx context.Context, queryID uint64, block *neutrontypes.Block, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) error {
+func (r TXProcessor) submitTxWithProofs(
+	ctx context.Context,
+	queryID uint64,
+	block *neutrontypes.Block,
+	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
+) error {
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
