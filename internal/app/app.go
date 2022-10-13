@@ -61,7 +61,6 @@ func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logger *zap
 		relayerStorage,
 		neutronClient,
 		logger,
-		cfg.CheckSubmittedTxStatusDelay,
 	)
 }
 
@@ -112,7 +111,7 @@ func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig
 		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
-		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, relayerStorage, proofSubmitter, logger)
+		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, relayerStorage, proofSubmitter, logger, cfg.CheckSubmittedTxStatusDelay)
 		kvProcessor          = kvprocessor.NewKVProcessor(
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,

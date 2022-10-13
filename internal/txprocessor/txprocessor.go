@@ -16,22 +16,25 @@ import (
 )
 
 type TXProcessor struct {
-	trustedHeaderFetcher relay.TrustedHeaderFetcher
-	storage              relay.Storage
-	submitter            relay.Submitter
-	logger               *zap.Logger
+	trustedHeaderFetcher        relay.TrustedHeaderFetcher
+	storage                     relay.Storage
+	submitter                   relay.Submitter
+	logger                      *zap.Logger
+	checkSubmittedTxStatusDelay time.Duration
 }
 
 func NewTxProcessor(
 	trustedHeaderFetcher relay.TrustedHeaderFetcher,
 	storage relay.Storage,
 	submitter relay.Submitter,
-	logger *zap.Logger) TXProcessor {
+	logger *zap.Logger,
+	checkSubmittedTxStatusDelay time.Duration) TXProcessor {
 	txProcessor := TXProcessor{
-		trustedHeaderFetcher: trustedHeaderFetcher,
-		storage:              storage,
-		submitter:            submitter,
-		logger:               logger,
+		trustedHeaderFetcher:        trustedHeaderFetcher,
+		storage:                     storage,
+		submitter:                   submitter,
+		logger:                      logger,
+		checkSubmittedTxStatusDelay: checkSubmittedTxStatusDelay,
 	}
 
 	return txProcessor
@@ -62,7 +65,7 @@ func (r TXProcessor) ProcessAndSubmit(
 		return fmt.Errorf("failed to prepare block: %w", err)
 	}
 
-	err = r.submitTxWithProofs(queryID, block, submittedTxsTasksQueue)
+	err = r.submitTxWithProofs(ctx, queryID, block, submittedTxsTasksQueue)
 	if err != nil {
 		return fmt.Errorf("failed to submit block: %w", err)
 	}
@@ -70,7 +73,7 @@ func (r TXProcessor) ProcessAndSubmit(
 	return nil
 }
 
-func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Block, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) error {
+func (r TXProcessor) submitTxWithProofs(ctx context.Context, queryID uint64, block *neutrontypes.Block, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) error {
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
@@ -94,17 +97,31 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 		return fmt.Errorf("failed to store tx: %w", err)
 	}
 
-	// TODO(oopcode): with current implementation, submitted transactions will be processed immediately
-	// (I removed the second queue implementation in TxSubmitChecker). We need to either send values to
-	// this channel in a goroutine after sleep, or patch TxSubmitChecker).
-	submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
-		QueryID:         queryID,
-		SubmittedTxHash: hash,
-		NeutronHash:     neutronTxHash,
-		SubmitTime:      time.Now(),
-	}
+	// We submit the PendingSubmittedTxInfo only after checkSubmittedTxStatusDelay to reduce the possibility of
+	// unsuccessful checks (the block is 100% not ready here yet).
+	go func() {
+		var t = time.NewTimer(r.checkSubmittedTxStatusDelay)
+		select {
+		case <-t.C:
+			submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
+				QueryID:         queryID,
+				SubmittedTxHash: hash,
+				NeutronHash:     neutronTxHash,
+				SubmitTime:      time.Now(),
+			}
+		case <-ctx.Done():
+			r.logger.Info("Cancelled PendingSubmittedTxInfo delayed checking",
+				zap.Uint64("query_id", queryID),
+				zap.String("submitted_tx_hash", hash))
+		}
+	}()
+
 	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
 	return nil
+}
+
+func (r TXProcessor) submitPendingTx() {
+
 }
 
 func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neutrontypes.Block, error) {

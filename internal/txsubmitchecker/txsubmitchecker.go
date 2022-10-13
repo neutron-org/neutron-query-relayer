@@ -22,23 +22,20 @@ var (
 )
 
 type TxSubmitChecker struct {
-	storage    relay.Storage
-	rpcClient  rpcclient.Client
-	logger     *zap.Logger
-	checkDelay time.Duration
+	storage   relay.Storage
+	rpcClient rpcclient.Client
+	logger    *zap.Logger
 }
 
 func NewTxSubmitChecker(
 	storage relay.Storage,
 	rpcClient rpcclient.Client,
 	logger *zap.Logger,
-	checkSubmittedTxStatusDelay uint64,
 ) *TxSubmitChecker {
 	return &TxSubmitChecker{
-		storage:    storage,
-		rpcClient:  rpcClient,
-		logger:     logger,
-		checkDelay: time.Duration(checkSubmittedTxStatusDelay) * time.Second,
+		storage:   storage,
+		rpcClient: rpcClient,
+		logger:    logger,
 	}
 }
 

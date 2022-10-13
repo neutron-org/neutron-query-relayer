@@ -18,7 +18,7 @@ type NeutronQueryRelayerConfig struct {
 	AllowKVCallbacks            bool                     `required:"true" split_words:"true"`
 	MinKvUpdatePeriod           uint64                   `split_words:"true" default:"0"`
 	StoragePath                 string                   `split_words:"true"`
-	CheckSubmittedTxStatusDelay uint64                   `split_words:"true" default:"10"`
+	CheckSubmittedTxStatusDelay time.Duration            `split_words:"true" default:"10s"`
 	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`
 	PrometheusPort              uint16                   `split_words:"true" default:"9999"`
 }
