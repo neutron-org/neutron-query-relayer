@@ -51,7 +51,7 @@ func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logger *zap
 		logger.Fatal("Failed to loadRelayerStorage", zap.Error(err))
 	}
 
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logger)
 	if err != nil {
 		logger.Fatal("cannot create neutron client", zap.Error(err))
 	}
