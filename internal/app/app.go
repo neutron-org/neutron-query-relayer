@@ -33,8 +33,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logger *zap.Logg
 	subscriber, err := relaysubscriber.NewSubscriber(
 		cfg.NeutronChain.RPCAddr,
 		cfg.NeutronChain.RESTAddr,
-		cfg.TargetChain.ChainID,
-		cfg.TargetChain.ConnectionID,
+		cfg.NeutronChain.ConnectionID,
 		registry.New(cfg.Registry),
 		watchedMsgTypes,
 		logger,
@@ -71,7 +70,7 @@ func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
-	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
+	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout, logger)
 	if err != nil {
 		logger.Fatal("could not initialize target rpc client", zap.Error(err))
 	}
@@ -81,7 +80,7 @@ func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig
 		logger.Fatal("cannot connect to target chain", zap.Error(err))
 	}
 
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logger)
 	if err != nil {
 		logger.Fatal("cannot create neutron client", zap.Error(err))
 	}
