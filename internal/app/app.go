@@ -45,26 +45,21 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logger *zap.Logg
 	return subscriber
 }
 
-func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) relay.TxSubmitChecker {
-	relayerStorage, err := loadRelayerStorage(cfg, logger)
-	if err != nil {
-		logger.Fatal("Failed to loadRelayerStorage", zap.Error(err))
-	}
-
+func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger, storage relay.Storage) relay.TxSubmitChecker {
 	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logger)
 	if err != nil {
 		logger.Fatal("cannot create neutron client", zap.Error(err))
 	}
 
 	return txsubmitchecker.NewTxSubmitChecker(
-		relayerStorage,
+		storage,
 		neutronClient,
 		logger,
 	)
 }
 
 // NewDefaultRelayer returns a relayer built with cfg.
-func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) *relay.Relayer {
+func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig, logger *zap.Logger, storage relay.Storage) *relay.Relayer {
 	logger.Info("initialized config")
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
@@ -96,11 +91,6 @@ func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}
 
-	relayerStorage, err := loadRelayerStorage(cfg, logger)
-	if err != nil {
-		logger.Fatal("Failed to loadRelayerStorage", zap.Error(err))
-	}
-
 	neutronChain, targetChain, err := loadChains(cfg, logger)
 	if err != nil {
 		logger.Error("failed to loadChains", zap.Error(err))
@@ -110,20 +100,21 @@ func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig
 		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
-		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, relayerStorage, proofSubmitter, logger, cfg.CheckSubmittedTxStatusDelay)
-		kvProcessor          = kvprocessor.NewKVProcessor(
+		txProcessor          = txprocessor.NewTxProcessor(
+			trustedHeaderFetcher, storage, proofSubmitter, logger, cfg.CheckSubmittedTxStatusDelay)
+		kvProcessor = kvprocessor.NewKVProcessor(
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
 			logger,
 			proofSubmitter,
-			relayerStorage,
+			storage,
 			targetChain,
 			neutronChain,
 		)
 		relayer = relay.NewRelayer(
 			cfg,
 			txQuerier,
-			relayerStorage,
+			storage,
 			txProcessor,
 			kvProcessor,
 			logger,
@@ -166,7 +157,7 @@ func loadChains(
 	return neutronChain, targetChain, nil
 }
 
-func loadRelayerStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
+func NewRelayerStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
 	var (
 		err            error
 		relayerStorage relay.Storage
