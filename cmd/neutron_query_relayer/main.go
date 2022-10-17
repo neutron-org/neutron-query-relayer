@@ -49,7 +49,7 @@ func main() {
 	wg := &sync.WaitGroup{}
 
 	// The storage has to be shared because of the LevelDB single process restriction.
-	storage, err := app.NewRelayerStorage(cfg, logger)
+	storage, err := app.NewDefaultStorage(cfg, logger)
 	if err != nil {
 		logger.Fatal("Failed to loadRelayerStorage", zap.Error(err))
 	}

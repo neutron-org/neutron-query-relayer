@@ -125,10 +125,6 @@ func (r TXProcessor) submitTxWithProofs(
 	return nil
 }
 
-func (r TXProcessor) submitPendingTx() {
-
-}
-
 func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neutrontypes.Block, error) {
 	packedHeader, packedNextHeader, err := r.prepareHeaders(ctx, tx)
 	if err != nil {

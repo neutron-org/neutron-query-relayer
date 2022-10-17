@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"go.uber.org/zap"
@@ -12,7 +13,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
@@ -123,6 +123,28 @@ func NewDefaultRelayer(ctx context.Context, cfg config.NeutronQueryRelayerConfig
 	return relayer
 }
 
+func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
+	var (
+		err            error
+		relayerStorage relay.Storage
+	)
+
+	if cfg.AllowTxQueries && cfg.StoragePath == "" {
+		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+	}
+
+	if cfg.StoragePath != "" {
+		relayerStorage, err = storage.NewLevelDBStorage(cfg.StoragePath)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
+		}
+	} else {
+		relayerStorage = storage.NewDummyStorage()
+	}
+
+	return relayerStorage, nil
+}
+
 func loadChains(
 	cfg config.NeutronQueryRelayerConfig,
 	logger *zap.Logger,
@@ -155,26 +177,4 @@ func loadChains(
 	}
 
 	return neutronChain, targetChain, nil
-}
-
-func NewRelayerStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
-	var (
-		err            error
-		relayerStorage relay.Storage
-	)
-
-	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
-	}
-
-	if cfg.StoragePath != "" {
-		relayerStorage, err = storage.NewLevelDBStorage(cfg.StoragePath)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
-		}
-	} else {
-		relayerStorage = storage.NewDummyStorage()
-	}
-
-	return relayerStorage, nil
 }
