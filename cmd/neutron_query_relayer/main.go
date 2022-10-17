@@ -53,6 +53,12 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to loadRelayerStorage", zap.Error(err))
 	}
+	defer func(storage relay.Storage) {
+		err := storage.Close()
+		if err != nil {
+			logger.Fatal("Failed to close storage", zap.Error(err))
+		}
+	}(storage)
 
 	var (
 		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)

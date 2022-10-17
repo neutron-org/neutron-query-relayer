@@ -64,10 +64,6 @@ func (tc *TxSubmitChecker) Run(ctx context.Context, submittedTxsTasksQueue <-cha
 			}
 		case <-ctx.Done():
 			tc.logger.Info("Context cancelled, shutting down TxSubmitChecker...")
-			if err := tc.storage.Close(); err != nil {
-				tc.logger.Error("Failed to close TxSubmitChecker storage", zap.Error(err))
-			}
-
 			return nil
 		}
 	}
