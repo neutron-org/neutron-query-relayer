@@ -840,6 +840,10 @@ github.com/neutron-org/neutron-logger v0.0.0-20220927083654-d2881eba3ada h1:V5m4
 github.com/neutron-org/neutron-logger v0.0.0-20220927083654-d2881eba3ada/go.mod h1:Ixqy4EK/AzeFgXVg0DRq2box64xt77HTQMQaFZdygm4=
 github.com/neutron-org/neutron-logger v0.0.0-20220927094332-2cf0006cee2a h1:ym4HZETva6KQAkBAi6kCbgiUA/SEgodRisKKmyDN4EA=
 github.com/neutron-org/neutron-logger v0.0.0-20220927094332-2cf0006cee2a/go.mod h1:ERWBTJMROfCeLsyRIUydvCmRvoc1kyugcoTy2iJa7Sk=
+github.com/neutron-org/neutron-logger v0.0.0-20221017145128-18294e998359 h1:E/h7FIPtyyhWAXFaBeaeSeP7wC9gxGEtO1v/eWzSfuQ=
+github.com/neutron-org/neutron-logger v0.0.0-20221017145128-18294e998359/go.mod h1:SKEYJmWa+uOI1RBStwCpET0dLn6SNJOkyjE2UXHTvtM=
+github.com/neutron-org/neutron-logger v0.0.0-20221017151223-1c05dc42d9f6 h1:zSagoJ2vYkvK+8ceF19DNLg/JPhfQWpefdWgYNkw6Y8=
+github.com/neutron-org/neutron-logger v0.0.0-20221017151223-1c05dc42d9f6/go.mod h1:SKEYJmWa+uOI1RBStwCpET0dLn6SNJOkyjE2UXHTvtM=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=

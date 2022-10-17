@@ -105,7 +105,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
-	github.com/neutron-org/neutron-logger v0.0.0-20220927094332-2cf0006cee2a // indirect
+	github.com/neutron-org/neutron-logger v0.0.0-20221017151223-1c05dc42d9f6 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799 // indirect
 	github.com/opencontainers/runc v1.1.2 // indirect
