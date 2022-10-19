@@ -223,7 +223,7 @@ func (thf *TrustedHeaderFetcher) retryGetLightSignedHeaderAtHeight(ctx context.C
 	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
 		return nil, fmt.Errorf(
 			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
-			tmHeader.TrustedHeight.RevisionHeight, err,
+			height, err,
 		)
 	}
 

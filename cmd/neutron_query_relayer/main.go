@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -9,13 +10,13 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
+
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 )
 
 const (
@@ -27,6 +28,8 @@ func main() {
 		mainContext,
 		app.SubscriberContext,
 		app.RelayerContext,
+		app.TargetChainRPCClientContext,
+		app.NeutronChainRPCClientContext,
 		app.TargetChainProviderContext,
 		app.NeutronChainProviderContext,
 		app.TxSenderContext,
@@ -41,19 +44,19 @@ func main() {
 	logger := logRegistry.Get(mainContext)
 	logger.Info("neutron-query-relayer starts...")
 
+	cfg, err := config.NewNeutronQueryRelayerConfig()
+	if err != nil {
+		logger.Fatal("cannot initialize relayer config", zap.Error(err))
+	}
+
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		err := http.ListenAndServe(":9999", nil)
+		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
 		if err != nil {
 			logger.Fatal("failed to serve metrics", zap.Error(err))
 		}
 	}()
 	logger.Info("metrics handler set up")
-
-	cfg, err := config.NewNeutronQueryRelayerConfig()
-	if err != nil {
-		logger.Fatal("cannot initialize relayer config", zap.Error(err))
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}

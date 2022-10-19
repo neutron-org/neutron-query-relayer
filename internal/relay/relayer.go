@@ -91,7 +91,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 				neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
 			}
 		case <-ctx.Done():
-			r.logger.Info("Context cancelled, shittung down relayer...")
+			r.logger.Info("Context cancelled, shutting down relayer...")
 			return r.stop()
 		}
 	}
