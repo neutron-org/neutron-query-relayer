@@ -68,11 +68,11 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 		var (
 			start     time.Time
 			queryType neutrontypes.InterchainQueryType
-			queryID   uint64
 			err       error
 		)
 		select {
 		case query := <-tasks:
+			r.logger.Debug("processing query", zap.String("query", fmt.Sprintf("+%v", query)))
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
@@ -85,7 +85,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 			}
 
 			if err != nil {
-				r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
+				r.logger.Error("could not process message", zap.Uint64("query_id", query.Id), zap.Error(err))
 				neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
 			} else {
 				neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
