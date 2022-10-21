@@ -72,12 +72,8 @@ func NewDefaultRelayer(
 	}
 
 	codec := raw.MakeCodecDefault()
-	keybase, err := submit.TestKeybase(cfg.NeutronChain.ChainID, cfg.NeutronChain.HomeDir)
-	if err != nil {
-		logger.Fatal("cannot initialize keybase", zap.Error(err))
-	}
 
-	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger)
+	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, *cfg.NeutronChain, logger)
 	if err != nil {
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}

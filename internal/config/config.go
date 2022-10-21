@@ -26,21 +26,24 @@ type NeutronQueryRelayerConfig struct {
 const EnvPrefix string = "RELAYER"
 
 type NeutronChainConfig struct {
-	RPCAddr        string        `required:"true" split_words:"true"`
-	RESTAddr       string        `required:"true" split_words:"true"`
-	ChainID        string        `required:"true" split_words:"true"`
-	HomeDir        string        `required:"true" split_words:"true"`
-	SignKeyName    string        `required:"true" split_words:"true"`
-	Timeout        time.Duration `required:"true" split_words:"true"`
-	GasPrices      string        `required:"true" split_words:"true"`
-	GasLimit       uint64        `split_words:"true" default:"0"`
-	GasAdjustment  float64       `required:"true" split_words:"true"`
-	ConnectionID   string        `required:"true" split_words:"true"`
-	ClientID       string        `required:"true" split_words:"true"`
-	Debug          bool          `required:"true" split_words:"true"`
-	KeyringBackend string        `required:"true" split_words:"true"`
-	OutputFormat   string        `required:"true" split_words:"true"`
-	SignModeStr    string        `required:"true" split_words:"true"`
+	RPCAddr         string        `required:"true" split_words:"true"`
+	RESTAddr        string        `required:"true" split_words:"true"`
+	ChainID         string        `required:"true" split_words:"true"`
+	HomeDir         string        `required:"true" split_words:"true"`
+	SignKeyName     string        `split_words:"true"`
+	SignKeySeed     string        `split_words:"true"`
+	SignKeyHDPath   string        `split_words:"true" default:""`
+	Timeout         time.Duration `required:"true" split_words:"true"`
+	GasPrices       string        `required:"true" split_words:"true"`
+	GasLimit        uint64        `split_words:"true" default:"0"`
+	GasAdjustment   float64       `required:"true" split_words:"true"`
+	ConnectionID    string        `required:"true" split_words:"true"`
+	ClientID        string        `required:"true" split_words:"true"`
+	Debug           bool          `required:"true" split_words:"true"`
+	KeyringBackend  string        `required:"true" split_words:"true"`
+	KeyringPassword string        `split_words:"true"`
+	OutputFormat    string        `required:"true" split_words:"true"`
+	SignModeStr     string        `required:"true" split_words:"true"`
 }
 
 type TargetChainConfig struct {

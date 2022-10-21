@@ -2,6 +2,7 @@ package relay
 
 import (
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
@@ -13,11 +14,11 @@ import (
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            cfg.SignKeyName,
+		Key:            "",
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  neutronapp.Bech32MainPrefix,
-		KeyringBackend: cfg.KeyringBackend,
+		KeyringBackend: keyring.BackendMemory,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
 		Debug:          cfg.Debug,
@@ -35,13 +36,11 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relay
 
 func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:           "",
-		ChainID:       cfg.ChainID,
-		RPCAddr:       cfg.RPCAddr,
-		AccountPrefix: cfg.AccountPrefix,
-		// we don't have any needs in keys for target chain
-		// but since "KeyringBackend" can't be an empty string we explicitly set it to "test" value to avoid errors
-		KeyringBackend: "test",
+		Key:            "",
+		ChainID:        cfg.ChainID,
+		RPCAddr:        cfg.RPCAddr,
+		AccountPrefix:  cfg.AccountPrefix,
+		KeyringBackend: keyring.BackendMemory,
 		GasAdjustment:  0.0,
 		GasPrices:      "",
 		Debug:          cfg.Debug,
