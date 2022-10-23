@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"sync"
 	"time"
 
@@ -146,6 +147,7 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutronty
 
 		// Send the query to the tasks queue.
 		tasks <- *activeQuery
+		instrumenters.SetSubscriberTaskQueueNumElements(len(tasks))
 
 		// Set the LastSubmittedResultLocalHeight to the current height.
 		activeQuery.LastSubmittedResultLocalHeight = currentHeight
@@ -191,6 +193,12 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 			continue
 		}
 
+		// We don't want to increment counter if an existing query is being updated
+		_, ok := s.activeQueries[queryID]
+		if !ok {
+			instrumenters.IncQueriesToProcess()
+		}
+
 		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
 	}
@@ -218,6 +226,7 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 
 		// Delete the query from the active queries list.
 		delete(s.activeQueries, queryID)
+		instrumenters.DecQueriesToProcess()
 	}
 
 	return nil

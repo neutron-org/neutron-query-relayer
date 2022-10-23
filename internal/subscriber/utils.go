@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"net/url"
 
 	"go.uber.org/zap"
@@ -77,8 +78,9 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
 			continue
 		}
-
+		instrumenters.IncQueriesToProcess()
 		out[restQuery.ID] = neutronQuery
+		instrumenters.IncQueriesToProcess()
 	}
 
 	return out, nil

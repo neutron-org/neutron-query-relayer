@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -119,10 +120,12 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 			}
 
 			if txResponse.TxResult.Code == abci.CodeTypeOK {
+				instrumenters.IncSuccessTxSubmit()
 				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
 					Status: relay.Committed,
 				})
 			} else {
+				instrumenters.IncFailedTxSubmit()
 				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
 					Status:  relay.ErrorOnCommit,
 					Message: fmt.Sprintf("%d", txResponse.TxResult.Code),

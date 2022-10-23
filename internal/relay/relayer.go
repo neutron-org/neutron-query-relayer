@@ -73,6 +73,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 		)
 		select {
 		case query := <-tasks:
+			neutronmetrics.SetSubscriberTaskQueueNumElements(len(tasks))
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}

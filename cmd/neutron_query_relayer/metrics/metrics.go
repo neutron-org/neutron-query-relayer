@@ -45,6 +45,16 @@ var (
 		Name: "submitted_txs",
 		Help: "The total number of submitted txs (counter)",
 	}, []string{labelType})
+
+	subscriberTaskQueueNumElements = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "subscriber_task_queue_num_elements",
+		Help: "The total number of elements in Subscriber's task queue",
+	}, []string{})
+
+	queriesToProcess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "queries_to_process",
+		Help: "The total number of queries to process (counter)",
+	}, []string{})
 )
 
 func incFailedRequests() {
@@ -111,13 +121,25 @@ func RecordActionDuration(action string, dur float64) {
 }
 
 func IncSuccessTxSubmit() {
-	relayerRequests.With(prometheus.Labels{
+	submittedTxCounter.With(prometheus.Labels{
 		labelType: typeSuccess,
 	}).Inc()
 }
 
 func IncFailedTxSubmit() {
-	relayerProofs.With(prometheus.Labels{
+	submittedTxCounter.With(prometheus.Labels{
 		labelType: typeFailed,
 	}).Inc()
+}
+
+func SetSubscriberTaskQueueNumElements(numElements int) {
+	subscriberTaskQueueNumElements.With(prometheus.Labels{}).Set(float64(numElements))
+}
+
+func IncQueriesToProcess() {
+	queriesToProcess.With(prometheus.Labels{}).Inc()
+}
+
+func DecQueriesToProcess() {
+	queriesToProcess.With(prometheus.Labels{}).Inc()
 }
