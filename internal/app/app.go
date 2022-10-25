@@ -41,6 +41,11 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 	if err != nil {
 		logger.Fatal("failed to get a NewSubscriber", zap.Error(err))
 	}
+	logger.Debug("Subscribed successfully",
+		zap.String("rpc", cfg.NeutronChain.RPCAddr),
+		zap.String("rest", cfg.NeutronChain.RESTAddr),
+		zap.Strings("registries", cfg.Registry.Addresses),
+	)
 
 	return subscriber
 }
