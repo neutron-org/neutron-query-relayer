@@ -245,9 +245,9 @@ func (s *Subscriber) unsubscribe() {
 			if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), subscription); err != nil {
 				s.logger.Error("failed to Unsubscribe from tm events",
 					zap.Error(err), zap.String("subscription", subscription))
+			} else {
+				s.logger.Debug("unsubscribed", zap.String("subscription", subscription))
 			}
-
-			s.logger.Debug("unsubscribed", zap.String("subscription", subscription))
 		}(subscription)
 	}
 
