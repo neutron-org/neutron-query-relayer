@@ -34,7 +34,6 @@ const (
 
 type TxSender struct {
 	lock          sync.Mutex
-	ctx           context.Context
 	sequence      uint64
 	accountNumber uint64
 	keybase       keyring.Keyring
@@ -58,7 +57,6 @@ func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error)
 }
 
 func NewTxSender(
-	ctx context.Context,
 	rpcClient rpcclient.Client,
 	marshaller codec.ProtoCodecMarshaler,
 	keybase keyring.Keyring,
@@ -76,7 +74,6 @@ func NewTxSender(
 
 	txs := &TxSender{
 		lock:        sync.Mutex{},
-		ctx:         ctx,
 		keybase:     keybase,
 		txConfig:    txConfig,
 		baseTxf:     baseTxf,
@@ -146,7 +143,7 @@ func (txs *TxSender) Send(msgs []sdk.Msg) (string, error) {
 		return "", fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
 
-	res, err := txs.rpcClient.BroadcastTxSync(txs.ctx, bz)
+	res, err := txs.rpcClient.BroadcastTxSync(context.Background(), bz)
 	if err != nil {
 		return "", fmt.Errorf("error broadcasting sync transaction: %w", err)
 	}
@@ -186,7 +183,7 @@ func (txs *TxSender) queryAccount(address string) (*authtypes.BaseAccount, error
 		Path: accountQueryPath,
 		Data: req,
 	}
-	res, err := txs.rpcClient.ABCIQueryWithOptions(txs.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := txs.rpcClient.ABCIQueryWithOptions(context.Background(), simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error making abci query for account=%s: %w", address, err)
 	}
@@ -236,7 +233,7 @@ func (txs *TxSender) calculateGas(txf tx.Factory, msgs ...sdk.Msg) (uint64, erro
 		Path: simulateQueryPath,
 		Data: simulation,
 	}
-	res, err := txs.rpcClient.ABCIQueryWithOptions(txs.ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := txs.rpcClient.ABCIQueryWithOptions(context.Background(), simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return 0, fmt.Errorf("error making abci query for gas calculation: %w", err)
 	}

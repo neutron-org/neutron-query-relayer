@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
@@ -14,6 +13,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
@@ -50,7 +50,6 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
-	ctx context.Context,
 	logger *zap.Logger,
 	cfg config.NeutronQueryRelayerConfig,
 ) *relay.Relayer {
@@ -80,7 +79,7 @@ func NewDefaultRelayer(
 		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
-	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger)
+	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger)
 	if err != nil {
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}

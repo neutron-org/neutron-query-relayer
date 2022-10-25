@@ -34,7 +34,7 @@ func NewQuerier(client *rpcclienthttp.HTTP, chainId string, validatorAccountPref
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
 // NOTE: returned uint64 height=(HEIGHT + 1) which is a height of a block with root_hash proofs it, NOT the block number that we got value for
-func (q *Querier) QueryTendermintProof(ctx context.Context, height int64, storeKey string, key []byte) (*neutrontypes.StorageValue, uint64, error) {
+func (q *Querier) QueryTendermintProof(height int64, storeKey string, key []byte) (*neutrontypes.StorageValue, uint64, error) {
 	// ABCI queries at heights 1, 2 or less than or equal to 0 are not supported.
 	// Base app does not support queries for height less than or equal to 1.
 	// Therefore, a query at height 2 would be equivalent to a query at height 3.
@@ -61,7 +61,7 @@ func (q *Querier) QueryTendermintProof(ctx context.Context, height int64, storeK
 		Prove:  true,
 	}
 
-	res, err := q.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
+	res, err := q.Client.ABCIQueryWithOptions(context.Background(), req.Path, req.Data, opts)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error making abci query for tendermint proof: %w", err)
 	}
