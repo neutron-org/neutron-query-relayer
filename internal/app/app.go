@@ -31,11 +31,14 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 	}
 
 	subscriber, err := relaysubscriber.NewSubscriber(
-		cfg.NeutronChain.RPCAddr,
-		cfg.NeutronChain.RESTAddr,
-		cfg.NeutronChain.ConnectionID,
-		registry.New(cfg.Registry),
-		watchedMsgTypes,
+		&subscriber.SubscriberConfig{
+			RPCAddress:   cfg.NeutronChain.RPCAddr,
+			RESTAddress:  cfg.NeutronChain.RESTAddr,
+			Timeout:      cfg.NeutronChain.Timeout,
+			ConnectionID: cfg.NeutronChain.ConnectionID,
+			WatchedTypes: watchedMsgTypes,
+			Registry:     registry.New(cfg.Registry),
+		},
 		logger,
 	)
 	if err != nil {

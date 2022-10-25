@@ -10,45 +10,55 @@ import (
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var (
-	restClientBasePath = "/"
-	rpcWSEndpoint      = "/websocket"
 	unsubscribeTimeout = time.Second * 5
 )
 
-// NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
+// SubscriberConfig contains configurable fields for the Subscriber.
+type SubscriberConfig struct {
+	// RPCAddress represents the address for RPC calls to the chain.
+	RPCAddress string
+	// RESTAddress represents the address for REST calls to the chain.
+	RESTAddress string
+	// Timeout defines time limit for requests executed by the Subscriber.
+	Timeout time.Duration
+	// ConnectionID is the Neutron's side connection ID used to filter out queries.
+	ConnectionID string
+	// WatchedTypes is the list of query types to be observed and handled.
+	WatchedTypes []neutrontypes.InterchainQueryType
+	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
+	// works with interchain queries and events that are under these addresses' ownership.
+	Registry *rg.Registry
+}
+
+// NewSubscriber creates a new Subscriber instance ready to subscribe to Neutron events.
 func NewSubscriber(
-	rpcAddress string,
-	restAddress string,
-	connectionID string,
-	registry *registry.Registry,
-	watchedTypes []neutrontypes.InterchainQueryType,
+	cfg *SubscriberConfig,
 	logger *zap.Logger,
 ) (*Subscriber, error) {
 	// rpcClient is used to subscribe to Neutron events.
-	rpcClient, err := http.New(rpcAddress, rpcWSEndpoint)
+	rpcClient, err := newRPCClient(cfg.RPCAddress, cfg.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("could not create new tendermint rpcClient: %w", err)
 	}
-
 	if err = rpcClient.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
 	}
 
 	// restClient is used to retrieve registered queries from Neutron.
-	restClient, err := newRESTClient(restAddress)
+	restClient, err := newRESTClient(cfg.RESTAddress, cfg.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
 	}
 
 	// Contains the types of queries that we are ready to serve (KV / TX).
 	watchedTypesMap := make(map[neutrontypes.InterchainQueryType]struct{})
-	for _, queryType := range watchedTypes {
+	for _, queryType := range cfg.WatchedTypes {
 		watchedTypesMap[queryType] = struct{}{}
 	}
 
@@ -56,9 +66,8 @@ func NewSubscriber(
 		rpcClient:  rpcClient,
 		restClient: restClient,
 
-		rpcAddress:   rpcAddress,
-		connectionID: connectionID,
-		registry:     registry,
+		connectionID: cfg.ConnectionID,
+		registry:     cfg.Registry,
 		logger:       logger,
 		watchedTypes: watchedTypesMap,
 
@@ -73,9 +82,8 @@ type Subscriber struct {
 	rpcClient  *http.HTTP                 // Used to subscribe to events
 	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
-	rpcAddress   string
 	connectionID string
-	registry     *registry.Registry
+	registry     *rg.Registry
 	logger       *zap.Logger
 	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
 
@@ -115,11 +123,11 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 			s.logger.Info("Context cancelled, shutting down subscriber...")
 			return nil
 		case <-blockEvents:
-			if err := s.processBlockEvent(ctx, tasks); err != nil {
+			if err := s.processBlockEvent(tasks); err != nil {
 				return fmt.Errorf("failed to processBlockEvent: %w", err)
 			}
 		case event := <-updateEvents:
-			if err = s.processUpdateEvent(ctx, event); err != nil {
+			if err = s.processUpdateEvent(event); err != nil {
 				return fmt.Errorf("failed to processUpdateEvent: %w", err)
 			}
 		case event := <-removeEvents:
@@ -130,9 +138,9 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 	}
 }
 
-func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
+func (s *Subscriber) processBlockEvent(tasks chan neutrontypes.RegisteredQuery) error {
 	// Get last block height.
-	status, err := s.rpcClient.Status(ctx)
+	status, err := s.rpcClient.Status(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get Status: %w", err)
 	}
@@ -156,7 +164,7 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutronty
 
 // processUpdateEvent retrieves up-to-date information about each updated query and saves
 // it to state. Note: an update event is emitted both on query creation and on query updates.
-func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
+func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent) error {
 	ok, err := s.checkEvents(event)
 	if err != nil {
 		return fmt.Errorf("failed to checkEvents: %w", err)
@@ -180,7 +188,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 		}
 
 		// Load all information about the neutronQuery directly from Neutron.
-		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
+		neutronQuery, err := s.getNeutronRegisteredQuery(context.Background(), queryID)
 		if err != nil {
 			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
 		}
