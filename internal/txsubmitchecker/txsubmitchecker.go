@@ -18,9 +18,10 @@ import (
 const TxCheckerNumWorkers = 4 // XXX: maybe this value should be configurable by user?
 
 var (
-	retryAttempts = retry.Attempts(4)
-	retryDelay    = retry.Delay(1 * time.Second)
-	retryError    = retry.LastErrorOnly(false)
+	retryAttempts  = retry.Attempts(4)
+	retryDelay     = retry.Delay(1 * time.Second)
+	retryError     = retry.LastErrorOnly(false)
+	requestTimeout = 10 * time.Second
 )
 
 type TxSubmitChecker struct {
@@ -108,7 +109,7 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 				continue
 			}
 
-			txResponse, err := tc.retryGetTxStatusWithTimeout(ctx, neutronHash, 10*time.Second)
+			txResponse, err := tc.retryGetTxStatus(ctx, neutronHash)
 			if err != nil {
 				tc.logger.Warn(
 					"failed to get tx status from rpc",
@@ -135,24 +136,21 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 	}
 }
 
-func (tc *TxSubmitChecker) retryGetTxStatusWithTimeout(
+func (tc *TxSubmitChecker) retryGetTxStatus(
 	ctx context.Context,
 	neutronHash []byte,
-	timeout time.Duration,
 ) (*coretypes.ResultTx, error) {
 	var result *coretypes.ResultTx
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	if err := retry.Do(func() error {
+		timeoutCtx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
 		var err error
 		result, err = tc.rpcClient.Tx(timeoutCtx, neutronHash, false)
 		if err != nil {
 			return err
 		}
 		return nil
-	}, retry.Context(timeoutCtx), retryAttempts, retryDelay, retryError); err != nil {
+	}, retry.Context(ctx), retryAttempts, retryDelay, retryError); err != nil {
 		return nil, err
 	}
 
