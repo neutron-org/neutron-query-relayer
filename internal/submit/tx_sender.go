@@ -107,6 +107,9 @@ func (txs *TxSender) refreshAccountInfo() error {
 	}
 	txs.accountNumber = account.AccountNumber
 	txs.sequence = account.Sequence
+
+	txs.logger.Info("new account info", zap.Uint64("account_number", txs.accountNumber), zap.Uint64("sequence", account.Sequence))
+
 	return nil
 }
 
