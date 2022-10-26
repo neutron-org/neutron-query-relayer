@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"strings"
 	"sync"
 
@@ -49,51 +48,16 @@ type TxSender struct {
 	logger        *zap.Logger
 }
 
-func NewKeybase(
-	chainID string,
-	keyringRootDir string,
-	keyringBackend string,
-	keyringPassword string,
-) (keyring.Keyring, error) {
-	passReader := strings.NewReader(keyringPassword)
-	keybase, err := keyring.New(chainID, keyringBackend, keyringRootDir, passReader)
-	if err != nil {
-		return keybase, fmt.Errorf("error creating keybase for chainId=%s and keyringRootDir=%s: %w", chainID, keyringRootDir, err)
-	}
-	return keybase, nil
-}
-
 func NewTxSender(
 	ctx context.Context,
 	rpcClient rpcclient.Client,
 	marshaller codec.ProtoCodecMarshaler,
 	cfg config.NeutronChainConfig,
+	keybase keyring.Keyring,
+	keyName string,
 	logger *zap.Logger,
 ) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
-
-	keybase, err := NewKeybase(
-		cfg.ChainID,
-		cfg.HomeDir,
-		cfg.KeyringBackend,
-		cfg.KeyringPassword,
-	)
-	if err != nil {
-		logger.Fatal("cannot initialize keybase", zap.Error(err))
-	}
-
-	keyName := cfg.SignKeyName
-
-	// If the keybase is set to "memory" then we expect the seed to be passed via environment variable and we need to
-	// add the key to the in-memory keybase
-	if cfg.KeyringBackend == keyring.BackendMemory {
-		// For in-memory key we ignore the name provided by user (so it might be (and actually should be) left empty)
-		keyName = "sign_key"
-		err = addKeyToTheKeybase(keybase, keyName, cfg.SignKeySeed, cfg.SignKeyHDPath)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
@@ -116,7 +80,7 @@ func NewTxSender(
 		gasLimit:    cfg.GasLimit,
 		logger:      logger,
 	}
-	err = txs.refreshAccountInfo()
+	err := txs.refreshAccountInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to init tx sender: %w", err)
 	}
@@ -309,15 +273,4 @@ func (txs *TxSender) buildSimulationTx(txf tx.Factory, msgs ...sdk.Msg) ([]byte,
 	}
 	simReq := txtypes.SimulateRequest{TxBytes: bz}
 	return simReq.Marshal()
-}
-
-func addKeyToTheKeybase(keybase keyring.Keyring, keyName, signKeySeed, signKeyHdPath string) error {
-	if len(signKeyHdPath) == 0 {
-		signKeyHdPath = hd.CreateHDPath(sdk.CoinType, 0, 0).String()
-	}
-	_, err := keybase.NewAccount(keyName, signKeySeed, "", signKeyHdPath, hd.Secp256k1)
-	if err != nil {
-		return err
-	}
-	return nil
 }

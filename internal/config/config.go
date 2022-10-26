@@ -32,7 +32,6 @@ type NeutronChainConfig struct {
 	HomeDir         string        `required:"true" split_words:"true"`
 	SignKeyName     string        `split_words:"true"`
 	SignKeySeed     string        `split_words:"true"`
-	SignKeyHDPath   string        `split_words:"true" default:""`
 	Timeout         time.Duration `required:"true" split_words:"true"`
 	GasPrices       string        `required:"true" split_words:"true"`
 	GasLimit        uint64        `split_words:"true" default:"0"`

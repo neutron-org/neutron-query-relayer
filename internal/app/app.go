@@ -3,6 +3,10 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/crypto/hd"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"strings"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"go.uber.org/zap"
@@ -78,7 +82,12 @@ func NewDefaultRelayer(
 
 	codec := raw.MakeCodecDefault()
 
-	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, *cfg.NeutronChain, logger)
+	keybase, keyName, err := initializeKeychain(*cfg.NeutronChain)
+	if err != nil {
+		logger.Fatal("cannot initialize keyring", zap.Error(err))
+	}
+
+	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, *cfg.NeutronChain, keybase, keyName, logger)
 	if err != nil {
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}
@@ -98,9 +107,16 @@ func NewDefaultRelayer(
 		st = storage.NewDummyStorage()
 	}
 
-	neutronChain, targetChain, err := loadChains(cfg, logger)
+	neutronChain, targetChain, err := loadChains(cfg, keyName, logger)
 	if err != nil {
 		logger.Error("failed to loadChains", zap.Error(err))
+	}
+
+	if cfg.NeutronChain.KeyringBackend == keyring.BackendMemory {
+		_, err := neutronChain.ChainProvider.RestoreKey(keyName, cfg.NeutronChain.SignKeySeed, sdk.CoinType)
+		if err != nil {
+			logger.Fatal("cannot add key to the memory keyring", zap.Error(err))
+		}
 	}
 
 	var (
@@ -137,7 +153,7 @@ func NewDefaultRelayer(
 	return relayer
 }
 
-func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+func loadChains(cfg config.NeutronQueryRelayerConfig, keyName string, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
 	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
@@ -151,7 +167,7 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutr
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain)
+	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain, keyName)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
@@ -166,4 +182,27 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (neutr
 	}
 
 	return neutronChain, targetChain, nil
+}
+
+func initializeKeychain(cfg config.NeutronChainConfig) (keyring.Keyring, string, error) {
+	passReader := strings.NewReader(cfg.KeyringPassword)
+	keybase, err := keyring.New(cfg.ChainID, cfg.KeyringBackend, cfg.HomeDir, passReader)
+	if err != nil {
+		return nil, "", fmt.Errorf("error creating keybase for chainId=%s and keyringRootDir=%s: %w", cfg.ChainID, cfg.HomeDir, err)
+	}
+
+	keyName := cfg.SignKeyName
+
+	// If the keybase is set to "memory" then we expect the seed to be passed via environment variable and we need to
+	// add the key to the in-memory keybase
+	if cfg.KeyringBackend == keyring.BackendMemory {
+		// For in-memory key we ignore the name provided by user (so it might be (and actually should be) left empty)
+		keyName = "sign_key"
+		signKeyHdPath := hd.CreateHDPath(sdk.CoinType, 0, 0).String()
+		_, err := keybase.NewAccount(keyName, cfg.SignKeySeed, "", signKeyHdPath, hd.Secp256k1)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	return keybase, keyName, nil
 }

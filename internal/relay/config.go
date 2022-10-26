@@ -3,7 +3,6 @@ package relay
 import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
@@ -12,13 +11,13 @@ import (
 	neutronapp "github.com/neutron-org/neutron/app"
 )
 
-func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
+func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, keyName string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            "",
+		Key:            keyName,
 		ChainID:        cfg.ChainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  neutronapp.Bech32MainPrefix,
-		KeyringBackend: keyring.BackendMemory,
+		KeyringBackend: cfg.KeyringBackend,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
 		Debug:          cfg.Debug,
