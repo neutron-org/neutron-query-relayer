@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/raw"
+
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
@@ -16,7 +18,6 @@ import (
 )
 
 var (
-	restClientBasePath = "/"
 	rpcWSEndpoint      = "/websocket"
 	unsubscribeTimeout = time.Second * 5
 )
@@ -41,7 +42,7 @@ func NewSubscriber(
 	}
 
 	// restClient is used to retrieve registered queries from Neutron.
-	restClient, err := newRESTClient(restAddress)
+	restClient, err := raw.NewRESTClient(restAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
 	}

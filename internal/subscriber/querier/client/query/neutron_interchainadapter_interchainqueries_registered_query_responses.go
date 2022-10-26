@@ -48,7 +48,8 @@ func NewNeutronInterchainadapterInterchainqueriesRegisteredQueryOK() *NeutronInt
 	return &NeutronInterchainadapterInterchainqueriesRegisteredQueryOK{}
 }
 
-/* NeutronInterchainadapterInterchainqueriesRegisteredQueryOK describes a response with status code 200, with default header values.
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryOK describes a response with status code 200, with default header values.
 
 A successful response.
 */
@@ -56,9 +57,39 @@ type NeutronInterchainadapterInterchainqueriesRegisteredQueryOK struct {
 	Payload *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody
 }
 
+// IsSuccess returns true when this neutron interchainadapter interchainqueries registered query o k response has a 2xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this neutron interchainadapter interchainqueries registered query o k response has a 3xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this neutron interchainadapter interchainqueries registered query o k response has a 4xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this neutron interchainadapter interchainqueries registered query o k response has a 5xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this neutron interchainadapter interchainqueries registered query o k response a status code equal to that given
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) Error() string {
 	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] neutronInterchainadapterInterchainqueriesRegisteredQueryOK  %+v", 200, o.Payload)
 }
+
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) String() string {
+	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] neutronInterchainadapterInterchainqueriesRegisteredQueryOK  %+v", 200, o.Payload)
+}
+
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) GetPayload() *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody {
 	return o.Payload
 }
@@ -82,7 +113,8 @@ func NewNeutronInterchainadapterInterchainqueriesRegisteredQueryDefault(code int
 	}
 }
 
-/* NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault describes a response with status code -1, with default header values.
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault describes a response with status code -1, with default header values.
 
 An unexpected error response.
 */
@@ -97,9 +129,39 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) Code()
 	return o._statusCode
 }
 
+// IsSuccess returns true when this neutron interchainadapter interchainqueries registered query default response has a 2xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) IsSuccess() bool {
+	return o._statusCode/100 == 2
+}
+
+// IsRedirect returns true when this neutron interchainadapter interchainqueries registered query default response has a 3xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) IsRedirect() bool {
+	return o._statusCode/100 == 3
+}
+
+// IsClientError returns true when this neutron interchainadapter interchainqueries registered query default response has a 4xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) IsClientError() bool {
+	return o._statusCode/100 == 4
+}
+
+// IsServerError returns true when this neutron interchainadapter interchainqueries registered query default response has a 5xx status code
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) IsServerError() bool {
+	return o._statusCode/100 == 5
+}
+
+// IsCode returns true when this neutron interchainadapter interchainqueries registered query default response a status code equal to that given
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) IsCode(code int) bool {
+	return o._statusCode == code
+}
+
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) Error() string {
 	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] NeutronInterchainadapterInterchainqueriesRegisteredQuery default  %+v", o._statusCode, o.Payload)
 }
+
+func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) String() string {
+	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] NeutronInterchainadapterInterchainqueriesRegisteredQuery default  %+v", o._statusCode, o.Payload)
+}
+
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) GetPayload() *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody {
 	return o.Payload
 }
@@ -116,7 +178,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) readRe
 	return nil
 }
 
-/*NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody neutron interchainadapter interchainqueries registered query default body
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody neutron interchainadapter interchainqueries registered query default body
 swagger:model NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody
 */
 type NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody struct {
@@ -159,6 +222,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody) va
 			if err := o.Details[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("NeutronInterchainadapterInterchainqueriesRegisteredQuery default" + "." + "details" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("NeutronInterchainadapterInterchainqueriesRegisteredQuery default" + "." + "details" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -191,6 +256,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody) co
 			if err := o.Details[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("NeutronInterchainadapterInterchainqueriesRegisteredQuery default" + "." + "details" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("NeutronInterchainadapterInterchainqueriesRegisteredQuery default" + "." + "details" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -219,7 +286,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody) Un
 	return nil
 }
 
-/*NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBodyDetailsItems0 `Any` contains an arbitrary serialized protocol buffer message along with a
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBodyDetailsItems0 `Any` contains an arbitrary serialized protocol buffer message along with a
 // URL that describes the type of the serialized message.
 //
 // Protobuf library provides support to pack/unpack Any values in the form
@@ -363,7 +431,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBodyDeta
 	return nil
 }
 
-/*NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody neutron interchainadapter interchainqueries registered query o k body
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody neutron interchainadapter interchainqueries registered query o k body
 swagger:model NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody
 */
 type NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody struct {
@@ -395,6 +464,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody) validat
 		if err := o.RegisteredQuery.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query")
 			}
 			return err
 		}
@@ -423,6 +494,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody) context
 		if err := o.RegisteredQuery.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query")
 			}
 			return err
 		}
@@ -449,7 +522,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody) Unmarsh
 	return nil
 }
 
-/*NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQuery neutron interchainadapter interchainqueries registered query o k body registered query
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQuery neutron interchainadapter interchainqueries registered query o k body registered query
 swagger:model NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQuery
 */
 type NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQuery struct {
@@ -510,6 +584,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 			if err := o.Keys[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query" + "." + "keys" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query" + "." + "keys" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -542,6 +618,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 			if err := o.Keys[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query" + "." + "keys" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("neutronInterchainadapterInterchainqueriesRegisteredQueryOK" + "." + "registered_query" + "." + "keys" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -570,7 +648,8 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 	return nil
 }
 
-/*NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQueryKeysItems0 neutron interchainadapter interchainqueries registered query o k body registered query keys items0
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQueryKeysItems0 neutron interchainadapter interchainqueries registered query o k body registered query keys items0
 swagger:model NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQueryKeysItems0
 */
 type NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQueryKeysItems0 struct {

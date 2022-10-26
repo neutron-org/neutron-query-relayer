@@ -11,10 +11,10 @@ import (
 	neutronapp "github.com/neutron-org/neutron/app"
 )
 
-func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relayer.Chain, error) {
+func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
 		Key:            cfg.SignKeyName,
-		ChainID:        cfg.ChainID,
+		ChainID:        chainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  neutronapp.Bech32MainPrefix,
 		KeyringBackend: cfg.KeyringBackend,
@@ -33,10 +33,10 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig) (*relay
 	return chain, nil
 }
 
-func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig) (*relayer.Chain, error) {
+func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig, chainID string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
 		Key:           "",
-		ChainID:       cfg.ChainID,
+		ChainID:       chainID,
 		RPCAddr:       cfg.RPCAddr,
 		AccountPrefix: cfg.AccountPrefix,
 		// we don't have any needs in keys for target chain

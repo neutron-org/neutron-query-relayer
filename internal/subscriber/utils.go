@@ -3,31 +3,15 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"net/url"
 
 	"go.uber.org/zap"
 
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
-	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
-
-// newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
-func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
-	url, err := url.Parse(restAddr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
-	}
-
-	return restclient.NewHTTPClientWithConfig(nil, &restclient.TransportConfig{
-		Host:     url.Host,
-		BasePath: restClientBasePath,
-		Schemes:  []string{url.Scheme},
-	}), nil
-}
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
