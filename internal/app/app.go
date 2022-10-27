@@ -3,10 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/storage"
-	"go.uber.org/zap"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"go.uber.org/zap"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
@@ -14,6 +13,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"

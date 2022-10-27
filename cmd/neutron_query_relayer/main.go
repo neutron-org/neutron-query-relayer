@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +16,7 @@ import (
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
