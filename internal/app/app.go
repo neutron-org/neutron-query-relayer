@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
+	"go.uber.org/zap"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 
@@ -59,17 +60,19 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 	return subscriber, nil
 }
 
-func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger, storage relay.Storage) relay.TxSubmitChecker {
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logger)
+func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry,
+	storage relay.Storage) (relay.TxSubmitChecker, error) {
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout,
+		logRegistry.Get(TargetChainRPCClientContext))
 	if err != nil {
-		logger.Fatal("cannot create neutron client", zap.Error(err))
+		return nil, fmt.Errorf("failed to create NewRPCClient: %w", err)
 	}
 
 	return txsubmitchecker.NewTxSubmitChecker(
 		storage,
 		neutronClient,
-		logger,
-	)
+		logRegistry.Get(TxSubmitCheckerContext),
+	), nil
 }
 
 // NewDefaultRelayer returns a relayer built with cfg.
@@ -77,22 +80,25 @@ func NewDefaultRelayer(
 	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
-	storage relay.Storage) *relay.Relayer {
+	storage relay.Storage) (*relay.Relayer, error) {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
-	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout, logRegistry.Get(TargetChainRPCClientContext))
+	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout,
+		logRegistry.Get(TargetChainRPCClientContext))
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize target rpc client: %w", err)
 	}
 
-	targetQuerier, err := tmquerier.NewQuerier(targetClient, cfg.TargetChain.ChainID, cfg.TargetChain.ValidatorAccountPrefix)
+	targetQuerier, err := tmquerier.NewQuerier(targetClient, cfg.TargetChain.ChainID,
+		cfg.TargetChain.ValidatorAccountPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to target chain: %w", err)
 	}
 
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logRegistry.Get(NeutronChainRPCClientContext))
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout,
+		logRegistry.Get(NeutronChainRPCClientContext))
 	if err != nil {
 		return nil, fmt.Errorf("cannot create neutron client: %w", err)
 	}
@@ -116,7 +122,7 @@ func NewDefaultRelayer(
 	var (
 		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
-		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext)))
+		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
 		txProcessor          = txprocessor.NewTxProcessor(
 			trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)
 		kvProcessor = kvprocessor.NewKVProcessor(
@@ -166,7 +172,7 @@ func loadChains(
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
 ) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetTargetChain(logRegistry, cfg.TargetChain)
+	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
 	}

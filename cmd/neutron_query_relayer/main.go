@@ -74,12 +74,24 @@ func main() {
 		}
 	}(storage)
 
+	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
+	if err != nil {
+		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
+	}
+
+	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
+	if err != nil {
+		logger.Fatal("Failed to get NewDefaultRelayer", zap.Error(err))
+	}
+
+	txSubmitChecker, err := app.NewDefaultTxSubmitChecker(cfg, logRegistry, storage)
+	if err != nil {
+		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
+	}
+
 	var (
 		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
-		subscriber             = app.NewDefaultSubscriber(cfg, logRegistry)
-		txSubmitChecker        = app.NewDefaultTxSubmitChecker(cfg, logRegistry, storage)
-		relayer                = app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
 	)
 
 	wg.Add(1)
