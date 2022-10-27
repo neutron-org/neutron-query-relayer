@@ -2,12 +2,13 @@ package raw
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"time"
+
+	"go.uber.org/zap"
 
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
