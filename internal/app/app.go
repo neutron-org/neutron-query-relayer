@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/avast/retry-go/v4"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
@@ -12,8 +14,8 @@ import (
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"go.uber.org/zap"
 
+	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
@@ -31,6 +33,21 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
+const (
+	AppContext                   = "app"
+	SubscriberContext            = "subscriber"
+	RelayerContext               = "relayer"
+	TargetChainRPCClientContext  = "target_chain_rpc"
+	NeutronChainRPCClientContext = "neutron_chain_rpc"
+	TargetChainProviderContext   = "target_chain_provider"
+	NeutronChainProviderContext  = "neutron_chain_provider"
+	TxSenderContext              = "tx_sender"
+	TxProcessorContext           = "tx_processor"
+	TxSubmitCheckerContext       = "tx_submit_checker"
+	TrustedHeadersFetcherContext = "trusted_headers_fetcher"
+	KVProcessorContext           = "kv_processor"
+)
+
 // retries configuration for fetching connection info
 var (
 	RtyAtt = retry.Attempts(uint(5))
@@ -38,7 +55,7 @@ var (
 	RtyErr = retry.LastErrorOnly(true)
 )
 
-func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) relay.Subscriber {
+func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (relay.Subscriber, error) {
 	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
 	if cfg.AllowTxQueries {
 		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
@@ -50,92 +67,85 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 		cfg.NeutronChain.ConnectionID,
 		registry.New(cfg.Registry),
 		watchedMsgTypes,
-		logger,
+		logRegistry.Get(SubscriberContext),
 	)
 	if err != nil {
-		logger.Fatal("failed to get a NewSubscriber", zap.Error(err))
+		return nil, fmt.Errorf("failed to create a NewSubscriber: %s", err)
 	}
 
-	return subscriber
+	return subscriber, nil
 }
 
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
 	ctx context.Context,
-	logger *zap.Logger,
 	cfg config.NeutronQueryRelayerConfig,
-) *relay.Relayer {
-	logger.Info("initialized config")
+	logRegistry *nlogger.Registry,
+) (*relay.Relayer, error) {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
-	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout, logger)
+	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout, logRegistry.Get(TargetChainRPCClientContext))
 	if err != nil {
-		logger.Fatal("could not initialize target rpc client", zap.Error(err))
+		return nil, fmt.Errorf("could not initialize target rpc client: %w", err)
 	}
 
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logger)
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout, logRegistry.Get(NeutronChainRPCClientContext))
 	if err != nil {
-		logger.Fatal("cannot create neutron client", zap.Error(err))
+		return nil, fmt.Errorf("cannot create neutron client: %w", err)
 	}
 
-	connParams, err := loadConnParams(ctx, neutronClient, targetClient, cfg.NeutronChain.RESTAddr, cfg.NeutronChain.ConnectionID, logger)
+	connParams, err := loadConnParams(ctx, neutronClient, targetClient, cfg.NeutronChain.RESTAddr, cfg.NeutronChain.ConnectionID, logRegistry.Get(AppContext))
 	if err != nil {
-		logger.Fatal("cannot load network params", zap.Error(err))
+		return nil, fmt.Errorf("cannot load network params: %w", err)
 	}
-	logger.Info("loaded conn params",
-		zap.String("neutron_chain_id", connParams.neutronChainID),
-		zap.String("target_chain_id", connParams.targetChainID),
-		zap.String("neutron_client_id", connParams.neutronClientID),
-		zap.String("target_client_id", connParams.targetClientID),
-		zap.String("target_connection_id", connParams.targetConnectionID))
 
 	targetQuerier, err := tmquerier.NewQuerier(targetClient, connParams.targetChainID, cfg.TargetChain.ValidatorAccountPrefix)
 	if err != nil {
-		logger.Fatal("cannot connect to target chain", zap.Error(err))
+		return nil, fmt.Errorf("cannot connect to target chain: %w", err)
 	}
 
 	codec := raw.MakeCodecDefault()
 	keybase, err := submit.TestKeybase(connParams.neutronChainID, cfg.NeutronChain.HomeDir)
 	if err != nil {
-		logger.Fatal("cannot initialize keybase", zap.Error(err))
+		return nil, fmt.Errorf("cannot initialize keybase: %w", err)
 	}
 
-	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger, connParams.neutronChainID)
+	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logRegistry.Get(TxSenderContext), connParams.neutronChainID)
 	if err != nil {
-		logger.Fatal("cannot create tx sender", zap.Error(err))
+		return nil, fmt.Errorf("cannot create tx sender: %w", err)
 	}
 
 	var store relay.Storage
 
 	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+		return nil, fmt.Errorf("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
 	}
 
 	if cfg.StoragePath != "" {
 		store, err = storage.NewLevelDBStorage(cfg.StoragePath)
 		if err != nil {
-			logger.Fatal("couldn't initialize levelDB storage", zap.Error(err))
+			return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
 		}
 	} else {
 		store = storage.NewDummyStorage()
 	}
 
-	neutronChain, targetChain, err := loadChains(cfg, connParams, logger)
+	neutronChain, targetChain, err := loadChains(cfg, logRegistry, connParams)
 	if err != nil {
-		logger.Error("failed to loadChains", zap.Error(err))
+		return nil, fmt.Errorf("failed to loadChains: %w", err)
 	}
 
 	var (
 		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
-		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logger)
-		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, store, proofSubmitter, logger)
+		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
+		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, store, proofSubmitter, logRegistry.Get(TxProcessorContext))
 		kvProcessor          = kvprocessor.NewKVProcessor(
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
-			logger,
+			logRegistry.Get(KVProcessorContext),
 			proofSubmitter,
 			store,
 			targetChain,
@@ -145,7 +155,7 @@ func NewDefaultRelayer(
 			txProcessor.GetSubmitNotificationChannel(),
 			store,
 			neutronClient,
-			logger,
+			logRegistry.Get(TxSubmitCheckerContext),
 			cfg.CheckSubmittedTxStatusDelay,
 		)
 		relayer = relay.NewRelayer(
@@ -155,14 +165,14 @@ func NewDefaultRelayer(
 			txProcessor,
 			kvProcessor,
 			txSubmitChecker,
-			logger,
+			logRegistry.Get(RelayerContext),
 		)
 	)
-	return relayer
+	return relayer, nil
 }
 
-func loadChains(cfg config.NeutronQueryRelayerConfig, connParams *connectionParams, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain, connParams.targetChainID)
+func loadChains(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry, connParams *connectionParams) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain, connParams.targetChainID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
 	}
@@ -175,8 +185,7 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, connParams *connectionPara
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	neutronChain, err = relay.GetNeutronChain(logger, cfg.NeutronChain, connParams.neutronChainID)
-
+	neutronChain, err = relay.GetNeutronChain(logRegistry.Get(NeutronChainProviderContext), cfg.NeutronChain, connParams.neutronChainID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
 	}
@@ -251,11 +260,20 @@ func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienth
 		return nil, fmt.Errorf("failed to query ibc connection info: %w", err)
 	}
 
-	return &connectionParams{
+	connParams := connectionParams{
 		neutronChainID:     neutronStatus.NodeInfo.Network,
 		targetChainID:      targetStatus.NodeInfo.Network,
 		neutronClientID:    client.GetPayload().Connection.ClientID,
 		targetClientID:     client.GetPayload().Connection.Counterparty.ClientID,
 		targetConnectionID: client.GetPayload().Connection.Counterparty.ConnectionID,
-	}, nil
+	}
+
+	logger.Info("loaded conn params",
+		zap.String("neutron_chain_id", connParams.neutronChainID),
+		zap.String("target_chain_id", connParams.targetChainID),
+		zap.String("neutron_client_id", connParams.neutronClientID),
+		zap.String("target_client_id", connParams.targetClientID),
+		zap.String("target_connection_id", connParams.targetConnectionID))
+
+	return &connParams, nil
 }
