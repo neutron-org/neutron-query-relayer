@@ -87,26 +87,8 @@ func (r *Relayer) Run(
 			}
 		case <-ctx.Done():
 			r.logger.Info("Context cancelled, shutting down relayer...")
-			return r.stop()
 		}
 	}
-}
-
-// stop finishes execution of relayer's auxiliary entities.
-func (r *Relayer) stop() error {
-	var failed bool
-	if err := r.storage.Close(); err != nil {
-		r.logger.Error("failed to close relayer's storage", zap.Error(err))
-		failed = true
-	} else {
-		r.logger.Info("relayer's storage has been closed")
-	}
-
-	if failed {
-		return fmt.Errorf("error occurred while stopping relayer, see recent logs for more info")
-	}
-
-	return nil
 }
 
 // processMessageKV handles an incoming KV interchain query message and passes it to the kvProcessor for further processing.

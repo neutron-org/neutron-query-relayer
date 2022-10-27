@@ -65,14 +65,20 @@ func main() {
 	// The storage has to be shared because of the LevelDB single process restriction.
 	storage, err := app.NewDefaultStorage(cfg, logger)
 	if err != nil {
-		logger.Fatal("Failed to loadRelayerStorage", zap.Error(err))
+		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
 	}
 	defer func(storage relay.Storage) {
-		err := storage.Close()
-		if err != nil {
-			logger.Fatal("Failed to close storage", zap.Error(err))
+		if cfg.AllowTxQueries {
+			if err := storage.Close(); err != nil {
+				logger.Error("Failed to close storage", zap.Error(err))
+			}
 		}
 	}(storage)
+
+	var (
+		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
+		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
+	)
 
 	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
@@ -88,11 +94,6 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
 	}
-
-	var (
-		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
-		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
-	)
 
 	wg.Add(1)
 	go func() {
