@@ -1,4 +1,4 @@
-dev:
+dev: clean
 	go run ./cmd/neutron_query_relayer/
 
 clean:
