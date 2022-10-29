@@ -66,12 +66,5 @@ func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath stri
 		return nil, fmt.Errorf("failed to build ChainProvider for %w", err)
 	}
 
-	// Without this hack it doesn't want to work with normal home dir layout for some reason.
-	provConcrete, ok := prov.(*cosmos.CosmosProvider)
-	if !ok {
-		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
-	}
-	provConcrete.Config.KeyDirectory = homepath
-
 	return relayer.NewChain(logger, prov, debug), nil
 }
