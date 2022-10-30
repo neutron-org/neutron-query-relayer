@@ -113,13 +113,6 @@ func NewDefaultRelayer(
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
 
-	if cfg.NeutronChain.KeyringBackend == keyring.BackendMemory {
-		_, err := neutronChain.ChainProvider.RestoreKey(keyName, cfg.NeutronChain.SignKeySeed, sdk.CoinType)
-		if err != nil {
-			logger.Fatal("cannot add key to the memory keyring", zap.Error(err))
-		}
-	}
-
 	var (
 		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
