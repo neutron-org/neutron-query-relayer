@@ -210,8 +210,8 @@ type connectionParams struct {
 	targetConnectionID string
 }
 
-func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienthttp.HTTP, restAddress string, neutronConnectionId string, logger *zap.Logger) (*connectionParams, error) {
-	restClient, err := raw.NewRESTClient(restAddress)
+func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienthttp.HTTP, neutronRestAddress string, neutronConnectionId string, logger *zap.Logger) (*connectionParams, error) {
+	restClient, err := raw.NewRESTClient(neutronRestAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
 	}
@@ -227,24 +227,23 @@ func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienth
 	}
 
 	// waiting for connection to be created
-	var client *query.IbcCoreConnectionV1ConnectionOK
+	var queryResponse *query.IbcCoreConnectionV1ConnectionOK
 	if err := retry.Do(func() error {
 		var err error
 
-		client, err = restClient.Query.IbcCoreConnectionV1Connection(&query.IbcCoreConnectionV1ConnectionParams{
+		queryResponse, err = restClient.Query.IbcCoreConnectionV1Connection(&query.IbcCoreConnectionV1ConnectionParams{
 			ConnectionID: neutronConnectionId,
 			Context:      ctx,
 		})
-
 		if err != nil {
 			return err
 		}
 
-		if client.GetPayload().Connection.Counterparty.ConnectionID == "" {
+		if queryResponse.GetPayload().Connection.Counterparty.ConnectionID == "" {
 			return fmt.Errorf("empty target connection ID")
 		}
 
-		if client.GetPayload().Connection.Counterparty.ClientID == "" {
+		if queryResponse.GetPayload().Connection.Counterparty.ClientID == "" {
 			return fmt.Errorf("empty target client ID")
 		}
 
@@ -263,9 +262,9 @@ func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienth
 	connParams := connectionParams{
 		neutronChainID:     neutronStatus.NodeInfo.Network,
 		targetChainID:      targetStatus.NodeInfo.Network,
-		neutronClientID:    client.GetPayload().Connection.ClientID,
-		targetClientID:     client.GetPayload().Connection.Counterparty.ClientID,
-		targetConnectionID: client.GetPayload().Connection.Counterparty.ConnectionID,
+		neutronClientID:    queryResponse.GetPayload().Connection.ClientID,
+		targetClientID:     queryResponse.GetPayload().Connection.Counterparty.ClientID,
+		targetConnectionID: queryResponse.GetPayload().Connection.Counterparty.ConnectionID,
 	}
 
 	logger.Info("loaded conn params",
