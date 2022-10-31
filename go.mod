@@ -15,7 +15,7 @@ require (
 	github.com/go-openapi/validate v0.21.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/neutron-org/neutron v0.0.0-20220916150924-ec7dc591745d
-	github.com/neutron-org/neutron-logger v0.0.0-20221017151223-1c05dc42d9f6
+	github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73
 	github.com/prometheus/client_golang v1.12.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.19
