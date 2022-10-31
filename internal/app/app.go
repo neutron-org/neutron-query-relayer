@@ -50,9 +50,9 @@ const (
 
 // retries configuration for fetching connection info
 var (
-	RtyAtt = retry.Attempts(uint(5))
-	RtyDel = retry.Delay(time.Millisecond * 10000)
-	RtyErr = retry.LastErrorOnly(true)
+	rtyAtt = retry.Attempts(uint(5))
+	rtyDel = retry.Delay(time.Second * 10)
+	rtyErr = retry.LastErrorOnly(true)
 )
 
 func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (relay.Subscriber, error) {
@@ -226,7 +226,7 @@ func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienth
 		return nil, fmt.Errorf("failed to fetch neutron chain status: %w", err)
 	}
 
-	// NOTE: waiting for connection to be created
+	// waiting for connection to be created
 	var client *query.IbcCoreConnectionV1ConnectionOK
 	if err := retry.Do(func() error {
 		var err error
@@ -249,7 +249,7 @@ func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienth
 		}
 
 		return nil
-	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
 		logger.Info(
 			"failed to query ibc connection info", zap.Error(err))
 	})); err != nil {
