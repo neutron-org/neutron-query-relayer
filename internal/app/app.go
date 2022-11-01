@@ -24,6 +24,11 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
+var (
+	Version string = ""
+	Commit  string = ""
+)
+
 const (
 	SubscriberContext            = "subscriber"
 	RelayerContext               = "relayer"
