@@ -14,10 +14,11 @@ require (
 	github.com/go-openapi/swag v0.22.3
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/neutron-org/neutron v0.0.0-20220916150924-ec7dc591745d
+	github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73
 	github.com/prometheus/client_golang v1.12.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.19
-	go.uber.org/zap v1.21.0
+	go.uber.org/zap v1.23.0
 )
 
 require (
