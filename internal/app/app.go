@@ -143,6 +143,7 @@ func NewDefaultRelayer(
 			txProcessor,
 			kvProcessor,
 			txSubmitChecker,
+			targetChain,
 			logRegistry.Get(RelayerContext),
 		)
 	)
