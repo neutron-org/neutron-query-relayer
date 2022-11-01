@@ -226,7 +226,6 @@ func loadConnParams(ctx context.Context, neutronClient, targetClient *rpcclienth
 		return nil, fmt.Errorf("failed to fetch neutron chain status: %w", err)
 	}
 
-	// waiting for connection to be created
 	var queryResponse *query.IbcCoreConnectionV1ConnectionOK
 	if err := retry.Do(func() error {
 		var err error
