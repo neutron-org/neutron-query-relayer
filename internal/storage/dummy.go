@@ -23,11 +23,11 @@ func (s *DummyStorage) TxExists(queryID uint64, hash string) (exists bool, err e
 	return false, fmt.Errorf("TxExists is not yet implemented for DummyStorages")
 }
 
-func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, error) {
+func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) {
 	if val, ok := s.KVUpdateMap[queryID]; ok {
-		return val, nil
+		return val, true, nil
 	} else {
-		return 0, nil
+		return 0, false, nil
 	}
 }
 
