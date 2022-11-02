@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
@@ -50,6 +51,7 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
+	ctx context.Context,
 	logger *zap.Logger,
 	cfg config.NeutronQueryRelayerConfig,
 ) *relay.Relayer {
@@ -79,7 +81,7 @@ func NewDefaultRelayer(
 		logger.Fatal("cannot initialize keybase", zap.Error(err))
 	}
 
-	txSender, err := submit.NewTxSender(neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger)
+	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logger)
 	if err != nil {
 		logger.Fatal("cannot create tx sender", zap.Error(err))
 	}

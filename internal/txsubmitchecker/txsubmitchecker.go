@@ -142,7 +142,7 @@ func (tc *TxSubmitChecker) retryGetTxStatus(
 ) (*coretypes.ResultTx, error) {
 	var result *coretypes.ResultTx
 	if err := retry.Do(func() error {
-		timeoutCtx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		timeoutCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
 		var err error
 		result, err = tc.rpcClient.Tx(timeoutCtx, neutronHash, false)

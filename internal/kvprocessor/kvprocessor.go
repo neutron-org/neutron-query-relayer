@@ -39,7 +39,7 @@ func NewKVProcessor(
 	submitter relay.Submitter,
 	storage relay.Storage,
 	targetChain *relayer.Chain,
-	neutronChain *relayer.Chain) relay.KVProcessor {
+	neutronChain *relayer.Chain) *KVProcessor {
 	return &KVProcessor{
 		querier:           querier,
 		minKVUpdatePeriod: minKVUpdatePeriod,
@@ -52,8 +52,8 @@ func NewKVProcessor(
 }
 
 // ProcessAndSubmit processes relay.MessageKV. The main method which does all the work of the KVProcessor
-func (p *KVProcessor) ProcessAndSubmit(m *relay.MessageKV) error {
-	latestHeight, err := p.targetChain.ChainProvider.QueryLatestHeight(context.Background())
+func (p *KVProcessor) ProcessAndSubmit(ctx context.Context, m *relay.MessageKV) error {
+	latestHeight, err := p.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get header for src chain: %w", err)
 	}
@@ -63,20 +63,20 @@ func (p *KVProcessor) ProcessAndSubmit(m *relay.MessageKV) error {
 		return fmt.Errorf("error on checking previous query update with query_id=%d: %w", m.QueryId, err)
 	}
 
-	proofs, height, err := p.getStorageValues(uint64(latestHeight), m.KVKeys)
+	proofs, height, err := p.getStorageValues(ctx, uint64(latestHeight), m.KVKeys)
 	if err != nil {
 		return fmt.Errorf("failed to get storage values with proofs for query_id=%d: %w", m.QueryId, err)
 	}
-	return p.submitKVWithProof(int64(height), m.QueryId, proofs)
+	return p.submitKVWithProof(ctx, int64(height), m.QueryId, proofs)
 }
 
 // getStorageValues gets proofs for query type = 'kv'
-func (p *KVProcessor) getStorageValues(inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
+func (p *KVProcessor) getStorageValues(ctx context.Context, inputHeight uint64, keys neutrontypes.KVKeys) ([]*neutrontypes.StorageValue, uint64, error) {
 	stValues := make([]*neutrontypes.StorageValue, 0, len(keys))
 	height := uint64(0)
 
 	for _, key := range keys {
-		value, h, err := p.querier.QueryTendermintProof(int64(inputHeight), key.GetPath(), key.GetKey())
+		value, h, err := p.querier.QueryTendermintProof(ctx, int64(inputHeight), key.GetPath(), key.GetKey())
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to query tendermint proof for path=%s and key=%v: %w", key.GetPath(), key.GetKey(), err)
 		}
@@ -113,22 +113,24 @@ func (p *KVProcessor) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, 
 
 // submitKVWithProof submits the proof for the given query on the given height and tracks the result.
 func (p *KVProcessor) submitKVWithProof(
+	ctx context.Context,
 	height int64,
 	queryID uint64,
 	proof []*neutrontypes.StorageValue,
 ) error {
-	srcHeader, err := p.getSrcChainHeader(height)
+	srcHeader, err := p.getSrcChainHeader(ctx, height)
 	if err != nil {
 		return fmt.Errorf("failed to get header for height: %d: %w", height, err)
 	}
 
-	updateClientMsg, err := p.getUpdateClientMsg(srcHeader)
+	updateClientMsg, err := p.getUpdateClientMsg(ctx, srcHeader)
 	if err != nil {
 		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
 	}
 
 	st := time.Now()
 	if err = p.submitter.SubmitKVProof(
+		ctx,
 		uint64(height-1),
 		srcHeader.GetHeight().GetRevisionNumber(),
 		queryID,
@@ -143,14 +145,14 @@ func (p *KVProcessor) submitKVWithProof(
 	return nil
 }
 
-func (p *KVProcessor) getSrcChainHeader(height int64) (ibcexported.Header, error) {
+func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {
 	start := time.Now()
 	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		srcHeader, err = p.targetChain.ChainProvider.GetIBCUpdateHeader(context.Background(), height, p.neutronChain.ChainProvider, p.neutronChain.PathEnd.ClientID)
+		srcHeader, err = p.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, p.neutronChain.ChainProvider, p.neutronChain.PathEnd.ClientID)
 		return err
-	}, relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
+	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		p.logger.Info(
 			"failed to GetIBCUpdateHeader", zap.Error(err))
 	})); err != nil {
@@ -161,7 +163,7 @@ func (p *KVProcessor) getSrcChainHeader(height int64) (ibcexported.Header, error
 	return srcHeader, nil
 }
 
-func (p *KVProcessor) getUpdateClientMsg(srcHeader ibcexported.Header) (sdk.Msg, error) {
+func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.Header) (sdk.Msg, error) {
 	start := time.Now()
 	// Construct UpdateClient msg
 	var updateMsgRelayer provider.RelayerMessage
@@ -169,7 +171,7 @@ func (p *KVProcessor) getUpdateClientMsg(srcHeader ibcexported.Header) (sdk.Msg,
 		var err error
 		updateMsgRelayer, err = p.neutronChain.ChainProvider.UpdateClient(p.neutronChain.PathEnd.ClientID, srcHeader)
 		return err
-	}, relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
+	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		p.logger.Error(
 			"failed to build message", zap.Error(err))
 	})); err != nil {

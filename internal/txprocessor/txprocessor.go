@@ -1,6 +1,7 @@
 package txprocessor
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -37,7 +38,7 @@ func NewTxProcessor(
 	return txProcessor
 }
 
-func (r TXProcessor) ProcessAndSubmit(queryID uint64, tx relay.Transaction) error {
+func (r TXProcessor) ProcessAndSubmit(ctx context.Context, queryID uint64, tx relay.Transaction) error {
 	hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
 	txExists, err := r.storage.TxExists(queryID, hash)
 	if err != nil {
@@ -49,12 +50,12 @@ func (r TXProcessor) ProcessAndSubmit(queryID uint64, tx relay.Transaction) erro
 		return nil
 	}
 
-	block, err := r.txToBlock(tx)
+	block, err := r.txToBlock(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to prepare block: %w", err)
 	}
 
-	err = r.submitTxWithProofs(queryID, block)
+	err = r.submitTxWithProofs(ctx, queryID, block)
 	if err != nil {
 		return fmt.Errorf("failed to submit block: %w", err)
 	}
@@ -65,10 +66,10 @@ func (r TXProcessor) GetSubmitNotificationChannel() <-chan relay.PendingSubmitte
 	return r.dequeue
 }
 
-func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Block) error {
+func (r TXProcessor) submitTxWithProofs(ctx context.Context, queryID uint64, block *neutrontypes.Block) error {
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
-	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
+	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, block)
 	if err != nil {
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
@@ -95,8 +96,8 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 	return nil
 }
 
-func (r TXProcessor) txToBlock(tx relay.Transaction) (*neutrontypes.Block, error) {
-	packedHeader, packedNextHeader, err := r.prepareHeaders(tx)
+func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neutrontypes.Block, error) {
+	packedHeader, packedNextHeader, err := r.prepareHeaders(ctx, tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare headers: %w", err)
 	}
@@ -108,8 +109,8 @@ func (r TXProcessor) txToBlock(tx relay.Transaction) (*neutrontypes.Block, error
 	return &block, nil
 }
 
-func (r TXProcessor) prepareHeaders(txStruct relay.Transaction) (packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
-	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.Fetch(txStruct.Height)
+func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
+	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.Fetch(ctx, txStruct.Height)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get header for src chain: %w", err)
 	}

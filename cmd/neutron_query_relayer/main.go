@@ -44,14 +44,14 @@ func main() {
 	}()
 	logger.Info("metrics handler set up")
 
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+
 	var (
 		queriesTasksQueue = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 		subscriber        = app.NewDefaultSubscriber(logger, cfg)
-		relayer           = app.NewDefaultRelayer(logger, cfg)
+		relayer           = app.NewDefaultRelayer(ctx, logger, cfg)
 	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	wg := &sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {

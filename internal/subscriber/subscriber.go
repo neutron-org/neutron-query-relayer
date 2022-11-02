@@ -123,11 +123,11 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 			s.logger.Info("Context cancelled, shutting down subscriber...")
 			return nil
 		case <-blockEvents:
-			if err := s.processBlockEvent(tasks); err != nil {
+			if err := s.processBlockEvent(ctx, tasks); err != nil {
 				return fmt.Errorf("failed to processBlockEvent: %w", err)
 			}
 		case event := <-updateEvents:
-			if err = s.processUpdateEvent(event); err != nil {
+			if err = s.processUpdateEvent(ctx, event); err != nil {
 				return fmt.Errorf("failed to processUpdateEvent: %w", err)
 			}
 		case event := <-removeEvents:
@@ -138,9 +138,9 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 	}
 }
 
-func (s *Subscriber) processBlockEvent(tasks chan neutrontypes.RegisteredQuery) error {
+func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error {
 	// Get last block height.
-	status, err := s.rpcClient.Status(context.Background())
+	status, err := s.rpcClient.Status(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get Status: %w", err)
 	}
@@ -164,7 +164,7 @@ func (s *Subscriber) processBlockEvent(tasks chan neutrontypes.RegisteredQuery) 
 
 // processUpdateEvent retrieves up-to-date information about each updated query and saves
 // it to state. Note: an update event is emitted both on query creation and on query updates.
-func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent) error {
+func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.ResultEvent) error {
 	ok, err := s.checkEvents(event)
 	if err != nil {
 		return fmt.Errorf("failed to checkEvents: %w", err)
@@ -188,7 +188,7 @@ func (s *Subscriber) processUpdateEvent(event tmtypes.ResultEvent) error {
 		}
 
 		// Load all information about the neutronQuery directly from Neutron.
-		neutronQuery, err := s.getNeutronRegisteredQuery(context.Background(), queryID)
+		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
 			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
 		}
