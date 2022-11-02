@@ -10,6 +10,9 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
+	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
@@ -55,8 +58,20 @@ func startRelayer() {
 		if err != nil {
 			logger.Fatal("failed to serve metrics", zap.Error(err))
 		}
+		logger.Info("metrics handler set up")
 	}()
-	logger.Info("metrics handler set up")
+
+	// TODO: move to separate server (and port)
+	// TODO: storage should be here if PR merged
+	go func() {
+		store, err := storage.NewLevelDBStorage(cfg.StoragePath) // TODO: remove this
+		router := webserver.Router(store)
+		err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.WebserverPort), router)
+		if err != nil {
+			logger.Fatal("failed to serve webserver", zap.Error(err))
+		}
+		logger.Info("rest webserver set up")
+	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -91,6 +106,11 @@ func startRelayer() {
 			logger.Error("Relayer exited with an error", zap.Error(err))
 			cancel()
 		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 	}()
 
 	go func() {

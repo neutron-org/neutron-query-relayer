@@ -22,6 +22,7 @@ type NeutronQueryRelayerConfig struct {
 	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`
 	PrometheusPort              uint16                   `split_words:"true" default:"9999"`
 	InitialTxSearchOffset       uint64                   `split_words:"true" default:"0"`
+	WebserverPort               uint16                   `split_words:"true" default:"10001"`
 }
 
 const EnvPrefix string = "RELAYER"

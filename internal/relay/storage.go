@@ -41,6 +41,7 @@ const (
 type Storage interface {
 	GetAllPendingTxs() ([]*PendingSubmittedTxInfo, error)
 	GetLastQueryHeight(queryID uint64) (block uint64, found bool, err error)
+	GetAllUnsuccessfulTxs() ([]*UnsuccessfulTxInfo, error)
 	SetLastQueryHeight(queryID uint64, block uint64) error
 	SetTxStatus(queryID uint64, hash string, neutronHash string, status SubmittedTxInfo) (err error)
 	TxExists(queryID uint64, hash string) (exists bool, err error)

@@ -34,6 +34,9 @@ func NewLevelDBStorage(path string) (*LevelDBStorage, error) {
 }
 
 func (s *LevelDBStorage) GetAllPendingTxs() ([]*relay.PendingSubmittedTxInfo, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	iterator := s.db.NewIterator(util.BytesPrefix([]byte(SubmittedTxStatusPrefix)), nil)
 	defer iterator.Release()
 	var txs []*relay.PendingSubmittedTxInfo
