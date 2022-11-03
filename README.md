@@ -114,11 +114,11 @@ Relayer:
 | `RELAYER_CHECK_SUBMITTED_TX_STATUS_DELAY`        | `uint`            | delay in seconds to wait before transaction is checked for commit status                                                                                                   | optional |
 | `RELAYER_QUERIES_TASK_QUEUE_CAPACITY`            | `int`             | capacity of the channel that is used to send messages from subscriber to relayer (better set to a higher value to avoid problems with Tendermint websocket subscriptions). | optional |
 | `RELAYER_PROMETHEUS_PORT`                        | `uint`            | listen port for Prometheus                                                                                                                                                 | optional |
+| `RELAYER_INITIAL_TX_SEARCH_OFFSET`               | `uint`            | if set to non zero and no prior search height exists, it will initially set to (last_height - X). Set this if you have lots of old tx's on first start you don't need.     | optional |
 
 # Logging
 
-We are using [zap.loger](https://github.com/uber-go/zap)
-By default, project spawns classical Production logger. so if there is a need to customize it, consider editing envs (see .env.example for exapmles)
+We are using a little bit modified [zap.Logger](https://github.com/uber-go/zap), the modification can be seen at the [neutron-logger repository](https://github.com/neutron-org/neutron-logger). The default version of the logger used in the application is a little bit modified [zap.NewProduction](https://github.com/uber-go/zap/blob/master/logger.go#L94). The logger level can be set via the `LOGGER_LEVEL` env variable. If there is a need for a more significant customisation of the logger behaviour, see the neutron-logger repository readme.
 
 ## Generate Openapi
 
