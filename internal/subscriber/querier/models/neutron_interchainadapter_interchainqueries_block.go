@@ -60,6 +60,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) validateHeader(formats 
 		if err := m.Header.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("header")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("header")
 			}
 			return err
 		}
@@ -77,6 +79,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) validateNextBlockHeader
 		if err := m.NextBlockHeader.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("next_block_header")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("next_block_header")
 			}
 			return err
 		}
@@ -94,6 +98,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) validateTx(formats strf
 		if err := m.Tx.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx")
 			}
 			return err
 		}
@@ -130,6 +136,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateHeader(c
 		if err := m.Header.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("header")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("header")
 			}
 			return err
 		}
@@ -144,6 +152,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateNextBloc
 		if err := m.NextBlockHeader.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("next_block_header")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("next_block_header")
 			}
 			return err
 		}
@@ -158,6 +168,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateTx(ctx c
 		if err := m.Tx.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx")
 			}
 			return err
 		}
@@ -194,45 +206,45 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) UnmarshalBinary(b []byt
 //
 // Example 1: Pack and unpack a message in C++.
 //
-//     Foo foo = ...;
-//     Any any;
-//     any.PackFrom(foo);
-//     ...
-//     if (any.UnpackTo(&foo)) {
-//       ...
-//     }
+//	Foo foo = ...;
+//	Any any;
+//	any.PackFrom(foo);
+//	...
+//	if (any.UnpackTo(&foo)) {
+//	  ...
+//	}
 //
 // Example 2: Pack and unpack a message in Java.
 //
-//     Foo foo = ...;
-//     Any any = Any.pack(foo);
-//     ...
-//     if (any.is(Foo.class)) {
-//       foo = any.unpack(Foo.class);
-//     }
+//	   Foo foo = ...;
+//	   Any any = Any.pack(foo);
+//	   ...
+//	   if (any.is(Foo.class)) {
+//	     foo = any.unpack(Foo.class);
+//	   }
 //
-//  Example 3: Pack and unpack a message in Python.
+//	Example 3: Pack and unpack a message in Python.
 //
-//     foo = Foo(...)
-//     any = Any()
-//     any.Pack(foo)
-//     ...
-//     if any.Is(Foo.DESCRIPTOR):
-//       any.Unpack(foo)
-//       ...
+//	   foo = Foo(...)
+//	   any = Any()
+//	   any.Pack(foo)
+//	   ...
+//	   if any.Is(Foo.DESCRIPTOR):
+//	     any.Unpack(foo)
+//	     ...
 //
-//  Example 4: Pack and unpack a message in Go
+//	Example 4: Pack and unpack a message in Go
 //
-//      foo := &pb.Foo{...}
-//      any, err := anypb.New(foo)
-//      if err != nil {
-//        ...
-//      }
-//      ...
-//      foo := &pb.Foo{}
-//      if err := any.UnmarshalTo(foo); err != nil {
-//        ...
-//      }
+//	    foo := &pb.Foo{...}
+//	    any, err := anypb.New(foo)
+//	    if err != nil {
+//	      ...
+//	    }
+//	    ...
+//	    foo := &pb.Foo{}
+//	    if err := any.UnmarshalTo(foo); err != nil {
+//	      ...
+//	    }
 //
 // The pack methods provided by protobuf library will by default use
 // 'type.googleapis.com/full.type.name' as the type URL and the unpack
@@ -240,34 +252,33 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) UnmarshalBinary(b []byt
 // in the type URL, for example "foo.bar.com/x/y.z" will yield type
 // name "y.z".
 //
-//
 // JSON
 // ====
 // The JSON representation of an `Any` value uses the regular
 // representation of the deserialized, embedded message, with an
 // additional field `@type` which contains the type URL. Example:
 //
-//     package google.profile;
-//     message Person {
-//       string first_name = 1;
-//       string last_name = 2;
-//     }
+//	package google.profile;
+//	message Person {
+//	  string first_name = 1;
+//	  string last_name = 2;
+//	}
 //
-//     {
-//       "@type": "type.googleapis.com/google.profile.Person",
-//       "firstName": <string>,
-//       "lastName": <string>
-//     }
+//	{
+//	  "@type": "type.googleapis.com/google.profile.Person",
+//	  "firstName": <string>,
+//	  "lastName": <string>
+//	}
 //
 // If the embedded message type is well-known and has a custom JSON
 // representation, that representation will be embedded adding a field
 // `value` which holds the custom JSON in addition to the `@type`
 // field. Example (for message [google.protobuf.Duration][]):
 //
-//     {
-//       "@type": "type.googleapis.com/google.protobuf.Duration",
-//       "value": "1.212s"
-//     }
+//	{
+//	  "@type": "type.googleapis.com/google.protobuf.Duration",
+//	  "value": "1.212s"
+//	}
 //
 // swagger:model NeutronInterchainadapterInterchainqueriesBlockHeader
 type NeutronInterchainadapterInterchainqueriesBlockHeader struct {
@@ -341,45 +352,45 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) UnmarshalBinary(b
 //
 // Example 1: Pack and unpack a message in C++.
 //
-//     Foo foo = ...;
-//     Any any;
-//     any.PackFrom(foo);
-//     ...
-//     if (any.UnpackTo(&foo)) {
-//       ...
-//     }
+//	Foo foo = ...;
+//	Any any;
+//	any.PackFrom(foo);
+//	...
+//	if (any.UnpackTo(&foo)) {
+//	  ...
+//	}
 //
 // Example 2: Pack and unpack a message in Java.
 //
-//     Foo foo = ...;
-//     Any any = Any.pack(foo);
-//     ...
-//     if (any.is(Foo.class)) {
-//       foo = any.unpack(Foo.class);
-//     }
+//	   Foo foo = ...;
+//	   Any any = Any.pack(foo);
+//	   ...
+//	   if (any.is(Foo.class)) {
+//	     foo = any.unpack(Foo.class);
+//	   }
 //
-//  Example 3: Pack and unpack a message in Python.
+//	Example 3: Pack and unpack a message in Python.
 //
-//     foo = Foo(...)
-//     any = Any()
-//     any.Pack(foo)
-//     ...
-//     if any.Is(Foo.DESCRIPTOR):
-//       any.Unpack(foo)
-//       ...
+//	   foo = Foo(...)
+//	   any = Any()
+//	   any.Pack(foo)
+//	   ...
+//	   if any.Is(Foo.DESCRIPTOR):
+//	     any.Unpack(foo)
+//	     ...
 //
-//  Example 4: Pack and unpack a message in Go
+//	Example 4: Pack and unpack a message in Go
 //
-//      foo := &pb.Foo{...}
-//      any, err := anypb.New(foo)
-//      if err != nil {
-//        ...
-//      }
-//      ...
-//      foo := &pb.Foo{}
-//      if err := any.UnmarshalTo(foo); err != nil {
-//        ...
-//      }
+//	    foo := &pb.Foo{...}
+//	    any, err := anypb.New(foo)
+//	    if err != nil {
+//	      ...
+//	    }
+//	    ...
+//	    foo := &pb.Foo{}
+//	    if err := any.UnmarshalTo(foo); err != nil {
+//	      ...
+//	    }
 //
 // The pack methods provided by protobuf library will by default use
 // 'type.googleapis.com/full.type.name' as the type URL and the unpack
@@ -387,34 +398,33 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) UnmarshalBinary(b
 // in the type URL, for example "foo.bar.com/x/y.z" will yield type
 // name "y.z".
 //
-//
 // JSON
 // ====
 // The JSON representation of an `Any` value uses the regular
 // representation of the deserialized, embedded message, with an
 // additional field `@type` which contains the type URL. Example:
 //
-//     package google.profile;
-//     message Person {
-//       string first_name = 1;
-//       string last_name = 2;
-//     }
+//	package google.profile;
+//	message Person {
+//	  string first_name = 1;
+//	  string last_name = 2;
+//	}
 //
-//     {
-//       "@type": "type.googleapis.com/google.profile.Person",
-//       "firstName": <string>,
-//       "lastName": <string>
-//     }
+//	{
+//	  "@type": "type.googleapis.com/google.profile.Person",
+//	  "firstName": <string>,
+//	  "lastName": <string>
+//	}
 //
 // If the embedded message type is well-known and has a custom JSON
 // representation, that representation will be embedded adding a field
 // `value` which holds the custom JSON in addition to the `@type`
 // field. Example (for message [google.protobuf.Duration][]):
 //
-//     {
-//       "@type": "type.googleapis.com/google.protobuf.Duration",
-//       "value": "1.212s"
-//     }
+//	{
+//	  "@type": "type.googleapis.com/google.protobuf.Duration",
+//	  "value": "1.212s"
+//	}
 //
 // swagger:model NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader
 type NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader struct {
@@ -527,6 +537,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateDeliveryProof
 		if err := m.DeliveryProof.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx" + "." + "delivery_proof")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx" + "." + "delivery_proof")
 			}
 			return err
 		}
@@ -544,6 +556,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateInclusionProo
 		if err := m.InclusionProof.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx" + "." + "inclusion_proof")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx" + "." + "inclusion_proof")
 			}
 			return err
 		}
@@ -561,6 +575,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateResponse(form
 		if err := m.Response.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx" + "." + "response")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx" + "." + "response")
 			}
 			return err
 		}
@@ -597,6 +613,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateDelive
 		if err := m.DeliveryProof.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx" + "." + "delivery_proof")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx" + "." + "delivery_proof")
 			}
 			return err
 		}
@@ -611,6 +629,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateInclus
 		if err := m.InclusionProof.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx" + "." + "inclusion_proof")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx" + "." + "inclusion_proof")
 			}
 			return err
 		}
@@ -625,6 +645,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateRespon
 		if err := m.Response.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tx" + "." + "response")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tx" + "." + "response")
 			}
 			return err
 		}
@@ -804,6 +826,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) validateEvent
 			if err := m.Events[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("tx" + "." + "response" + "." + "events" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("tx" + "." + "response" + "." + "events" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -836,6 +860,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) contextValida
 			if err := m.Events[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("tx" + "." + "response" + "." + "events" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("tx" + "." + "response" + "." + "events" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -906,6 +932,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) v
 			if err := m.Attributes[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("attributes" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("attributes" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -938,6 +966,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) c
 			if err := m.Attributes[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("attributes" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("attributes" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
