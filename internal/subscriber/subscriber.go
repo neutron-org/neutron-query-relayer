@@ -122,17 +122,23 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 		case <-ctx.Done():
 			s.logger.Info("Context cancelled, shutting down subscriber...")
 			return nil
-		case <-blockEvents:
-			if err := s.processBlockEvent(ctx, tasks); err != nil {
-				return fmt.Errorf("failed to processBlockEvent: %w", err)
-			}
-		case event := <-updateEvents:
-			if err = s.processUpdateEvent(ctx, event); err != nil {
-				return fmt.Errorf("failed to processUpdateEvent: %w", err)
-			}
-		case event := <-removeEvents:
-			if err = s.processRemoveEvent(event); err != nil {
-				return fmt.Errorf("failed to processRemoveEvent: %w", err)
+		default:
+			select {
+			case <-ctx.Done():
+				s.logger.Info("Context cancelled, shutting down subscriber...")
+				return nil
+			case <-blockEvents:
+				if err := s.processBlockEvent(ctx, tasks); err != nil {
+					return fmt.Errorf("failed to processBlockEvent: %w", err)
+				}
+			case event := <-updateEvents:
+				if err = s.processUpdateEvent(ctx, event); err != nil {
+					return fmt.Errorf("failed to processUpdateEvent: %w", err)
+				}
+			case event := <-removeEvents:
+				if err = s.processRemoveEvent(event); err != nil {
+					return fmt.Errorf("failed to processRemoveEvent: %w", err)
+				}
 			}
 		}
 	}

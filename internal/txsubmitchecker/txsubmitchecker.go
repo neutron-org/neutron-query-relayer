@@ -98,40 +98,46 @@ func (tc *TxSubmitChecker) worker(ctx context.Context) {
 
 	for {
 		select {
-		case tx := <-tc.queue:
-			neutronHash, err := hex.DecodeString(tx.NeutronHash)
-			if err != nil {
-				tc.logger.Error(
-					"failed to decode hash",
-					zap.String("neutron_hash", tx.NeutronHash),
-					zap.Error(err),
-				)
-				continue
-			}
-
-			txResponse, err := tc.retryGetTxStatus(ctx, neutronHash)
-			if err != nil {
-				tc.logger.Warn(
-					"failed to get tx status from rpc",
-					zap.String("neutron_hash", tx.NeutronHash),
-					zap.Error(err),
-				)
-				continue
-			}
-
-			if txResponse.TxResult.Code == abci.CodeTypeOK {
-				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
-					Status: relay.Committed,
-				})
-			} else {
-				tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
-					Status:  relay.ErrorOnCommit,
-					Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
-				})
-			}
 		case <-ctx.Done():
 			tc.logger.Info("worker has been stopped by context")
 			return
+		default:
+			select {
+			case <-ctx.Done():
+				tc.logger.Info("worker has been stopped by context")
+				return
+			case tx := <-tc.queue:
+				neutronHash, err := hex.DecodeString(tx.NeutronHash)
+				if err != nil {
+					tc.logger.Error(
+						"failed to decode hash",
+						zap.String("neutron_hash", tx.NeutronHash),
+						zap.Error(err),
+					)
+					continue
+				}
+
+				txResponse, err := tc.retryGetTxStatus(ctx, neutronHash)
+				if err != nil {
+					tc.logger.Warn(
+						"failed to get tx status from rpc",
+						zap.String("neutron_hash", tx.NeutronHash),
+						zap.Error(err),
+					)
+					continue
+				}
+
+				if txResponse.TxResult.Code == abci.CodeTypeOK {
+					tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
+						Status: relay.Committed,
+					})
+				} else {
+					tc.updateTxStatus(&tx, relay.SubmittedTxInfo{
+						Status:  relay.ErrorOnCommit,
+						Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
+					})
+				}
+			}
 		}
 	}
 }

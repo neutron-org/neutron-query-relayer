@@ -75,27 +75,33 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 			err       error
 		)
 		select {
-		case query := <-tasks:
-			switch query.QueryType {
-			case string(neutrontypes.InterchainQueryTypeKV):
-				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
-				err = r.processMessageKV(ctx, msg)
-			case string(neutrontypes.InterchainQueryTypeTX):
-				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
-				err = r.processMessageTX(ctx, msg)
-			default:
-				err = fmt.Errorf("unknown query type: %s", query.QueryType)
-			}
-
-			if err != nil {
-				r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
-				neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
-			} else {
-				neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
-			}
 		case <-ctx.Done():
 			r.logger.Info("Context cancelled, shutting down relayer...")
 			return r.stop()
+		default:
+			select {
+			case <-ctx.Done():
+				r.logger.Info("Context cancelled, shutting down relayer...")
+				return r.stop()
+			case query := <-tasks:
+				switch query.QueryType {
+				case string(neutrontypes.InterchainQueryTypeKV):
+					msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
+					err = r.processMessageKV(ctx, msg)
+				case string(neutrontypes.InterchainQueryTypeTX):
+					msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
+					err = r.processMessageTX(ctx, msg)
+				default:
+					err = fmt.Errorf("unknown query type: %s", query.QueryType)
+				}
+
+				if err != nil {
+					r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
+					neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
+				} else {
+					neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
+				}
+			}
 		}
 	}
 }
