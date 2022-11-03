@@ -53,6 +53,31 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 	}
 }
 
+// FetchBest returns best suitable TrustedHeader for given height
+// Arguments:
+// `height` - remote chain block height X = transaction with such block height
+func (thf *TrustedHeaderFetcher) FetchBest(ctx context.Context, height uint64) (header ibcexported.Header, err error) {
+	start := time.Now()
+
+	// tries to find height of the closest consensus state height that is less or equal than provided height
+	trustedHeight, err := thf.getTrustedHeight(ctx, height)
+	if err != nil {
+		err = fmt.Errorf("no satisfying consensus state found: %w", err)
+		return
+	}
+	thf.logger.Debug("Found suitable consensus state with trusted height", zap.Uint64("height", trustedHeight.RevisionHeight))
+
+	header, err = thf.trustedHeaderAtHeight(ctx, trustedHeight, height)
+	if err != nil {
+		err = fmt.Errorf("failed to get header for src chain: %w", err)
+		return
+	}
+
+	neutronmetrics.RecordActionDuration("TrustedHeaderFetcher", time.Since(start).Seconds())
+
+	return
+}
+
 // Fetch returns two Headers for height and height+1 packed into *codectypes.Any value
 // We need two blocks in Neutron to verify both delivery of tx and inclusion in block:
 // - We need to know block X (`header`) to verify inclusion of transaction for block X (inclusion proof)
