@@ -26,6 +26,7 @@ const (
 func main() {
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
+		app.AppContext,
 		app.SubscriberContext,
 		app.RelayerContext,
 		app.TargetChainRPCClientContext,
