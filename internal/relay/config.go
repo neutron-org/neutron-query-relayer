@@ -13,11 +13,12 @@ import (
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, keyName string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            keyName,
-		ChainID:        cfg.ChainID,
-		RPCAddr:        cfg.RPCAddr,
-		AccountPrefix:  neutronapp.Bech32MainPrefix,
-		KeyringBackend: cfg.KeyringBackend,
+		Key:           keyName,
+		ChainID:       cfg.ChainID,
+		RPCAddr:       cfg.RPCAddr,
+		AccountPrefix: neutronapp.Bech32MainPrefix,
+		// we ignore provided keyring here since we're to substitute it later after initialization
+		KeyringBackend: keyring.BackendMemory,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
 		Debug:          cfg.Debug,

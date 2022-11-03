@@ -1,12 +1,9 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
@@ -14,6 +11,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+	"github.com/neutron-org/neutron-query-relayer/internal/relayer_keyring"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
@@ -25,7 +23,6 @@ import (
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 	"go.uber.org/zap"
-	"io"
 )
 
 func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConfig) relay.Subscriber {
@@ -45,7 +42,7 @@ func NewDefaultSubscriber(logger *zap.Logger, cfg config.NeutronQueryRelayerConf
 	if err != nil {
 		logger.Fatal("failed to get a NewSubscriber", zap.Error(err))
 	}
-	logger.Debug("Subscribed successfully",
+	logger.Debug("Subscriber initialized",
 		zap.String("rpc", cfg.NeutronChain.RPCAddr),
 		zap.String("rest", cfg.NeutronChain.RESTAddr),
 		zap.Strings("registries", cfg.Registry.Addresses),
@@ -81,8 +78,14 @@ func NewDefaultRelayer(
 	}
 
 	codec := raw.MakeCodecDefault()
-
-	keybase, keyName, err := initializeKeychain(*cfg.NeutronChain)
+	keybase, keyName, err := relayer_keyring.InitializeKeychain(
+		cfg.NeutronChain.KeyringBackend,
+		cfg.NeutronChain.KeyringPassword,
+		cfg.NeutronChain.HomeDir,
+		cfg.NeutronChain.SignKeyName,
+		cfg.NeutronChain.SignKeySeed,
+		cfg.NeutronChain.SignKeyHDPath,
+	)
 	if err != nil {
 		logger.Fatal("cannot initialize keyring", zap.Error(err))
 	}
@@ -108,7 +111,7 @@ func NewDefaultRelayer(
 		st = storage.NewDummyStorage()
 	}
 
-	neutronChain, targetChain, err := loadChains(cfg, keyName, keybase, logger)
+	neutronChain, targetChain, err := loadChains(cfg, keybase, keyName, logger)
 	if err != nil {
 		logger.Error("failed to loadChains", zap.Error(err))
 	}
@@ -147,7 +150,7 @@ func NewDefaultRelayer(
 	return relayer
 }
 
-func loadChains(cfg config.NeutronQueryRelayerConfig, keyName string, keybase keyring.Keyring, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
+func loadChains(cfg config.NeutronQueryRelayerConfig, keybase keyring.Keyring, keyName string, logger *zap.Logger) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
 	targetChain, err = relay.GetTargetChain(logger, cfg.TargetChain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
@@ -174,6 +177,9 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, keyName string, keybase ke
 	if err := neutronChain.ChainProvider.Init(); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
+
+	// Workaround to have more flexibility in keyring configuration
+	// Unfortunately, ChainProvider interface doesn't allow configuring keyring properly or passing existing one
 	provConcrete, ok := neutronChain.ChainProvider.(*cosmos.CosmosProvider)
 	if !ok {
 		return nil, nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
@@ -181,51 +187,4 @@ func loadChains(cfg config.NeutronQueryRelayerConfig, keyName string, keybase ke
 	provConcrete.Keybase = keybase
 
 	return neutronChain, targetChain, nil
-}
-
-type passReader struct {
-	pass string
-	buf  *bytes.Buffer
-}
-
-func newPassReader(pass string) io.Reader {
-	return &passReader{
-		pass: pass,
-		buf:  new(bytes.Buffer),
-	}
-}
-
-func (r *passReader) Read(p []byte) (n int, err error) {
-	n, err = r.buf.Read(p)
-	if err == io.EOF || n == 0 {
-		r.buf.WriteString(r.pass + "\n")
-
-		n, err = r.buf.Read(p)
-	}
-
-	return n, err
-}
-
-func initializeKeychain(cfg config.NeutronChainConfig) (keyring.Keyring, string, error) {
-	passReader := newPassReader(cfg.KeyringPassword)
-
-	keybase, err := keyring.New(neutronapp.Bech32MainPrefix, cfg.KeyringBackend, cfg.HomeDir, passReader)
-	if err != nil {
-		return nil, "", fmt.Errorf("error creating keybase for chainId=%s and keyringRootDir=%s: %w", cfg.ChainID, cfg.HomeDir, err)
-	}
-
-	keyName := cfg.SignKeyName
-
-	// If the keybase is set to "memory" then we expect the seed to be passed via environment variable and we need to
-	// add the key to the in-memory keybase
-	if cfg.KeyringBackend == keyring.BackendMemory {
-		// For in-memory key we ignore the name provided by user (so it might be (and actually should be) left empty)
-		keyName = "sign_key"
-		signKeyHdPath := hd.CreateHDPath(sdk.CoinType, 0, 0).String()
-		_, err := keybase.NewAccount(keyName, cfg.SignKeySeed, "", signKeyHdPath, hd.Secp256k1)
-		if err != nil {
-			return nil, "", err
-		}
-	}
-	return keybase, keyName, nil
 }
