@@ -21,6 +21,7 @@ type NeutronQueryRelayerConfig struct {
 	CheckSubmittedTxStatusDelay uint64                   `split_words:"true" default:"10"`
 	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`
 	PrometheusPort              uint16                   `split_words:"true" default:"9999"`
+	InitialTxSearchOffset       uint64                   `split_words:"true" default:"0"`
 }
 
 const EnvPrefix string = "RELAYER"

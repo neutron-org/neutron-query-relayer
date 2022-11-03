@@ -33,7 +33,7 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func InitializeKeychain(keyringBackend, keyringPassword, homeDir, keyName, keySeed, hdPath string) (keyring.Keyring, string, error) {
+func InitializeKeyring(keyringBackend, keyringPassword, homeDir, keyName, keySeed, hdPath string) (keyring.Keyring, string, error) {
 	passReader := newPassReader(keyringPassword)
 
 	keybase, err := keyring.New(neutronapp.Bech32MainPrefix, keyringBackend, homeDir, passReader)

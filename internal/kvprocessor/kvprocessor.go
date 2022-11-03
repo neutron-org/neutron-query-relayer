@@ -94,7 +94,7 @@ func (p *KVProcessor) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, 
 		return true, nil
 	}
 
-	previous, err := p.storage.GetLastQueryHeight(queryID)
+	previous, _, err := p.storage.GetLastQueryHeight(queryID)
 	if err != nil {
 		return false, err
 	}
