@@ -7,6 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/go-openapi/strfmt"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
@@ -52,34 +53,42 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 // getActiveQueries retrieves the list of registered queries filtered by owner, connection, and query type.
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
 	// TODO: use pagination.
-	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
-		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
-			Owners:       s.registry.GetAddresses(),
-			ConnectionID: &s.connectionID,
-			Context:      ctx,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQueries: %w", err)
-	}
-
-	var (
-		payload = res.GetPayload()
-		out     = map[string]*neutrontypes.RegisteredQuery{}
-	)
-
-	for _, restQuery := range payload.RegisteredQueries {
-		neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
+	var out = map[string]*neutrontypes.RegisteredQuery{}
+	var pageKey *strfmt.Base64
+	for {
+		res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
+			&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
+				Owners:        s.registry.GetAddresses(),
+				ConnectionID:  &s.connectionID,
+				Context:       ctx,
+				PaginationKey: pageKey,
+			},
+		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to cast ToNeutronRegisteredQuery: %w", err)
+			return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQueries: %w", err)
 		}
 
-		if !s.isWatchedMsgType(neutronQuery.QueryType) {
-			continue
-		}
+		payload := res.GetPayload()
 
-		out[restQuery.ID] = neutronQuery
+		for _, restQuery := range payload.RegisteredQueries {
+			neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
+			if err != nil {
+				return nil, fmt.Errorf("failed to cast ToNeutronRegisteredQuery: %w", err)
+			}
+
+			if !s.isWatchedMsgType(neutronQuery.QueryType) {
+				continue
+			}
+
+			out[restQuery.ID] = neutronQuery
+		}
+		if payload.Pagination != nil && payload.Pagination.NextKey.String() != "" {
+			pageKey = &payload.Pagination.NextKey
+		} else {
+			break
+		}
 	}
+	s.logger.Debug("total queries fetched", zap.Int("queries number", len(out)))
 
 	return out, nil
 }
