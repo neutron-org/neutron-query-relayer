@@ -51,7 +51,7 @@ var (
 		Help: "The total number of elements in Subscriber's task queue",
 	}, []string{})
 
-	queriesToProcess = promauto.NewCounterVec(prometheus.CounterOpts{
+	queriesToProcess = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "queries_to_process",
 		Help: "The total number of queries to process (counter)",
 	}, []string{})
@@ -141,5 +141,5 @@ func IncQueriesToProcess() {
 }
 
 func DecQueriesToProcess() {
-	queriesToProcess.With(prometheus.Labels{}).Inc()
+	queriesToProcess.With(prometheus.Labels{}).Dec()
 }
