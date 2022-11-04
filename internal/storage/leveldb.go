@@ -51,24 +51,24 @@ func (s *LevelDBStorage) GetAllPendingTxs() ([]*relay.PendingSubmittedTxInfo, er
 }
 
 // GetLastQueryHeight returns last update block for KV query
-func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, err error) {
+func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found bool, err error) {
 	s.Lock()
 	defer s.Unlock()
 
 	data, err := s.db.Get(uintToBytes(queryID), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
-			return 0, nil
+			return 0, false, nil
 		}
-		return 0, fmt.Errorf("failed getting data from db: %w", err)
+		return 0, false, fmt.Errorf("failed getting data from db: %w", err)
 	}
 
 	res, err := bytesToUint(data)
 	if err != nil {
-		return 0, fmt.Errorf("failed converting bytest to uint: %w", err)
+		return 0, false, fmt.Errorf("failed converting bytest to uint: %w", err)
 	}
 
-	return res, nil
+	return res, true, nil
 }
 
 // SetTxStatus sets status for given tx
