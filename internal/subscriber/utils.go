@@ -78,7 +78,6 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
 			continue
 		}
-		instrumenters.IncQueriesToProcess()
 		out[restQuery.ID] = neutronQuery
 		instrumenters.IncQueriesToProcess()
 	}
