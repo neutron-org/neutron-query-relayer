@@ -83,11 +83,11 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) IsCode(code
 }
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) Error() string {
-	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] neutronInterchainadapterInterchainqueriesRegisteredQueryOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /neutron/interchainqueries/registered_query][%d] neutronInterchainadapterInterchainqueriesRegisteredQueryOK  %+v", 200, o.Payload)
 }
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) String() string {
-	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] neutronInterchainadapterInterchainqueriesRegisteredQueryOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /neutron/interchainqueries/registered_query][%d] neutronInterchainadapterInterchainqueriesRegisteredQueryOK  %+v", 200, o.Payload)
 }
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOK) GetPayload() *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBody {
@@ -155,11 +155,11 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) IsCode
 }
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) Error() string {
-	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] NeutronInterchainadapterInterchainqueriesRegisteredQuery default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /neutron/interchainqueries/registered_query][%d] NeutronInterchainadapterInterchainqueriesRegisteredQuery default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) String() string {
-	return fmt.Sprintf("[GET /neutron/interchainqueries/interchainqueries/registered_query][%d] NeutronInterchainadapterInterchainqueriesRegisteredQuery default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /neutron/interchainqueries/registered_query][%d] NeutronInterchainadapterInterchainqueriesRegisteredQuery default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault) GetPayload() *NeutronInterchainadapterInterchainqueriesRegisteredQueryDefaultBody {

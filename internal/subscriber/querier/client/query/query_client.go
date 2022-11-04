@@ -85,7 +85,7 @@ func (a *Client) NeutronInterchainadapterInterchainqueriesRegisteredQueries(para
 	op := &runtime.ClientOperation{
 		ID:                 "NeutronInterchainadapterInterchainqueriesRegisteredQueries",
 		Method:             "GET",
-		PathPattern:        "/neutron/interchainqueries/interchainqueries/registered_queries",
+		PathPattern:        "/neutron/interchainqueries/registered_queries",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -122,7 +122,7 @@ func (a *Client) NeutronInterchainadapterInterchainqueriesRegisteredQuery(params
 	op := &runtime.ClientOperation{
 		ID:                 "NeutronInterchainadapterInterchainqueriesRegisteredQuery",
 		Method:             "GET",
-		PathPattern:        "/neutron/interchainqueries/interchainqueries/registered_query",
+		PathPattern:        "/neutron/interchainqueries/registered_query",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
