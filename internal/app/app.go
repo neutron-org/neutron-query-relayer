@@ -12,7 +12,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
@@ -25,8 +24,8 @@ import (
 )
 
 var (
-	Version string = ""
-	Commit  string = ""
+	Version = ""
+	Commit  = ""
 )
 
 const (
@@ -66,6 +65,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
+	st relay.Storage,
 	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
@@ -98,21 +98,6 @@ func NewDefaultRelayer(
 	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logRegistry.Get(TxSenderContext))
 	if err != nil {
 		return nil, fmt.Errorf("cannot create tx sender: %w", err)
-	}
-
-	var st relay.Storage
-
-	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		return nil, fmt.Errorf("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
-	}
-
-	if cfg.StoragePath != "" {
-		st, err = storage.NewLevelDBStorage(cfg.StoragePath)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
-		}
-	} else {
-		st = storage.NewDummyStorage()
 	}
 
 	neutronChain, targetChain, err := loadChains(cfg, logRegistry)

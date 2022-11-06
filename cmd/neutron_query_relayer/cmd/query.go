@@ -12,24 +12,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const UrlFlagName = "url"
-
 var url string
 
 // QueryCmd represents the query command
 var QueryCmd = &cobra.Command{
-	Use:              "query",
-	TraverseChildren: true,
-	//Short: "Query information about relayer",
-	//Long:  `Query information about relayers work like unprocessed transactions.`,
+	Use: "query",
 }
 
 func init() {
-	QueryCmd.PersistentFlags().StringVarP(&url, UrlFlagName, "u", "", "server url")
-	err := QueryCmd.MarkPersistentFlagRequired(UrlFlagName)
+	QueryCmd.PersistentFlags().StringVarP(&url, query.UrlFlagName, "u", "", "server url")
+	err := QueryCmd.MarkPersistentFlagRequired(query.UrlFlagName)
 	if err != nil {
 		log.Fatalf("could not initialize query command: %s", err)
 	}
+
 	QueryCmd.AddCommand(query.UnsuccessfulTxs)
 
 	RootCmd.AddCommand(QueryCmd)

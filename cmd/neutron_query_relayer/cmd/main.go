@@ -10,6 +10,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
 
@@ -62,11 +64,26 @@ func startRelayer() {
 		logger.Info("metrics handler set up")
 	}()
 
+	// === TODO: wait until storage is created in main (See oopcode's PR) and remove this!
+	var st relay.Storage
+
+	if cfg.AllowTxQueries && cfg.StoragePath == "" {
+		//return nil, fmt.Errorf("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+	}
+
+	if cfg.StoragePath != "" {
+		st, err = storage.NewLevelDBStorage(cfg.StoragePath)
+		//if err != nil {
+		//	return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
+		//}
+	} else {
+		st = storage.NewDummyStorage()
+	}
+	// === REMOVE UNTIL HERE
+
 	// TODO: move to separate server (and port)
 	go func() {
-		// TODO: wait until storage is created in main (See oopcode's PR) and remove this!
-		store, err := storage.NewLevelDBStorage(cfg.StoragePath) // TODO: remove this
-		router := webserver.Router(logRegistry, store)
+		router := webserver.Router(logRegistry, st)
 		err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.WebserverPort), router)
 		if err != nil {
 			logger.Fatal("failed to serve webserver", zap.Error(err))
@@ -81,7 +98,7 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("failed to create subscriber", zap.Error(err))
 	}
-	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry)
+	relayer, err := app.NewDefaultRelayer(st, ctx, cfg, logRegistry)
 	if err != nil {
 		logger.Fatal("failed to create relayer", zap.Error(err))
 	}
