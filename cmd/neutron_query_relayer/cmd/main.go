@@ -40,6 +40,7 @@ func startRelayer() {
 		app.TxSubmitCheckerContext,
 		app.TrustedHeadersFetcherContext,
 		app.KVProcessorContext,
+		webserver.ServerContext,
 	)
 	if err != nil {
 		log.Fatalf("couldn't initialize loggers registry: %s", err)
@@ -62,10 +63,10 @@ func startRelayer() {
 	}()
 
 	// TODO: move to separate server (and port)
-	// TODO: storage should be here if PR merged
 	go func() {
+		// TODO: wait until storage is created in main (See oopcode's PR) and remove this!
 		store, err := storage.NewLevelDBStorage(cfg.StoragePath) // TODO: remove this
-		router := webserver.Router(store)
+		router := webserver.Router(logRegistry, store)
 		err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.WebserverPort), router)
 		if err != nil {
 			logger.Fatal("failed to serve webserver", zap.Error(err))

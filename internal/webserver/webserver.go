@@ -2,33 +2,43 @@ package webserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+
+	nlogger "github.com/neutron-org/neutron-logger"
+
+	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/gorilla/mux"
 )
 
+const ServerContext = "webserver"
+
 type ResponseTest struct {
 	Txs []string
 }
 
-func Router(store relay.Storage) *mux.Router {
+type HandlerFunc func(w http.ResponseWriter, r *http.Request)
+
+func Router(logRegistry *nlogger.Registry, store relay.Storage) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/unsuccessful_txs", UnsuccessfulTxs(store))
+	router.HandleFunc("/unsuccessful_txs", UnsuccessfulTxs(logRegistry.Get(ServerContext), store))
 	return router
 }
 
-func UnsuccessfulTxs(store relay.Storage) func(w http.ResponseWriter, r *http.Request) {
+func UnsuccessfulTxs(logger *zap.Logger, store relay.Storage) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		res := ResponseTest{
-			Txs: []string{"kekw", "lulz"},
+		res, err := store.GetAllUnsuccessfulTxs()
+		if err != nil {
+			logger.Error("failed to execute GetAllUnsuccessfulTxs", zap.Error(err))
+			http.Error(w, "Error processing request", http.StatusInternalServerError)
 		}
 
-		err := json.NewEncoder(w).Encode(res)
+		err = json.NewEncoder(w).Encode(res)
 		if err != nil {
-			fmt.Printf("Error: %s\n", err)
+			logger.Error("failed to encode result of GetAllUnsuccessfulTxs", zap.Error(err))
+			http.Error(w, "Error processing request", http.StatusInternalServerError)
 		}
 	}
 }

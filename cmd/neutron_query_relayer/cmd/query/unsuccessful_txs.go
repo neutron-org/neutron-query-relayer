@@ -7,47 +7,25 @@ import (
 	"fmt"
 
 	"github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/cmd"
+
 	"github.com/spf13/cobra"
 )
 
-// versionCmd represents the version command
-var unsuccessfulTxs = &cobra.Command{
+// UnsuccessfulTxs represents the unsuccessful-txs command
+var UnsuccessfulTxs = &cobra.Command{
 	Use:   "unsuccessful-txs",
 	Short: "Query unsuccessfully processed transactions",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: defer closing of storage access
-		//cfg, err := config.NewNeutronQueryRelayerConfig()
-		//if err != nil {
-		//	return fmt.Errorf("could not initialize config: %w", cfg)
-		//	// TODO: end command with error
-		//	//logger.Fatal("cannot initialize relayer config", zap.Error(err))
-		//}
-		//
-		//if !cfg.AllowTxQueries {
-		//	return fmt.Errorf("transaction queries are not allowed in config")
-		//}
-		//
-		//if cfg.StoragePath == "" {
-		//	return fmt.Errorf("storage path is empty")
-		//}
-		//
-		//store, err := storage.NewLevelDBStorage(cfg.StoragePath)
-		//if err != nil {
-		//	return fmt.Errorf("couldn't initialize levelDB storage: %w", err)
-		//}
-		//
-		//failedTxs := store.GetAllPendingTxs()
-		//
-		//return nil
-
+	RunE: func(_ *cobra.Command, args []string) error {
 		fmt.Println("Unsuccessful txs")
+		url, err := UnsuccessfulTxs.Flags().GetString(cmd.UrlFlagName)
+		fmt.Printf("url: %s", url)
 
 		return nil
 	},
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(unsuccessfulTxs)
+	cmd.QueryCmd.AddCommand(UnsuccessfulTxs)
 
 	// Here you will define your flags and configuration settings.
 
