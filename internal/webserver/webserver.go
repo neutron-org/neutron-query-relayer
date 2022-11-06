@@ -13,7 +13,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const ServerContext = "webserver"
+const (
+	ServerContext           = "webserver"
+	UnsuccessfulTxsResource = "/unsuccessful-txs"
+)
 
 type ResponseTest struct {
 	Txs []string
@@ -23,7 +26,7 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 
 func Router(logRegistry *nlogger.Registry, store relay.Storage) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/unsuccessful_txs", UnsuccessfulTxs(logRegistry.Get(ServerContext), store))
+	router.HandleFunc(UnsuccessfulTxsResource, UnsuccessfulTxs(logRegistry.Get(ServerContext), store))
 	return router
 }
 

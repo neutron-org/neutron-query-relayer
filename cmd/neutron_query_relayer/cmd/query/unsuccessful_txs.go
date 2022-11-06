@@ -6,10 +6,10 @@ package query
 import (
 	"fmt"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
+
 	"github.com/spf13/cobra"
 )
-
-const resource = "/unsuccessful-txs"
 
 // UnsuccessfulTxs represents the unsuccessful-txs command
 var UnsuccessfulTxs = &cobra.Command{
@@ -20,9 +20,9 @@ var UnsuccessfulTxs = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("url: %s", url)
+		fmt.Printf("Url: %s\n\n", url)
 
-		response := get(url, resource)
+		response := get(url, webserver.UnsuccessfulTxsResource)
 		fmt.Printf("Unsuccessful txs:\n%s\n", response)
 
 		return nil

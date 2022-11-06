@@ -27,6 +27,8 @@ type UnsuccessfulTxInfo struct {
 	SubmitTime time.Time
 	// Type is the status of unsuccessful tx
 	Type SubmittedTxStatus
+	// Message is the more descriptive message for the error
+	Message string
 }
 
 // SubmittedTxInfo is a struct which contains status of fetched and submitted transaction

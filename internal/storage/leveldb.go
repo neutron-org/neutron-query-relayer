@@ -102,28 +102,28 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found
 //	2.a) failed to commit tx into the block - relay.ErrorOnCommit
 //  2.b) tx successfully committed - relay.Committed
 // To convert status from "2" to either "2.a" or "2.b" we use additional SubmittedTxStatusPrefix storage to track txs
-func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, status relay.SubmittedTxInfo) (err error) {
+func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, txInfo relay.SubmittedTxInfo) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
-	// save tx status
+	// save tx txInfo
 	t, err := s.db.OpenTransaction()
 	if err != nil {
 		return fmt.Errorf("failed to open leveldb transaction: %w", err)
 	}
 
 	defer t.Discard()
-	data, err := json.Marshal(status)
+	data, err := json.Marshal(txInfo)
 	if err != nil {
 		return fmt.Errorf("failed to Marshal SubmittedTxInfo: %w", err)
 	}
 
 	err = t.Put(constructKey(queryID, hash), data, nil)
 	if err != nil {
-		return fmt.Errorf("failed to set tx status: %w", err)
+		return fmt.Errorf("failed to set tx txInfo: %w", err)
 	}
 
-	if status.Status == relay.Submitted {
+	if txInfo.Status == relay.Submitted {
 		txInfo := relay.PendingSubmittedTxInfo{
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
@@ -134,20 +134,21 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		if err != nil {
 			return err
 		}
-	} else if status.Status == relay.Committed || status.Status == relay.ErrorOnCommit {
+	} else if txInfo.Status == relay.Committed || txInfo.Status == relay.ErrorOnCommit {
 		err = removeFromPendingQueue(t, neutronHash)
 		if err != nil {
 			return err
 		}
 	}
 
-	if status.Status == relay.ErrorOnCommit || status.Status == relay.ErrorOnSubmit {
+	if txInfo.Status == relay.ErrorOnCommit || txInfo.Status == relay.ErrorOnSubmit {
 		txInfo := relay.UnsuccessfulTxInfo{
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
 			NeutronHash:     neutronHash,
 			SubmitTime:      time.Now(),
-			Type:            status.Status,
+			Type:            txInfo.Status,
+			Message:         txInfo.Message,
 		}
 		err = saveIntoErrorQueue(t, neutronHash, txInfo)
 		if err != nil {
