@@ -74,7 +74,7 @@ func (r TXProcessor) submitTxWithProofs(queryID uint64, block *neutrontypes.Bloc
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
 		if errSetStatus != nil {
-			return fmt.Errorf("failed to store tx: %w", errSetStatus)
+			r.logger.Error("failed to store tx error status", zap.Error(errSetStatus))
 		}
 		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", neutrontypes.InterchainQueryTypeTX, queryID, err)
 	}

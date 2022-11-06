@@ -16,6 +16,19 @@ type PendingSubmittedTxInfo struct {
 	SubmitTime time.Time
 }
 
+type UnsuccessfulTxInfo struct {
+	// QueryID is the query_id transactions was submitted for
+	QueryID uint64
+	// SubmittedTxHash is the hash of the *remote fetched transaction* was submitted
+	SubmittedTxHash string
+	// NeutronHash is the hash of the *neutron chain transaction* which is responsible for delivering remote transaction to neutron
+	NeutronHash string
+	// SubmitTime is the time when the remote transaction was submitted to the neutron chain
+	SubmitTime time.Time
+	// Type is the status of unsuccessful tx
+	Type SubmittedTxStatus
+}
+
 // SubmittedTxInfo is a struct which contains status of fetched and submitted transaction
 type SubmittedTxInfo struct {
 	// SubmittedTxStatus is a status of a processing state
@@ -40,8 +53,8 @@ const (
 // Storage is local storage we use to store queries history: known queries, know transactions and its statuses
 type Storage interface {
 	GetAllPendingTxs() ([]*PendingSubmittedTxInfo, error)
-	GetLastQueryHeight(queryID uint64) (block uint64, found bool, err error)
 	GetAllUnsuccessfulTxs() ([]*UnsuccessfulTxInfo, error)
+	GetLastQueryHeight(queryID uint64) (block uint64, found bool, err error)
 	SetLastQueryHeight(queryID uint64, block uint64) error
 	SetTxStatus(queryID uint64, hash string, neutronHash string, status SubmittedTxInfo) (err error)
 	TxExists(queryID uint64, hash string) (exists bool, err error)

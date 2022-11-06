@@ -15,6 +15,7 @@ import (
 )
 
 const SubmittedTxStatusPrefix = "submitted_txs"
+const ErrorTxStatusPrefix = "unsuccessful_txs"
 
 // LevelDBStorage Basically has a simple structure inside: we have 2 maps
 // first one : map of queryID -> last block this query has been processed
@@ -46,6 +47,26 @@ func (s *LevelDBStorage) GetAllPendingTxs() ([]*relay.PendingSubmittedTxInfo, er
 		err := json.Unmarshal(value, &txInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal data into PendingSubmittedTxInfo: %w", err)
+		}
+
+		txs = append(txs, &txInfo)
+	}
+	return txs, nil
+}
+
+func (s *LevelDBStorage) GetAllUnsuccessfulTxs() ([]*relay.UnsuccessfulTxInfo, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	iterator := s.db.NewIterator(util.BytesPrefix([]byte(ErrorTxStatusPrefix)), nil)
+	defer iterator.Release()
+	var txs []*relay.UnsuccessfulTxInfo
+	for iterator.Next() {
+		value := iterator.Value()
+		var txInfo relay.UnsuccessfulTxInfo
+		err := json.Unmarshal(value, &txInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal data into UnsuccessfulTxInfo: %w", err)
 		}
 
 		txs = append(txs, &txInfo)
@@ -120,6 +141,20 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		}
 	}
 
+	if status.Status == relay.ErrorOnCommit || status.Status == relay.ErrorOnSubmit {
+		txInfo := relay.UnsuccessfulTxInfo{
+			QueryID:         queryID,
+			SubmittedTxHash: hash,
+			NeutronHash:     neutronHash,
+			SubmitTime:      time.Now(),
+			Type:            status.Status,
+		}
+		err = saveIntoErrorQueue(t, neutronHash, txInfo)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = t.Commit()
 	return err
 }
@@ -178,6 +213,21 @@ func removeFromPendingQueue(t *leveldb.Transaction, neutronTXHash string) error 
 	err := t.Delete(key, nil)
 	if err != nil {
 		return fmt.Errorf("failed to remove PendingSubmittedTxInfo under the key %s: %w", neutronTXHash, err)
+	}
+
+	return nil
+}
+
+func saveIntoErrorQueue(t *leveldb.Transaction, neutronTXHash string, txInfo relay.UnsuccessfulTxInfo) error {
+	key := []byte(ErrorTxStatusPrefix + neutronTXHash)
+	data, err := json.Marshal(txInfo)
+	if err != nil {
+		return fmt.Errorf("failed to marshal UnsuccessfulTxInfo: %w", err)
+	}
+
+	err = t.Put(key, data, nil)
+	if err != nil {
+		return err
 	}
 
 	return nil
