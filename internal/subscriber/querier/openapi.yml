@@ -4,7 +4,7 @@ info:
   version: '0.0.1'
   description: ''
 paths:
-  /neutron/interchainqueries/interchainqueries/registered_queries:
+  /neutron/interchainqueries/registered_queries:
     get:
       operationId: NeutronInterchainadapterInterchainqueriesRegisteredQueries
       responses:
@@ -345,7 +345,7 @@ paths:
           type: boolean
       tags:
         - Query
-  /neutron/interchainqueries/interchainqueries/registered_query:
+  /neutron/interchainqueries/registered_query:
     get:
       operationId: NeutronInterchainadapterInterchainqueriesRegisteredQuery
       responses:
