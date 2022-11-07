@@ -15,7 +15,7 @@ test:
 	 go test ./...
 
 build:
-	go build -ldflags '$(ldflags)' -a -o neutron_query_relayer ./cmd/neutron_query_relayer/*.go
+	go build -ldflags '$(ldflags)' -a -o build/neutron_query_relayer ./cmd/neutron_query_relayer/*.go
 
 build-docker:
 	docker build . -t neutron-org/neutron-query-relayer
