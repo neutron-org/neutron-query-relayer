@@ -65,10 +65,10 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
-	st relay.Storage,
 	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
+	st relay.Storage,
 ) (*relay.Relayer, error) {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()

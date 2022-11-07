@@ -2,10 +2,10 @@ VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
 COMMIT := $(shell git log -1 --format='%H')
 
 ldflags = -X github.com/neutron-org/neutron-query-relayer/internal/app.Version=$(VERSION) \
-		  -X github.com/neutron-org/neutron-query-relayer/internal/app.Commit=$(COMMIT) \
+		  -X github.com/neutron-org/neutron-query-relayer/internal/app.Commit=$(COMMIT)
 
 dev: clean
-	go run ./cmd/neutron_query_relayer/
+	go run ./cmd/neutron_query_relayer/ start
 
 clean:
 	@echo "Removing relayer storage state"

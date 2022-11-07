@@ -26,6 +26,7 @@ go.work
 keys
 
 cmd/neutron_query_relayer/neutron_query_relayer
+neutron_query_relayer
 storage
 
 .env
