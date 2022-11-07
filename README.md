@@ -115,6 +115,7 @@ Relayer:
 | `RELAYER_QUERIES_TASK_QUEUE_CAPACITY`            | `int`             | capacity of the channel that is used to send messages from subscriber to relayer (better set to a higher value to avoid problems with Tendermint websocket subscriptions). | optional |
 | `RELAYER_PROMETHEUS_PORT`                        | `uint`            | listen port for Prometheus                                                                                                                                                 | optional |
 | `RELAYER_INITIAL_TX_SEARCH_OFFSET`               | `uint`            | if set to non zero and no prior search height exists, it will initially set to (last_height - X). Set this if you have lots of old tx's on first start you don't need.     | optional |
+| `RELAYER_WEBSERVER_PORT`                         | `uint`            | port for webserver api that you can query                                                                                                                                  | optional |
 
 # Logging
 
