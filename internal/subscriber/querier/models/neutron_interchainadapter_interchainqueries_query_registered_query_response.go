@@ -46,6 +46,8 @@ func (m *NeutronInterchainadapterInterchainqueriesQueryRegisteredQueryResponse) 
 		if err := m.RegisteredQuery.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("registered_query")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("registered_query")
 			}
 			return err
 		}
@@ -74,6 +76,8 @@ func (m *NeutronInterchainadapterInterchainqueriesQueryRegisteredQueryResponse) 
 		if err := m.RegisteredQuery.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("registered_query")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("registered_query")
 			}
 			return err
 		}
@@ -161,6 +165,8 @@ func (m *NeutronInterchainadapterInterchainqueriesQueryRegisteredQueryResponseRe
 			if err := m.Keys[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("registered_query" + "." + "keys" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("registered_query" + "." + "keys" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -193,6 +199,8 @@ func (m *NeutronInterchainadapterInterchainqueriesQueryRegisteredQueryResponseRe
 			if err := m.Keys[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("registered_query" + "." + "keys" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("registered_query" + "." + "keys" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
