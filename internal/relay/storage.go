@@ -23,8 +23,8 @@ type UnsuccessfulTxInfo struct {
 	SubmittedTxHash string
 	// NeutronHash is the hash of the *neutron chain transaction* which is responsible for delivering remote transaction to neutron
 	NeutronHash string
-	// SubmitTime is the time when the remote transaction was submitted to the neutron chain
-	SubmitTime time.Time
+	// ErrorTime is the time when the error was added
+	ErrorTime time.Time
 	// Type is the status of unsuccessful tx
 	Type SubmittedTxStatus
 	// Message is the more descriptive message for the error

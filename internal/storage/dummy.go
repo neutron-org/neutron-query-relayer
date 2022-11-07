@@ -20,7 +20,7 @@ func (s *DummyStorage) SetLastQueryHeight(queryID uint64, block uint64) error {
 }
 
 func (s *DummyStorage) TxExists(queryID uint64, hash string) (exists bool, err error) {
-	return false, fmt.Errorf("TxExists is not implemented for DummyStorages")
+	return false, fmt.Errorf("TxExists is not implemented for DummyStorage")
 }
 
 func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) {
@@ -32,11 +32,11 @@ func (s *DummyStorage) GetLastQueryHeight(queryID uint64) (uint64, bool, error) 
 }
 
 func (s *DummyStorage) GetAllPendingTxs() ([]*relay.PendingSubmittedTxInfo, error) {
-	return nil, fmt.Errorf("GetAllPendingTxs is not implemented for DummyStorages")
+	return nil, fmt.Errorf("GetAllPendingTxs is not implemented for DummyStorage")
 }
 
 func (s *DummyStorage) GetAllUnsuccessfulTxs() ([]*relay.UnsuccessfulTxInfo, error) {
-	return nil, fmt.Errorf("GetAllUnsuccessfulTxs is not implemented for DummyStorages")
+	return nil, fmt.Errorf("GetAllUnsuccessfulTxs is not implemented for DummyStorage")
 }
 
 func (s *DummyStorage) Close() error {

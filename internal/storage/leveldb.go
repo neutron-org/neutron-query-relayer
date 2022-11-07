@@ -107,7 +107,6 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 	s.Lock()
 	defer s.Unlock()
 
-	// save tx txInfo
 	t, err := s.db.OpenTransaction()
 	if err != nil {
 		return fmt.Errorf("failed to open leveldb transaction: %w", err)
@@ -147,7 +146,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
 			NeutronHash:     neutronHash,
-			SubmitTime:      time.Now(),
+			ErrorTime:       time.Now(),
 			Type:            txInfo.Status,
 			Message:         txInfo.Message,
 		}
