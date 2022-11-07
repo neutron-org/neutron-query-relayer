@@ -27,7 +27,7 @@ const (
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the query relayer main app1",
+	Short: "Start the query relayer main app",
 	Run: func(cmd *cobra.Command, args []string) {
 		startRelayer()
 	},
