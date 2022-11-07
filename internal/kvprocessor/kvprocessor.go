@@ -23,16 +23,18 @@ import (
 // KVProcessor is implementation of relay.KVProcessor that processes event query KV type.
 // Obtains the proof for a query we need to process, and sends it to  the neutron
 type KVProcessor struct {
-	querier           *tmquerier.Querier
-	minKVUpdatePeriod uint64
-	logger            *zap.Logger
-	submitter         relay.Submitter
-	storage           relay.Storage
-	targetChain       *relayer.Chain
-	neutronChain      *relayer.Chain
+	trustedHeaderFetcher relay.TrustedHeaderFetcher
+	querier              *tmquerier.Querier
+	minKVUpdatePeriod    uint64
+	logger               *zap.Logger
+	submitter            relay.Submitter
+	storage              relay.Storage
+	targetChain          *relayer.Chain
+	neutronChain         *relayer.Chain
 }
 
 func NewKVProcessor(
+	trustedHeaderFetcher relay.TrustedHeaderFetcher,
 	querier *tmquerier.Querier,
 	minKVUpdatePeriod uint64,
 	logger *zap.Logger,
@@ -41,13 +43,14 @@ func NewKVProcessor(
 	targetChain *relayer.Chain,
 	neutronChain *relayer.Chain) relay.KVProcessor {
 	return &KVProcessor{
-		querier:           querier,
-		minKVUpdatePeriod: minKVUpdatePeriod,
-		logger:            logger,
-		submitter:         submitter,
-		storage:           storage,
-		targetChain:       targetChain,
-		neutronChain:      neutronChain,
+		trustedHeaderFetcher: trustedHeaderFetcher,
+		querier:              querier,
+		minKVUpdatePeriod:    minKVUpdatePeriod,
+		logger:               logger,
+		submitter:            submitter,
+		storage:              storage,
+		targetChain:          targetChain,
+		neutronChain:         neutronChain,
 	}
 }
 
@@ -140,7 +143,7 @@ func (p *KVProcessor) submitKVWithProof(
 		return fmt.Errorf("could not submit proof: %w", err)
 	}
 	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(st).Seconds())
-	p.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
+	p.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID), zap.Uint64("remote_height", uint64(height-1)), zap.Uint64("trusted_header_height", srcHeader.GetHeight().GetRevisionHeight()))
 	return nil
 }
 
@@ -149,7 +152,7 @@ func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (ibce
 	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		srcHeader, err = p.targetChain.ChainProvider.GetIBCUpdateHeader(ctx, height, p.neutronChain.ChainProvider, p.neutronChain.PathEnd.ClientID)
+		srcHeader, err = p.trustedHeaderFetcher.FetchTrustedHeaderForHeight(ctx, uint64(height))
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		p.logger.Info(
