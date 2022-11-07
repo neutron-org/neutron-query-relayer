@@ -50,9 +50,8 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	return neutronQuery, nil
 }
 
-// getActiveQueries retrieves the list of registered queries filtered by owner, connection, and query type.
+// getNeutronRegisteredQueries retrieves the list of registered queries filtered by owner, connection, and query type.
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
-	// TODO: use pagination.
 	var out = map[string]*neutrontypes.RegisteredQuery{}
 	var pageKey *strfmt.Base64
 	for {
@@ -121,7 +120,7 @@ func (s *Subscriber) subscriberName() string {
 	return "neutron-rpcClient"
 }
 
-// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+// getQueryUpdatedSubscription returns a Query to filter out interchain "query_updated" events.
 func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.connectionID,
@@ -130,7 +129,7 @@ func (s *Subscriber) getQueryUpdatedSubscription() string {
 	)
 }
 
-// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+// getQueryRemovedSubscription returns a Query to filter out interchain "query_removed" events.
 func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.connectionID,
@@ -139,7 +138,7 @@ func (s *Subscriber) getQueryRemovedSubscription() string {
 	)
 }
 
-// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+// getNewBlockHeaderSubscription returns a Query to filter out interchain "NewBlockHeader" events.
 func (s *Subscriber) getNewBlockHeaderSubscription() string {
 	return fmt.Sprintf("%s='%s'",
 		eventAttr, types.EventNewBlockHeader,
