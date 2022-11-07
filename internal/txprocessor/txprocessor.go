@@ -110,7 +110,7 @@ func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neut
 }
 
 func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
-	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.Fetch(ctx, txStruct.Height)
+	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.FetchTrustedHeadersForHeights(ctx, txStruct.Height)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get header for src chain: %w", err)
 	}

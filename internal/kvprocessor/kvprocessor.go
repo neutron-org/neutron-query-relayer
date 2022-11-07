@@ -152,7 +152,7 @@ func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (ibce
 	var srcHeader ibcexported.Header
 	if err := retry.Do(func() error {
 		var err error
-		srcHeader, err = p.trustedHeaderFetcher.FetchBest(ctx, uint64(height))
+		srcHeader, err = p.trustedHeaderFetcher.FetchTrustedHeaderForHeight(ctx, uint64(height))
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		p.logger.Info(
