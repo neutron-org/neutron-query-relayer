@@ -196,6 +196,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 
 		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
+		s.logger.Debug("Query updated(created)", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
 	}
 
 	return nil
@@ -221,6 +222,8 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 
 		// Delete the query from the active queries list.
 		delete(s.activeQueries, queryID)
+		s.logger.Debug("Query removed", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
+
 	}
 
 	return nil
