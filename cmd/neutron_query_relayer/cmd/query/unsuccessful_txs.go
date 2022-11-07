@@ -20,7 +20,6 @@ var UnsuccessfulTxs = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Url: %s\n\n", url)
 
 		response := get(url, webserver.UnsuccessfulTxsResource)
 		fmt.Printf("Unsuccessful txs:\n%s\n", response)

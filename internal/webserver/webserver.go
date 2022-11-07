@@ -38,7 +38,9 @@ func UnsuccessfulTxs(logger *zap.Logger, store relay.Storage) HandlerFunc {
 			http.Error(w, "Error processing request", http.StatusInternalServerError)
 		}
 
-		err = json.NewEncoder(w).Encode(res)
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		err = encoder.Encode(res)
 		if err != nil {
 			logger.Error("failed to encode result of GetAllUnsuccessfulTxs", zap.Error(err))
 			http.Error(w, "Error processing request", http.StatusInternalServerError)

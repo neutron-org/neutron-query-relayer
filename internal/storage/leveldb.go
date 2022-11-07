@@ -60,7 +60,8 @@ func (s *LevelDBStorage) GetAllUnsuccessfulTxs() ([]*relay.UnsuccessfulTxInfo, e
 
 	iterator := s.db.NewIterator(util.BytesPrefix([]byte(ErrorTxStatusPrefix)), nil)
 	defer iterator.Release()
-	var txs []*relay.UnsuccessfulTxInfo
+	// use `make` to avoid printing empty value in json as `null`
+	var txs = make([]*relay.UnsuccessfulTxInfo, 0)
 	for iterator.Next() {
 		value := iterator.Value()
 		var txInfo relay.UnsuccessfulTxInfo
