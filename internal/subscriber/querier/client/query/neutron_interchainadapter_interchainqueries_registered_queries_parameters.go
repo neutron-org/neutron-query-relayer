@@ -53,10 +53,12 @@ func NewNeutronInterchainadapterInterchainqueriesRegisteredQueriesParamsWithHTTP
 	}
 }
 
-/* NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams contains all the parameters to send to the API endpoint
-   for the neutron interchainadapter interchainqueries registered queries operation.
+/*
+NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the neutron interchainadapter interchainqueries registered queries operation.
+
+	Typically these are written to a http.Request.
 */
 type NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams struct {
 
