@@ -8,8 +8,8 @@ import (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "neutron_query_relayer",
-	Short: "Neutron Interchain Query Relayer",
+	Use:   "neutron_queries_relayer",
+	Short: "Neutron Interchain Queries Relayer",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -19,8 +19,4 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
-}
-
-func init() {
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -16,13 +13,14 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 const (
@@ -32,7 +30,7 @@ const (
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the query relayer main app",
+	Short: "Start the query relayer main app1",
 	Run: func(cmd *cobra.Command, args []string) {
 		startRelayer()
 	},
