@@ -131,3 +131,11 @@ make generate-openapi
 ```
 
 The swagger specs can be taken from the Neutron [repo](https://github.com/neutron-org/neutron/blob/main/docs/static/openapi.yml) (you need to remove most of the generated specification). 
+
+# Querying api server
+
+You can query relayer as an api.
+
+For example, to get list of unsuccessfully processed transactions:
+
+`go run ./cmd/neutron_query_relayer query unsuccessful-txs --url http://localhost:10001`
