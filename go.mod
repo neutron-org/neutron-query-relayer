@@ -16,6 +16,7 @@ require (
 	github.com/neutron-org/neutron v0.0.0-20220916150924-ec7dc591745d
 	github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73
 	github.com/prometheus/client_golang v1.12.2
+	github.com/spf13/cobra v1.6.1
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.19
 	go.uber.org/zap v1.23.0
@@ -126,7 +127,6 @@ require (
 	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.11.0 // indirect
