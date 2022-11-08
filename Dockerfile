@@ -1,11 +1,12 @@
 FROM golang:1.18-buster as builder
 
-RUN apt update && apt -y install openssh-server git 
+ARG LDFLAGS
 RUN mkdir /app
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN go mod download && \
-    make build
+RUN go build -ldflags "${LDFLAGS}" -a -o build/neutron_query_relayer ./cmd/neutron_query_relayer/*.go
 
 FROM debian:buster
 RUN apt update && apt install ca-certificates curl -y && apt-get clean

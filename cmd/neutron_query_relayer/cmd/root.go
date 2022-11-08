@@ -8,8 +8,8 @@ import (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "neutron_queries_relayer",
-	Short: "Neutron Interchain Queries Relayer",
+	Use:   "neutron_query_relayer",
+	Short: "Neutron Interchain Query Relayer",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
