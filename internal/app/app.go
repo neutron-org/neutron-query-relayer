@@ -33,6 +33,11 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
+var (
+	Version string = ""
+	Commit  string = ""
+)
+
 const (
 	AppContext                   = "app"
 	SubscriberContext            = "subscriber"
@@ -143,6 +148,7 @@ func NewDefaultRelayer(
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
 		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, store, proofSubmitter, logRegistry.Get(TxProcessorContext))
 		kvProcessor          = kvprocessor.NewKVProcessor(
+			trustedHeaderFetcher,
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
 			logRegistry.Get(KVProcessorContext),
