@@ -26,6 +26,11 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	Version string = ""
+	Commit  string = ""
+)
+
 const (
 	AppContext                   = "app"
 	SubscriberContext            = "subscriber"
@@ -134,6 +139,7 @@ func NewDefaultRelayer(
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
 		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, st, proofSubmitter, logRegistry.Get(TxProcessorContext))
 		kvProcessor          = kvprocessor.NewKVProcessor(
+			trustedHeaderFetcher,
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
 			logRegistry.Get(KVProcessorContext),
