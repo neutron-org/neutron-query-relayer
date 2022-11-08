@@ -40,6 +40,7 @@ func init() {
 func startRelayer() {
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
+		app.AppContext,
 		app.SubscriberContext,
 		app.RelayerContext,
 		app.TargetChainRPCClientContext,
