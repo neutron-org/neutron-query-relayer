@@ -1,7 +1,6 @@
 FROM golang:1.18-buster as builder
 
 ARG LDFLAGS
-RUN apt update && apt -y install openssh-server git 
 RUN mkdir /app
 WORKDIR /app
 COPY go.mod go.sum ./
