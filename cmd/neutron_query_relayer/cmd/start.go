@@ -11,8 +11,6 @@ import (
 	"syscall"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/storage"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -66,23 +64,6 @@ func startRelayer() {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
 
-	// === TODO: wait until storage is created in main (See oopcode's PR) and remove this!
-	var st relay.Storage
-
-	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		//return nil, fmt.Errorf("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
-	}
-
-	if cfg.StoragePath != "" {
-		st, err = storage.NewLevelDBStorage(cfg.StoragePath)
-		//if err != nil {
-		//	return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
-		//}
-	} else {
-		st = storage.NewDummyStorage()
-	}
-	// === REMOVE UNTIL HERE
-
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
 		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
@@ -95,11 +76,22 @@ func startRelayer() {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
+	// The storage has to be shared because of the LevelDB single process restriction.
+	storage, err := app.NewDefaultStorage(cfg, logger)
+	if err != nil {
+		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
+	}
+	defer func(storage relay.Storage) {
+		if err := storage.Close(); err != nil {
+			logger.Error("Failed to close storage", zap.Error(err))
+		}
+	}(storage)
+
 	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
 		logger.Fatal("failed to create subscriber", zap.Error(err))
 	}
-	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, st)
+	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
 	if err != nil {
 		logger.Fatal("failed to create relayer", zap.Error(err))
 	}

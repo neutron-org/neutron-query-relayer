@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/storage"
+	"go.uber.org/zap"
+
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 
 	nlogger "github.com/neutron-org/neutron-logger"
@@ -68,7 +71,7 @@ func NewDefaultRelayer(
 	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
-	st relay.Storage,
+	storage relay.Storage,
 ) (*relay.Relayer, error) {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
@@ -109,20 +112,20 @@ func NewDefaultRelayer(
 		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
-		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, st, proofSubmitter, logRegistry.Get(TxProcessorContext))
+		txProcessor          = txprocessor.NewTxProcessor(trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext))
 		kvProcessor          = kvprocessor.NewKVProcessor(
 			trustedHeaderFetcher,
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
 			logRegistry.Get(KVProcessorContext),
 			proofSubmitter,
-			st,
+			storage,
 			targetChain,
 			neutronChain,
 		)
 		txSubmitChecker = txsubmitchecker.NewTxSubmitChecker(
 			txProcessor.GetSubmitNotificationChannel(),
-			st,
+			storage,
 			neutronClient,
 			logRegistry.Get(TxSubmitCheckerContext),
 			cfg.CheckSubmittedTxStatusDelay,
@@ -130,7 +133,7 @@ func NewDefaultRelayer(
 		relayer = relay.NewRelayer(
 			cfg,
 			txQuerier,
-			st,
+			storage,
 			txProcessor,
 			kvProcessor,
 			txSubmitChecker,
@@ -139,6 +142,28 @@ func NewDefaultRelayer(
 		)
 	)
 	return relayer, nil
+}
+
+func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
+	var (
+		err            error
+		relayerStorage relay.Storage
+	)
+
+	if cfg.AllowTxQueries && cfg.StoragePath == "" {
+		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+	}
+
+	if cfg.StoragePath != "" {
+		relayerStorage, err = storage.NewLevelDBStorage(cfg.StoragePath)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
+		}
+	} else {
+		relayerStorage = storage.NewDummyStorage()
+	}
+
+	return relayerStorage, nil
 }
 
 func loadChains(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
