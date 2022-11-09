@@ -23,3 +23,6 @@ build-docker:
 
 generate-openapi:
 	@cd ./internal/subscriber/querier ; swagger generate client -f openapi.yml
+
+install:
+	go install -ldflags '$(ldflags)' -a ./cmd/neutron_query_relayer

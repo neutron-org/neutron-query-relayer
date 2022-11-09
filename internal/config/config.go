@@ -30,31 +30,26 @@ const EnvPrefix string = "RELAYER"
 type NeutronChainConfig struct {
 	RPCAddr        string        `required:"true" split_words:"true"`
 	RESTAddr       string        `required:"true" split_words:"true"`
-	ChainID        string        `required:"true" split_words:"true"`
 	HomeDir        string        `required:"true" split_words:"true"`
 	SignKeyName    string        `required:"true" split_words:"true"`
-	Timeout        time.Duration `required:"true" split_words:"true"`
+	Timeout        time.Duration `split_words:"true" default:"10s"`
 	GasPrices      string        `required:"true" split_words:"true"`
 	GasLimit       uint64        `split_words:"true" default:"0"`
 	GasAdjustment  float64       `required:"true" split_words:"true"`
 	ConnectionID   string        `required:"true" split_words:"true"`
-	ClientID       string        `required:"true" split_words:"true"`
-	Debug          bool          `required:"true" split_words:"true"`
+	Debug          bool          `split_words:"true" default:"false"`
 	KeyringBackend string        `required:"true" split_words:"true"`
-	OutputFormat   string        `required:"true" split_words:"true"`
-	SignModeStr    string        `required:"true" split_words:"true"`
+	OutputFormat   string        `split_words:"true" default:"json"`
+	SignModeStr    string        `split_words:"true" default:"direct"`
 }
 
 type TargetChainConfig struct {
 	RPCAddr                string        `required:"true" split_words:"true"`
-	ChainID                string        `required:"true" split_words:"true"`
 	AccountPrefix          string        `required:"true" split_words:"true"`
 	ValidatorAccountPrefix string        `required:"true" split_words:"true"`
-	Timeout                time.Duration `required:"true" split_words:"true"`
-	ConnectionID           string        `required:"true" split_words:"true"`
-	ClientID               string        `required:"true" split_words:"true"`
-	Debug                  bool          `required:"true" split_words:"true"`
-	OutputFormat           string        `required:"true" split_words:"true"`
+	Timeout                time.Duration `split_words:"true" default:"10s"`
+	Debug                  bool          `split_words:"true" default:"false"`
+	OutputFormat           string        `split_words:"true" default:"json"`
 }
 
 func NewNeutronQueryRelayerConfig() (NeutronQueryRelayerConfig, error) {
