@@ -101,7 +101,7 @@ func NewDefaultRelayer(
 		cfg.NeutronChain.HomeDir,
 		cfg.NeutronChain.SignKeyName,
 		cfg.NeutronChain.SignKeySeed,
-		cfg.NeutronChain.SignKeyHDPath,
+		cfg.NeutronChain.SignKeyHdPath,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize keybase: %w", err)
