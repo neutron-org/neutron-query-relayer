@@ -10,6 +10,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -45,6 +47,7 @@ func startRelayer() {
 		app.AppContext,
 		app.SubscriberContext,
 		app.RelayerContext,
+		webserver.ServerContext,
 		app.TargetChainRPCClientContext,
 		app.NeutronChainRPCClientContext,
 		app.TargetChainProviderContext,
@@ -88,6 +91,14 @@ func startRelayer() {
 			logger.Error("Failed to close storage", zap.Error(err))
 		}
 	}(storage)
+
+	go func() {
+		router := webserver.Router(logRegistry, storage)
+		err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.WebserverPort), router)
+		if err != nil {
+			logger.Fatal("failed to serve webserver", zap.Error(err))
+		}
+	}()
 
 	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
