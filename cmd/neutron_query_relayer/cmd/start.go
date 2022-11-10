@@ -10,10 +10,11 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"

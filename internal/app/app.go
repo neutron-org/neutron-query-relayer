@@ -14,6 +14,7 @@ import (
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 
 	nlogger "github.com/neutron-org/neutron-logger"

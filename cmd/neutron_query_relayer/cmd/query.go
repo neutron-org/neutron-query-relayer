@@ -3,9 +3,9 @@ package cmd
 import (
 	"log"
 
-	"github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/cmd/query"
-
 	"github.com/spf13/cobra"
+
+	"github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/cmd/queries"
 )
 
 var url string
@@ -16,13 +16,13 @@ var QueryCmd = &cobra.Command{
 }
 
 func init() {
-	QueryCmd.PersistentFlags().StringVarP(&url, query.UrlFlagName, "u", "", "server url")
-	err := QueryCmd.MarkPersistentFlagRequired(query.UrlFlagName)
+	QueryCmd.PersistentFlags().StringVarP(&url, queries.UrlFlagName, "u", "", "server url")
+	err := QueryCmd.MarkPersistentFlagRequired(queries.UrlFlagName)
 	if err != nil {
 		log.Fatalf("could not initialize query command: %s", err)
 	}
 
-	QueryCmd.AddCommand(query.UnsuccessfulTxs)
+	QueryCmd.AddCommand(queries.UnsuccessfulTxs)
 
 	RootCmd.AddCommand(QueryCmd)
 }
