@@ -16,7 +16,7 @@ var QueryCmd = &cobra.Command{
 }
 
 func init() {
-	QueryCmd.PersistentFlags().StringVarP(&url, queries.UrlFlagName, "u", "", "server url")
+	QueryCmd.PersistentFlags().StringVarP(&url, queries.UrlFlagName, "u", "http://localhost:10001", "server url")
 	err := QueryCmd.MarkPersistentFlagRequired(queries.UrlFlagName)
 	if err != nil {
 		log.Fatalf("could not initialize query command: %s", err)

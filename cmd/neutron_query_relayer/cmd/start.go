@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
 
@@ -82,22 +83,40 @@ func startRelayer() {
 	wg := &sync.WaitGroup{}
 
 	// The storage has to be shared because of the LevelDB single process restriction.
-	storage, err := app.NewDefaultStorage(cfg, logger)
+	storage, err := app.NewDefaultStorage(cfg)
 	if err != nil {
-		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
+		logger.Fatal("failed to create NewDefaultStorage", zap.Error(err))
 	}
 	defer func(storage relay.Storage) {
 		if err := storage.Close(); err != nil {
-			logger.Error("Failed to close storage", zap.Error(err))
+			logger.Error("failed to close storage", zap.Error(err))
 		}
 	}(storage)
 
 	go func() {
-		router := webserver.Router(logRegistry, storage)
-		err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.WebserverPort), router)
-		if err != nil {
-			logger.Fatal("failed to serve webserver", zap.Error(err))
+		server := &http.Server{
+			Addr:    fmt.Sprintf(":%d", cfg.WebserverPort),
+			Handler: webserver.Router(logRegistry, storage),
 		}
+		go func() {
+			if err := server.ListenAndServe(); err != nil {
+				if err != http.ErrServerClosed {
+					logger.Fatal("failed to serve webserver", zap.Error(err))
+				}
+			}
+		}()
+
+		<-ctx.Done()
+
+		logger.Info("shutting down the api webserver")
+		webserverCtx, cancelWebserverCtx := context.WithTimeout(context.Background(), time.Second*5)
+		if err := server.Shutdown(webserverCtx); err != nil {
+			logger.Error("failed to shutdown api webserver gracefully: %w", zap.Error(err))
+			cancelWebserverCtx()
+			return
+		}
+		cancelWebserverCtx()
+		logger.Info("api webserver shut down successfully")
 	}()
 
 	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)

@@ -36,6 +36,7 @@ func UnsuccessfulTxs(logger *zap.Logger, store relay.Storage) HandlerFunc {
 		if err != nil {
 			logger.Error("failed to execute GetAllUnsuccessfulTxs", zap.Error(err))
 			http.Error(w, "Error processing request", http.StatusInternalServerError)
+			return
 		}
 
 		encoder := json.NewEncoder(w)

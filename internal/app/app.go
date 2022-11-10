@@ -165,14 +165,14 @@ func NewDefaultRelayer(
 	return relayer, nil
 }
 
-func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
+func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig) (relay.Storage, error) {
 	var (
 		err            error
 		relayerStorage relay.Storage
 	)
 
 	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+		return nil, fmt.Errorf("could not setup default storage: RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
 	}
 
 	if cfg.StoragePath != "" {
