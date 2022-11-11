@@ -129,11 +129,8 @@ The swagger specs can be taken from the Neutron [repo](https://github.com/neutro
 
 # Querying api server
 
-You can query relayer as an api webserver.
+You can query any running relayer as an api webserver.
 
-Print available commands for query
-`go run ./cmd/neutron_query_relayer query --url [NODE_URL]`
+Print available queries:
 
-For example, to get list of unsuccessfully processed transactions on locally running relayer:
-
-`go run ./cmd/neutron_query_relayer query unsuccessful-txs --url http://localhost:10001`
+`go run ./cmd/neutron_query_relayer query`
