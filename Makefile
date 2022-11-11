@@ -2,6 +2,7 @@ VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
 COMMIT := $(shell git log -1 --format='%H')
 BUILDDIR ?= $(CURDIR)/build
 DOCKER := $(shell which docker)
+GO_VERSION=1.18
 
 
 ldflags = -X github.com/neutron-org/neutron-query-relayer/internal/app.Version=$(VERSION) \
