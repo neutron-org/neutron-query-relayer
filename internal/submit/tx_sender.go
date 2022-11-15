@@ -56,6 +56,7 @@ func NewTxSender(
 	keybase keyring.Keyring,
 	keyName string,
 	logger *zap.Logger,
+	neutronChainID string,
 ) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
 
@@ -63,7 +64,7 @@ func NewTxSender(
 		WithKeybase(keybase).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithTxConfig(txConfig).
-		WithChainID(cfg.ChainID).
+		WithChainID(neutronChainID).
 		WithGasAdjustment(cfg.GasAdjustment).
 		WithGasPrices(cfg.GasPrices)
 
@@ -74,7 +75,7 @@ func NewTxSender(
 		txConfig:    txConfig,
 		baseTxf:     baseTxf,
 		rpcClient:   rpcClient,
-		chainID:     cfg.ChainID,
+		chainID:     neutronChainID,
 		signKeyName: keyName,
 		gasPrices:   cfg.GasPrices,
 		gasLimit:    cfg.GasLimit,

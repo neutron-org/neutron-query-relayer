@@ -28,11 +28,50 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
+	IbcCoreConnectionV1Connection(params *IbcCoreConnectionV1ConnectionParams, opts ...ClientOption) (*IbcCoreConnectionV1ConnectionOK, error)
+
 	NeutronInterchainadapterInterchainqueriesRegisteredQueries(params *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams, opts ...ClientOption) (*NeutronInterchainadapterInterchainqueriesRegisteredQueriesOK, error)
 
 	NeutronInterchainadapterInterchainqueriesRegisteredQuery(params *NeutronInterchainadapterInterchainqueriesRegisteredQueryParams, opts ...ClientOption) (*NeutronInterchainadapterInterchainqueriesRegisteredQueryOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
+}
+
+/*
+IbcCoreConnectionV1Connection connections queries an i b c connection end
+*/
+func (a *Client) IbcCoreConnectionV1Connection(params *IbcCoreConnectionV1ConnectionParams, opts ...ClientOption) (*IbcCoreConnectionV1ConnectionOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewIbcCoreConnectionV1ConnectionParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "IbcCoreConnectionV1Connection",
+		Method:             "GET",
+		PathPattern:        "/ibc/core/connection/v1/connections/{connection_id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &IbcCoreConnectionV1ConnectionReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*IbcCoreConnectionV1ConnectionOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*IbcCoreConnectionV1ConnectionDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
 /*

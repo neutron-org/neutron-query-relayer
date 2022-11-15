@@ -59,7 +59,7 @@ func startRelayer() {
 	logger := logRegistry.Get(mainContext)
 	logger.Info("neutron-query-relayer starts...")
 
-	cfg, err := config.NewNeutronQueryRelayerConfig()
+	cfg, err := config.NewNeutronQueryRelayerConfig(logger)
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
