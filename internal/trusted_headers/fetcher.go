@@ -265,10 +265,10 @@ func (thf *TrustedHeaderFetcher) isSuitableCS(cs clienttypes.ConsensusStateWithH
 	if !ok {
 		return false, fmt.Errorf("couldn't cast consensus state value of type %T to ibcexported.ConsensusState", cs.ConsensusState.GetCachedValue())
 	}
-	olderOrSameAsHeightInSameRevision := cs.Height.RevisionNumber == thf.revisionNumber && cs.Height.RevisionHeight < height
+	olderThanHeightInSameRevision := cs.Height.RevisionNumber == thf.revisionNumber && cs.Height.RevisionHeight < height
 	consensusTimestamp := time.Unix(0, int64(ibcCS.GetTimestamp()))
 	inTrustingPeriod := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
-	return olderOrSameAsHeightInSameRevision && inTrustingPeriod, nil
+	return olderThanHeightInSameRevision && inTrustingPeriod, nil
 }
 
 func requestPage(clientID string, nextKey []byte) *clienttypes.QueryConsensusStatesRequest {
