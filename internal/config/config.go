@@ -26,6 +26,7 @@ type NeutronQueryRelayerConfig struct {
 
 const EnvPrefix string = "RELAYER"
 
+// NeutronChainConfig TODO: research if HomeDir parameter is needed for something but keys (so it might be optional and ignored for memory keyring)
 type NeutronChainConfig struct {
 	RPCAddr         string        `required:"true" split_words:"true"`
 	RESTAddr        string        `required:"true" split_words:"true"`
