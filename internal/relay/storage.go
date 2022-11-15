@@ -1,10 +1,6 @@
 package relay
 
-import (
-	"time"
-)
-
-// PendingSubmittedTxInfo contains information about transaction which was submitted but have to be confirmed(committed or not)
+// PendingSubmittedTxInfo contains information about transaction which was submitted but has to be confirmed (committed or not)
 type PendingSubmittedTxInfo struct {
 	// QueryID is the query_id transactions was submitted for
 	QueryID uint64
@@ -12,8 +8,6 @@ type PendingSubmittedTxInfo struct {
 	SubmittedTxHash string
 	// NeutronHash is the hash of the *neutron chain transaction* which is responsible for delivering remote transaction to neutron
 	NeutronHash string
-	// SubmitTime is the time when the remote transaction was submitted to the neutron chain
-	SubmitTime time.Time
 }
 
 // SubmittedTxInfo is a struct which contains status of fetched and submitted transaction

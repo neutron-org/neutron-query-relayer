@@ -112,7 +112,6 @@ func (r TXProcessor) submitTxWithProofs(
 				QueryID:         queryID,
 				SubmittedTxHash: hash,
 				NeutronHash:     neutronTxHash,
-				SubmitTime:      time.Now(),
 			}
 		case <-ctx.Done():
 			r.logger.Info("Cancelled PendingSubmittedTxInfo delayed checking",

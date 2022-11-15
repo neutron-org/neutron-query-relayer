@@ -63,7 +63,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry,
 	storage relay.Storage) (relay.TxSubmitChecker, error) {
 	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout,
-		logRegistry.Get(TargetChainRPCClientContext))
+		logRegistry.Get(NeutronChainRPCClientContext))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create NewRPCClient: %w", err)
 	}
@@ -149,23 +149,15 @@ func NewDefaultRelayer(
 func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
 	var (
 		err            error
-		relayerStorage relay.Storage
+		leveldbStorage relay.Storage
 	)
 
-	if cfg.AllowTxQueries && cfg.StoragePath == "" {
-		logger.Fatal("RELAYER_DB_PATH must be set with RELAYER_ALLOW_TX_QUERIES=true")
+	leveldbStorage, err = storage.NewLevelDBStorage(cfg.StoragePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create NewLevelDBStorage: %w", err)
 	}
 
-	if cfg.StoragePath != "" {
-		relayerStorage, err = storage.NewLevelDBStorage(cfg.StoragePath)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't initialize levelDB storage: %w", err)
-		}
-	} else {
-		relayerStorage = storage.NewDummyStorage()
-	}
-
-	return relayerStorage, nil
+	return leveldbStorage, nil
 }
 
 func loadChains(

@@ -68,10 +68,8 @@ func main() {
 		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
 	}
 	defer func(storage relay.Storage) {
-		if cfg.AllowTxQueries {
-			if err := storage.Close(); err != nil {
-				logger.Error("Failed to close storage", zap.Error(err))
-			}
+		if err := storage.Close(); err != nil {
+			logger.Error("Failed to close storage", zap.Error(err))
 		}
 	}(storage)
 
