@@ -53,7 +53,32 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 	}
 }
 
-// Fetch returns two Headers for height and height+1 packed into *codectypes.Any value
+// FetchTrustedHeaderForHeight returns the best suitable TrustedHeader for given height
+// Arguments:
+// `height` - remote chain block height X = transaction with such block height
+func (thf *TrustedHeaderFetcher) FetchTrustedHeaderForHeight(ctx context.Context, height uint64) (header ibcexported.Header, err error) {
+	start := time.Now()
+
+	// tries to find height of the closest consensus state height that is less or equal than provided height
+	trustedHeight, err := thf.getTrustedHeight(ctx, height)
+	if err != nil {
+		err = fmt.Errorf("no satisfying consensus state found: %w", err)
+		return
+	}
+	thf.logger.Debug("Found suitable consensus state with trusted height", zap.Uint64("height", trustedHeight.RevisionHeight))
+
+	header, err = thf.trustedHeaderAtHeight(ctx, trustedHeight, height)
+	if err != nil {
+		err = fmt.Errorf("failed to get header for src chain: %w", err)
+		return
+	}
+
+	neutronmetrics.RecordActionDuration("TrustedHeaderFetcher", time.Since(start).Seconds())
+
+	return
+}
+
+// FetchTrustedHeadersForHeights returns two Headers for height and height+1 packed into *codectypes.Any value
 // We need two blocks in Neutron to verify both delivery of tx and inclusion in block:
 // - We need to know block X (`header`) to verify inclusion of transaction for block X (inclusion proof)
 // - We need to know block X+1 (`nextHeader`) to verify response of transaction for block X
@@ -61,7 +86,7 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 //
 // Arguments:
 // `height` - remote chain block height X = transaction with such block height
-func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
+func (thf *TrustedHeaderFetcher) FetchTrustedHeadersForHeights(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
 	start := time.Now()
 
 	// tries to find height of the closest consensus state height that is less or equal than provided height
@@ -115,7 +140,7 @@ func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context
 // This allows us to send UpdateClient msg not only for new heights, but for the old ones (which are still in the trusting period).
 //
 // Arguments:
-// `trustedHeight` - height of any consensus state that's height <= supplied height
+// `trustedHeight` - height of any consensus state that's height < supplied height
 // `height` - remote chain height for a header
 func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (ibcexported.Header, error) {
 	header, err := thf.retryGetLightSignedHeaderAtHeight(ctx, height)
@@ -138,8 +163,8 @@ func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trus
 	return header, nil
 }
 
-// getTrustedHeight tries to find height of any consensusState within trusting period with a height <= supplied height
-// To do this, it simply iterates over all consensus states and checks each that it's within trusting period AND <= supplied_height
+// getTrustedHeight tries to find height of any consensusState within trusting period with a height < supplied height
+// To do this, it simply iterates over all consensus states and checks each that it's within trusting period AND < supplied_height
 // Note that we cannot optimize this search due to consensus states being stored in a tree with *STRING* key `RevisionNumber-RevisionHeight`
 //
 // Arguments:
@@ -233,17 +258,17 @@ func (thf *TrustedHeaderFetcher) retryGetLightSignedHeaderAtHeight(ctx context.C
 // isSuitableCS parses the given consensus state and checks if its height can be used as trusted.
 // The condition for this check is the following:
 //
-// 1. The consensus state height is in the same revision and is less or equal to the given height;
+// 1. The consensus state height is in the same revision and is less than the given height;
 // 2. The consensus state timestamp is within the trusting period.
 func (thf *TrustedHeaderFetcher) isSuitableCS(cs clienttypes.ConsensusStateWithHeight, trustingPeriod time.Duration, height uint64) (bool, error) {
 	ibcCS, ok := cs.ConsensusState.GetCachedValue().(ibcexported.ConsensusState)
 	if !ok {
 		return false, fmt.Errorf("couldn't cast consensus state value of type %T to ibcexported.ConsensusState", cs.ConsensusState.GetCachedValue())
 	}
-	olderOrSameAsHeightInSameRevision := cs.Height.RevisionNumber == thf.revisionNumber && cs.Height.RevisionHeight <= height
+	olderThanHeightInSameRevision := cs.Height.RevisionNumber == thf.revisionNumber && cs.Height.RevisionHeight < height
 	consensusTimestamp := time.Unix(0, int64(ibcCS.GetTimestamp()))
 	inTrustingPeriod := consensusTimestamp.Add(trustingPeriod).Add(-submissionMarginPeriod).After(time.Now())
-	return olderOrSameAsHeightInSameRevision && inTrustingPeriod, nil
+	return olderThanHeightInSameRevision && inTrustingPeriod, nil
 }
 
 func requestPage(clientID string, nextKey []byte) *clienttypes.QueryConsensusStatesRequest {

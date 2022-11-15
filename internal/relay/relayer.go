@@ -68,12 +68,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 	r.logger.Info("successfully initialized tx submit checker")
 
 	for {
-		var (
-			start     time.Time
-			queryType neutrontypes.InterchainQueryType
-			queryID   uint64
-			err       error
-		)
+		var err error
 		select {
 		case <-ctx.Done():
 			r.logger.Info("Context cancelled, shutting down relayer...")
@@ -84,6 +79,7 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 				r.logger.Info("Context cancelled, shutting down relayer...")
 				return r.stop()
 			case query := <-tasks:
+				start := time.Now()
 				switch query.QueryType {
 				case string(neutrontypes.InterchainQueryTypeKV):
 					msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
@@ -96,10 +92,10 @@ func (r *Relayer) Run(ctx context.Context, tasks <-chan neutrontypes.RegisteredQ
 				}
 
 				if err != nil {
-					r.logger.Error("could not process message", zap.Uint64("query_id", queryID), zap.Error(err))
-					neutronmetrics.AddFailedRequest(string(queryType), time.Since(start).Seconds())
+					r.logger.Error("could not process message", zap.Uint64("query_id", query.Id), zap.Error(err))
+					neutronmetrics.AddFailedRequest(string(query.QueryType), time.Since(start).Seconds())
 				} else {
-					neutronmetrics.AddSuccessRequest(string(queryType), time.Since(start).Seconds())
+					neutronmetrics.AddSuccessRequest(string(query.QueryType), time.Since(start).Seconds())
 				}
 			}
 		}
