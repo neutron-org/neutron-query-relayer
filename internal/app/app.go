@@ -3,19 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
-	"time"
-
-	"go.uber.org/zap"
-
 	"github.com/avast/retry-go/v4"
-
-	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
-
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"go.uber.org/zap"
-
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
@@ -25,6 +14,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
 	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
@@ -32,6 +22,9 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	"go.uber.org/zap"
+	"time"
 )
 
 var (
@@ -84,8 +77,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 
 func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry,
 	storage relay.Storage) (relay.TxSubmitChecker, error) {
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout,
-		logRegistry.Get(NeutronChainRPCClientContext))
+	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create NewRPCClient: %w", err)
 	}
@@ -151,6 +143,7 @@ func NewDefaultRelayer(
 		txProcessor          = txprocessor.NewTxProcessor(
 			trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)
 		kvProcessor = kvprocessor.NewKVProcessor(
+			trustedHeaderFetcher,
 			targetQuerier,
 			cfg.MinKvUpdatePeriod,
 			logRegistry.Get(KVProcessorContext),
@@ -191,7 +184,7 @@ func loadChains(
 	logRegistry *nlogger.Registry,
 	connParams *connectionParams,
 ) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain)
+	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain, connParams.targetChainID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
 	}

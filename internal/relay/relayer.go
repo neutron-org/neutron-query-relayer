@@ -39,7 +39,7 @@ func NewRelayer(
 	txQuerier TXQuerier,
 	store Storage,
 	txProcessor TXProcessor,
-	kvprocessor KVProcessor,
+	kvProcessor KVProcessor,
 	targetChain *relayer.Chain,
 	logger *zap.Logger,
 ) *Relayer {
@@ -50,7 +50,7 @@ func NewRelayer(
 		storage:     store,
 		txProcessor: txProcessor,
 		kvProcessor: kvProcessor,
-		targetChain:     targetChain,
+		targetChain: targetChain,
 	}
 }
 
