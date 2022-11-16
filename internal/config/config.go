@@ -43,7 +43,7 @@ type NeutronChainConfig struct {
 	GasPrices       string        `required:"true" split_words:"true"`
 	GasLimit        uint64        `split_words:"true" default:"0"`
 	GasAdjustment   float64       `required:"true" split_words:"true"`
-	ConnectionID            string        `required:"true" split_words:"true"`
+	ConnectionID    string        `required:"true" split_words:"true"`
 	Debug           bool          `split_words:"true" default:"false"`
 	KeyringBackend  string        `required:"true" split_words:"true"`
 	KeyringPassword string        `split_words:"true"`
