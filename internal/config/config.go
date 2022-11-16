@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/kelseyhightower/envconfig"
 

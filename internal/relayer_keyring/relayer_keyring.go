@@ -3,11 +3,13 @@ package relayer_keyring
 import (
 	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	neutronapp "github.com/neutron-org/neutron/app"
-	"io"
 )
 
 type passReader struct {

@@ -3,8 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"go.uber.org/zap"
 
@@ -16,6 +17,7 @@ import (
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"

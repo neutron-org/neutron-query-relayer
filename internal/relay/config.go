@@ -2,6 +2,7 @@ package relay
 
 import (
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
