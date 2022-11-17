@@ -32,6 +32,5 @@ type ChainClient interface {
 
 // TXProcessor precesses transactions from a remote chain and sends them to the neutron
 type TXProcessor interface {
-	ProcessAndSubmit(ctx context.Context, queryID uint64, tx Transaction) error
-	GetSubmitNotificationChannel() <-chan PendingSubmittedTxInfo
+	ProcessAndSubmit(ctx context.Context, queryID uint64, tx Transaction, submittedTxsTasksQueue chan PendingSubmittedTxInfo) error
 }
