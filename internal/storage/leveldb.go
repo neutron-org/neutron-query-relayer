@@ -3,11 +3,9 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"strconv"
 	"sync"
-	"time"
-
-	"github.com/syndtr/goleveldb/leveldb/util"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
@@ -105,7 +103,6 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
 			NeutronHash:     neutronHash,
-			SubmitTime:      time.Now(),
 		}
 		err = saveIntoPendingQueue(t, neutronHash, txInfo)
 		if err != nil {
