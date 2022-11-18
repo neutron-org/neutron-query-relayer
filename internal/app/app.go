@@ -3,15 +3,17 @@ package app
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-
-	"go.uber.org/zap"
 
 	"github.com/avast/retry-go/v4"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+
+	"time"
+
+	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	"go.uber.org/zap"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
@@ -31,9 +33,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-	"go.uber.org/zap"
-	"time"
 )
 
 var (
@@ -184,7 +183,7 @@ func NewDefaultRelayer(
 	return relayer, nil
 }
 
-func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
+func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig) (relay.Storage, error) {
 	var (
 		err            error
 		leveldbStorage relay.Storage

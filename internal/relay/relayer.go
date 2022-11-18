@@ -60,7 +60,7 @@ func NewRelayer(
 func (r *Relayer) Run(
 	ctx context.Context,
 	queriesTasksQueue <-chan neutrontypes.RegisteredQuery, // Input tasks come from this channel
-	submittedTxsTasksQueue chan PendingSubmittedTxInfo,    // Tasks for the TxSubmitChecker are sent to this channel
+	submittedTxsTasksQueue chan PendingSubmittedTxInfo, // Tasks for the TxSubmitChecker are sent to this channel
 ) error {
 	for {
 		var err error

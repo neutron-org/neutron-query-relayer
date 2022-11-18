@@ -3,13 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -78,7 +79,7 @@ func startRelayer() {
 	wg := &sync.WaitGroup{}
 
 	// The storage has to be shared because of the LevelDB single process restriction.
-	storage, err := app.NewDefaultStorage(cfg, logger)
+	storage, err := app.NewDefaultStorage(cfg)
 	if err != nil {
 		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
 	}
