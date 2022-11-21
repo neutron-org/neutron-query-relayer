@@ -64,34 +64,28 @@ func (r *Relayer) Run(
 	for {
 		var err error
 		select {
+		case query := <-queriesTasksQueue:
+			start := time.Now()
+			switch query.QueryType {
+			case string(neutrontypes.InterchainQueryTypeKV):
+				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
+				err = r.processMessageKV(ctx, msg)
+			case string(neutrontypes.InterchainQueryTypeTX):
+				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
+				err = r.processMessageTX(ctx, msg, submittedTxsTasksQueue)
+			default:
+				err = fmt.Errorf("unknown query type: %s", query.QueryType)
+			}
+
+			if err != nil {
+				r.logger.Error("could not process message", zap.Uint64("query_id", query.Id), zap.Error(err))
+				neutronmetrics.AddFailedRequest(string(query.QueryType), time.Since(start).Seconds())
+			} else {
+				neutronmetrics.AddSuccessRequest(string(query.QueryType), time.Since(start).Seconds())
+			}
 		case <-ctx.Done():
 			r.logger.Info("Context cancelled, shutting down relayer...")
 			return nil
-		default:
-			select {
-			case <-ctx.Done():
-				r.logger.Info("Context cancelled, shutting down relayer...")
-				return nil
-			case query := <-queriesTasksQueue:
-				start := time.Now()
-				switch query.QueryType {
-				case string(neutrontypes.InterchainQueryTypeKV):
-					msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
-					err = r.processMessageKV(ctx, msg)
-				case string(neutrontypes.InterchainQueryTypeTX):
-					msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
-					err = r.processMessageTX(ctx, msg, submittedTxsTasksQueue)
-				default:
-					err = fmt.Errorf("unknown query type: %s", query.QueryType)
-				}
-
-				if err != nil {
-					r.logger.Error("could not process message", zap.Uint64("query_id", query.Id), zap.Error(err))
-					neutronmetrics.AddFailedRequest(string(query.QueryType), time.Since(start).Seconds())
-				} else {
-					neutronmetrics.AddSuccessRequest(string(query.QueryType), time.Since(start).Seconds())
-				}
-			}
 		}
 	}
 }

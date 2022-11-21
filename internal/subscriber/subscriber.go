@@ -122,26 +122,20 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 		case <-ctx.Done():
 			s.logger.Info("Context cancelled, shutting down subscriber...")
 			return nil
-		default:
-			select {
-			case <-ctx.Done():
-				s.logger.Info("Context cancelled, shutting down subscriber...")
-				return nil
-			case event := <-blockEvents:
-				s.logger.Debug("new block event", zap.String("query", event.Query))
-				if err := s.processBlockEvent(ctx, tasks); err != nil {
-					return fmt.Errorf("failed to processBlockEvent: %w", err)
-				}
-			case event := <-updateEvents:
-				s.logger.Debug("new update event", zap.String("query", event.Query))
-				if err = s.processUpdateEvent(ctx, event); err != nil {
-					return fmt.Errorf("failed to processUpdateEvent: %w", err)
-				}
-			case event := <-removeEvents:
-				s.logger.Debug("new remove event", zap.String("query", event.Query))
-				if err = s.processRemoveEvent(event); err != nil {
-					return fmt.Errorf("failed to processRemoveEvent: %w", err)
-				}
+		case event := <-blockEvents:
+			s.logger.Debug("new block event", zap.String("query", event.Query))
+			if err := s.processBlockEvent(ctx, tasks); err != nil {
+				return fmt.Errorf("failed to processBlockEvent: %w", err)
+			}
+		case event := <-updateEvents:
+			s.logger.Debug("new update event", zap.String("query", event.Query))
+			if err = s.processUpdateEvent(ctx, event); err != nil {
+				return fmt.Errorf("failed to processUpdateEvent: %w", err)
+			}
+		case event := <-removeEvents:
+			s.logger.Debug("new remove event", zap.String("query", event.Query))
+			if err = s.processRemoveEvent(event); err != nil {
+				return fmt.Errorf("failed to processRemoveEvent: %w", err)
 			}
 		}
 	}
