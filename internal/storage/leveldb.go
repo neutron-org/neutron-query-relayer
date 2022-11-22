@@ -71,10 +71,11 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found
 
 // SetTxStatus sets status for given tx
 // queryID + hash can be one of 4 statuses:
-// 1) Error while submitting tx - relay.ErrorOnSubmit
-// 2) tx submitted successfully (temporary status, should be updated after neutron tx committed into the block) - relay.Submitted
-//	2.a) failed to commit tx into the block - relay.ErrorOnCommit
-//  2.b) tx successfully committed - relay.Committed
+//  1. Error while submitting tx - relay.ErrorOnSubmit
+//  2. tx submitted successfully (temporary status, should be updated after neutron tx committed into the block) - relay.Submitted
+//     2.a) failed to commit tx into the block - relay.ErrorOnCommit
+//     2.b) tx successfully committed - relay.Committed
+//
 // To convert status from "2" to either "2.a" or "2.b" we use additional SubmittedTxStatusPrefix storage to track txs
 func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, status relay.SubmittedTxInfo) (err error) {
 	s.Lock()
@@ -118,7 +119,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 	return err
 }
 
-// TxExists returns if tx has been processed
+// TxExists returns if tx exists in storage
 func (s *LevelDBStorage) TxExists(queryID uint64, hash string) (exists bool, err error) {
 	s.Lock()
 	defer s.Unlock()
@@ -129,6 +130,25 @@ func (s *LevelDBStorage) TxExists(queryID uint64, hash string) (exists bool, err
 	}
 
 	return exists, nil
+}
+
+// GetTxInfo returns info of given tx
+func (s *LevelDBStorage) GetTxInfo(queryID uint64, hash string) (status relay.SubmittedTxInfo, found bool, err error) {
+	s.Lock()
+	defer s.Unlock()
+
+	data, err := s.db.Get(constructKey(queryID, hash), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return relay.SubmittedTxInfo{}, false, nil
+		}
+		return relay.SubmittedTxInfo{}, false, fmt.Errorf("failed getting data from db: %w", err)
+	}
+	err = json.Unmarshal(data, &status)
+	if err != nil {
+		return relay.SubmittedTxInfo{}, false, fmt.Errorf("failed to unmarshal data into SubmittedTxInfo: %w", err)
+	}
+	return status, true, nil
 }
 
 // SetLastQueryHeight sets last processed block to given query

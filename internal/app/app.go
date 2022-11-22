@@ -141,7 +141,9 @@ func NewDefaultRelayer(
 		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
 		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
 		txProcessor          = txprocessor.NewTxProcessor(
-			trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)
+			trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay,
+			cfg.TxRetryDelay, cfg.TxRetryRetries,
+		)
 		kvProcessor = kvprocessor.NewKVProcessor(
 			trustedHeaderFetcher,
 			targetQuerier,

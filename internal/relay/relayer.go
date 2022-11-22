@@ -60,7 +60,7 @@ func NewRelayer(
 func (r *Relayer) Run(
 	ctx context.Context,
 	queriesTasksQueue <-chan neutrontypes.RegisteredQuery, // Input tasks come from this channel
-	submittedTxsTasksQueue chan PendingSubmittedTxInfo,    // Tasks for the TxSubmitChecker are sent to this channel
+	submittedTxsTasksQueue chan PendingSubmittedTxInfo, // Tasks for the TxSubmitChecker are sent to this channel
 ) error {
 	for {
 		var err error
@@ -102,6 +102,10 @@ func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 // Neutron chain.
 func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX, submittedTxsTasksQueue chan PendingSubmittedTxInfo) error {
 	r.logger.Debug("running processMessageTX for msg", zap.Uint64("query_id", m.QueryId))
+	if r.txProcessor.IsQueryInProgress(m.QueryId) {
+		r.logger.Debug("query is already in progress, skipping", zap.Uint64("query_id", m.QueryId))
+		return nil
+	}
 	queryString, err := r.buildTxQuery(ctx, m)
 	if err != nil {
 		return fmt.Errorf("failed to build tx query string: %w", err)

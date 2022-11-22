@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -21,6 +22,7 @@ type TXProcessor struct {
 	submitter                   relay.Submitter
 	logger                      *zap.Logger
 	checkSubmittedTxStatusDelay time.Duration
+	resubmitter                 *relay.Resubmitter
 }
 
 func NewTxProcessor(
@@ -28,11 +30,15 @@ func NewTxProcessor(
 	storage relay.Storage,
 	submitter relay.Submitter,
 	logger *zap.Logger,
-	checkSubmittedTxStatusDelay time.Duration) TXProcessor {
+	checkSubmittedTxStatusDelay time.Duration,
+	retryDelay time.Duration,
+	retryCount uint8,
+) TXProcessor {
 	txProcessor := TXProcessor{
 		trustedHeaderFetcher:        trustedHeaderFetcher,
 		storage:                     storage,
 		submitter:                   submitter,
+		resubmitter:                 relay.NewResubmitter(retryDelay, retryCount),
 		logger:                      logger,
 		checkSubmittedTxStatusDelay: checkSubmittedTxStatusDelay,
 	}
@@ -47,12 +53,12 @@ func (r TXProcessor) ProcessAndSubmit(
 	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
 ) error {
 	hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
-	txExists, err := r.storage.TxExists(queryID, hash)
+	txInfo, txExists, err := r.storage.GetTxInfo(queryID, hash)
 	if err != nil {
 		return fmt.Errorf("failed to check tx existence: %w", err)
 	}
 
-	if txExists {
+	if txInfo.Status != relay.Retrying && txExists {
 		r.logger.Debug("transaction already submitted",
 			zap.Uint64("query_id", queryID),
 			zap.String("hash", hash),
@@ -64,13 +70,16 @@ func (r TXProcessor) ProcessAndSubmit(
 	if err != nil {
 		return fmt.Errorf("failed to prepare block: %w", err)
 	}
-
 	err = r.submitTxWithProofs(ctx, queryID, block, submittedTxsTasksQueue)
 	if err != nil {
 		return fmt.Errorf("failed to submit block: %w", err)
 	}
 
 	return nil
+}
+
+func (r TXProcessor) IsQueryInProgress(queryID uint64) bool {
+	return r.resubmitter.IsPending(queryID)
 }
 
 func (r TXProcessor) submitTxWithProofs(
@@ -83,9 +92,22 @@ func (r TXProcessor) submitTxWithProofs(
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
 	if err != nil {
+		errStatus := relay.ErrorOnSubmit
+		if strings.Contains(err.Error(), "error broadcasting sync transaction") {
+			errResubmit := r.resubmitter.Add(queryID, func() {
+				err := r.submitTxWithProofs(ctx, queryID, block, submittedTxsTasksQueue)
+				if err != nil {
+					r.logger.Error("failed to resubmit tx", zap.Error(err))
+				}
+			})
+			if errResubmit == nil {
+				errStatus = relay.Retrying
+			}
+		}
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(
-			queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
+			queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: errStatus, Message: err.Error()})
+
 		if errSetStatus != nil {
 			return fmt.Errorf("failed to store tx: %w", errSetStatus)
 		}

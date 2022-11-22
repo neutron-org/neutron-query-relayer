@@ -29,6 +29,8 @@ const (
 	Committed SubmittedTxStatus = "Committed"
 	// ErrorOnCommit describes error during commit operation
 	ErrorOnCommit SubmittedTxStatus = "ErrorOnCommit"
+	// Retrying describes tx which is being retried
+	Retrying SubmittedTxStatus = "Retrying"
 )
 
 // Storage is local storage we use to store queries history: known queries, know transactions and its statuses
@@ -38,5 +40,6 @@ type Storage interface {
 	SetLastQueryHeight(queryID uint64, block uint64) error
 	SetTxStatus(queryID uint64, hash string, neutronHash string, status SubmittedTxInfo) (err error)
 	TxExists(queryID uint64, hash string) (exists bool, err error)
+	GetTxInfo(queryID uint64, hash string) (status SubmittedTxInfo, found bool, err error)
 	Close() error
 }
