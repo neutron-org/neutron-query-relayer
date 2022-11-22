@@ -27,7 +27,7 @@ func (r *Resubmitter) Add(queryID uint64, cb func()) error {
 		r.pending[queryID] = p + 1
 	}
 	if r.pending[queryID] > r.limit {
-		return fmt.Errorf("queryID %d has been resubmitted %d times, which is more than the limit %d", queryID, r.pending)
+		return fmt.Errorf("queryID %d has been resubmitted %d times, which is more than the limit %d", queryID, r.pending[queryID], r.limit)
 	}
 
 	go func() {
