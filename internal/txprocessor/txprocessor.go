@@ -65,11 +65,9 @@ func (r TXProcessor) ProcessAndSubmit(
 		return fmt.Errorf("failed to prepare block: %w", err)
 	}
 
-	err = r.submitTxWithProofs(ctx, queryID, block, submittedTxsTasksQueue)
-	if err != nil {
+	if err = r.submitTxWithProofs(ctx, queryID, block, submittedTxsTasksQueue); err != nil {
 		return fmt.Errorf("failed to submit block: %w", err)
 	}
-
 	return nil
 }
 
@@ -81,7 +79,7 @@ func (r TXProcessor) submitTxWithProofs(
 ) error {
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
-	neutronTxHash, err := r.submitter.SubmitTxProof(queryID, block)
+	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, block)
 	if err != nil {
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(

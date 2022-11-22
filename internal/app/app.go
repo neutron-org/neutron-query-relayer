@@ -13,6 +13,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
@@ -61,11 +62,14 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 	}
 
 	subscriber, err := relaysubscriber.NewSubscriber(
-		cfg.NeutronChain.RPCAddr,
-		cfg.NeutronChain.RESTAddr,
-		cfg.NeutronChain.ConnectionID,
-		registry.New(cfg.Registry),
-		watchedMsgTypes,
+		&subscriber.SubscriberConfig{
+			RPCAddress:   cfg.NeutronChain.RPCAddr,
+			RESTAddress:  cfg.NeutronChain.RESTAddr,
+			Timeout:      cfg.NeutronChain.Timeout,
+			ConnectionID: cfg.NeutronChain.ConnectionID,
+			WatchedTypes: watchedMsgTypes,
+			Registry:     registry.New(cfg.Registry),
+		},
 		logRegistry.Get(SubscriberContext),
 	)
 	if err != nil {

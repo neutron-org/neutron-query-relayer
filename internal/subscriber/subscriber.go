@@ -6,50 +6,59 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/raw"
-
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var (
-	rpcWSEndpoint      = "/websocket"
 	unsubscribeTimeout = time.Second * 5
 )
 
-// NewSubscriber creates a new Subscriber instance ready to subscribe on the given chain's events.
+// SubscriberConfig contains configurable fields for the Subscriber.
+type SubscriberConfig struct {
+	// RPCAddress represents the address for RPC calls to the chain.
+	RPCAddress string
+	// RESTAddress represents the address for REST calls to the chain.
+	RESTAddress string
+	// Timeout defines time limit for requests executed by the Subscriber.
+	Timeout time.Duration
+	// ConnectionID is the Neutron's side connection ID used to filter out queries.
+	ConnectionID string
+	// WatchedTypes is the list of query types to be observed and handled.
+	WatchedTypes []neutrontypes.InterchainQueryType
+	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
+	// works with interchain queries and events that are under these addresses' ownership.
+	Registry *rg.Registry
+}
+
+// NewSubscriber creates a new Subscriber instance ready to subscribe to Neutron events.
 func NewSubscriber(
-	rpcAddress string,
-	restAddress string,
-	connectionID string,
-	registry *registry.Registry,
-	watchedTypes []neutrontypes.InterchainQueryType,
+	cfg *SubscriberConfig,
 	logger *zap.Logger,
 ) (*Subscriber, error) {
 	// rpcClient is used to subscribe to Neutron events.
-	rpcClient, err := http.New(rpcAddress, rpcWSEndpoint)
+	rpcClient, err := newRPCClient(cfg.RPCAddress, cfg.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("could not create new tendermint rpcClient: %w", err)
 	}
-
 	if err = rpcClient.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
 	}
 
 	// restClient is used to retrieve registered queries from Neutron.
-	restClient, err := raw.NewRESTClient(restAddress)
+	restClient, err := newRESTClient(cfg.RESTAddress, cfg.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
 	}
 
 	// Contains the types of queries that we are ready to serve (KV / TX).
 	watchedTypesMap := make(map[neutrontypes.InterchainQueryType]struct{})
-	for _, queryType := range watchedTypes {
+	for _, queryType := range cfg.WatchedTypes {
 		watchedTypesMap[queryType] = struct{}{}
 	}
 
@@ -57,9 +66,8 @@ func NewSubscriber(
 		rpcClient:  rpcClient,
 		restClient: restClient,
 
-		rpcAddress:   rpcAddress,
-		connectionID: connectionID,
-		registry:     registry,
+		connectionID: cfg.ConnectionID,
+		registry:     cfg.Registry,
 		logger:       logger,
 		watchedTypes: watchedTypesMap,
 
@@ -74,9 +82,8 @@ type Subscriber struct {
 	rpcClient  *http.HTTP                 // Used to subscribe to events
 	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
-	rpcAddress   string
 	connectionID string
-	registry     *registry.Registry
+	registry     *rg.Registry
 	logger       *zap.Logger
 	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
 
@@ -251,9 +258,9 @@ func (s *Subscriber) unsubscribe() {
 			if err := s.rpcClient.Unsubscribe(ctx, s.subscriberName(), subscription); err != nil {
 				s.logger.Error("failed to Unsubscribe from tm events",
 					zap.Error(err), zap.String("subscription", subscription))
+			} else {
+				s.logger.Debug("unsubscribed", zap.String("subscription", subscription))
 			}
-
-			s.logger.Debug("unsubscribed", zap.String("subscription", subscription))
 		}(subscription)
 	}
 
