@@ -1,6 +1,7 @@
 package submit
 
 import (
+	"context"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -21,9 +22,8 @@ func NewSubmitterImpl(sender *TxSender, allowKVCallbacks bool, clientID string) 
 
 // SubmitKVProof submits query with proof back to Neutron chain
 func (si *SubmitterImpl) SubmitKVProof(
-	height,
-	revision,
-	queryId uint64,
+	ctx context.Context,
+	height, revision, queryId uint64,
 	proof []*neutrontypes.StorageValue,
 	updateClientMsg sdk.Msg,
 ) error {
@@ -33,18 +33,18 @@ func (si *SubmitterImpl) SubmitKVProof(
 	}
 
 	msgs = append([]sdk.Msg{updateClientMsg}, msgs...)
-	_, err = si.sender.Send(msgs)
+	_, err = si.sender.Send(ctx, msgs)
 	return err
 }
 
 // SubmitTxProof submits tx query with proof back to Neutron chain
-func (si *SubmitterImpl) SubmitTxProof(queryId uint64, proof *neutrontypes.Block) (string, error) {
+func (si *SubmitterImpl) SubmitTxProof(ctx context.Context, queryId uint64, proof *neutrontypes.Block) (string, error) {
 	msgs, err := si.buildTxProofMsg(queryId, proof)
 	if err != nil {
 		return "", fmt.Errorf("could not build tx proof msg: %w", err)
 	}
 
-	return si.sender.Send(msgs)
+	return si.sender.Send(ctx, msgs)
 }
 
 func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKVCallbacks bool, proof []*neutrontypes.StorageValue) ([]sdk.Msg, error) {

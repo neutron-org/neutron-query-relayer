@@ -3,16 +3,51 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
 
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
+	tmhttp "github.com/tendermint/tendermint/rpc/client/http"
+	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
+	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	"github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
 
-	"github.com/go-openapi/strfmt"
-	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
-
+	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
+
+var (
+	restClientBasePath = "/"
+	rpcWSEndpoint      = "/websocket"
+)
+
+// newRPCClient creates a new tendermint RPC client with timeout.
+func newRPCClient(rpcAddr string, timeout time.Duration) (*tmhttp.HTTP, error) {
+	httpClient, err := jsonrpcclient.DefaultHTTPClient(rpcAddr)
+	if err != nil {
+		return nil, err
+	}
+	httpClient.Timeout = timeout
+	return tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+}
+
+// newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
+func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIConsole, error) {
+	url, err := url.Parse(restAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
+	}
+
+	httpClient := http.DefaultClient
+	httpClient.Timeout = timeout
+	transport := httptransport.NewWithClient(url.Host, restClientBasePath, []string{url.Scheme}, httpClient)
+
+	return restclient.New(transport, nil), nil
+}
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
@@ -65,7 +66,7 @@ func startRelayer() {
 	logger := logRegistry.Get(mainContext)
 	logger.Info("neutron-query-relayer starts...")
 
-	cfg, err := config.NewNeutronQueryRelayerConfig()
+	cfg, err := config.NewNeutronQueryRelayerConfig(logger)
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
@@ -119,15 +120,47 @@ func startRelayer() {
 		logger.Info("api webserver shut down successfully")
 	}()
 
+	// The storage has to be shared because of the LevelDB single process restriction.
+	storage, err := app.NewDefaultStorage(cfg, logger)
+	if err != nil {
+		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
+	}
+	defer func(storage relay.Storage) {
+		if err := storage.Close(); err != nil {
+			logger.Error("Failed to close storage", zap.Error(err))
+		}
+	}(storage)
+
+	var (
+		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
+		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
+	)
+
 	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
-		logger.Fatal("failed to create subscriber", zap.Error(err))
+		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
 	}
+
 	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
 	if err != nil {
-		logger.Fatal("failed to create relayer", zap.Error(err))
+		logger.Fatal("Failed to get NewDefaultRelayer", zap.Error(err))
 	}
-	queriesTasksQueue := make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
+
+	txSubmitChecker, err := app.NewDefaultTxSubmitChecker(cfg, logRegistry, storage)
+	if err != nil {
+		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := txSubmitChecker.Run(ctx, submittedTxsTasksQueue)
+		if err != nil {
+			logger.Error("TxSubmitChecker exited with an error", zap.Error(err))
+			cancel()
+		}
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -145,7 +178,7 @@ func startRelayer() {
 		defer wg.Done()
 
 		// The relayer reads from the tasks queue.
-		if err := relayer.Run(ctx, queriesTasksQueue); err != nil {
+		if err := relayer.Run(ctx, queriesTasksQueue, submittedTxsTasksQueue); err != nil {
 			logger.Error("Relayer exited with an error", zap.Error(err))
 			cancel()
 		}
