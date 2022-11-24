@@ -1,5 +1,7 @@
 package relay
 
+import "time"
+
 // PendingSubmittedTxInfo contains information about transaction which was submitted but has to be confirmed (committed or not)
 type PendingSubmittedTxInfo struct {
 	// QueryID is the query_id transactions was submitted for

@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
@@ -12,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
@@ -84,7 +83,7 @@ func startRelayer() {
 	wg := &sync.WaitGroup{}
 
 	// The storage has to be shared because of the LevelDB single process restriction.
-	storage, err := app.NewDefaultStorage(cfg)
+	storage, err := app.NewDefaultStorage(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to create NewDefaultStorage", zap.Error(err))
 	}
@@ -119,17 +118,6 @@ func startRelayer() {
 		cancelWebserverCtx()
 		logger.Info("api webserver shut down successfully")
 	}()
-
-	// The storage has to be shared because of the LevelDB single process restriction.
-	storage, err := app.NewDefaultStorage(cfg, logger)
-	if err != nil {
-		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
-	}
-	defer func(storage relay.Storage) {
-		if err := storage.Close(); err != nil {
-			logger.Error("Failed to close storage", zap.Error(err))
-		}
-	}(storage)
 
 	var (
 		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
