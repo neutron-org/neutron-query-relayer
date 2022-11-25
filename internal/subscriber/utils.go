@@ -3,31 +3,51 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"net/http"
 	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"net/url"
+	"time"
 
-	"go.uber.org/zap"
-
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
+	tmhttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
+	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"github.com/tendermint/tendermint/types"
+	"go.uber.org/zap"
 
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
+var (
+	restClientBasePath = "/"
+	rpcWSEndpoint      = "/websocket"
+)
+
+// newRPCClient creates a new tendermint RPC client with timeout.
+func newRPCClient(rpcAddr string, timeout time.Duration) (*tmhttp.HTTP, error) {
+	httpClient, err := jsonrpcclient.DefaultHTTPClient(rpcAddr)
+	if err != nil {
+		return nil, err
+	}
+	httpClient.Timeout = timeout
+	return tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+}
+
 // newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
-func newRESTClient(restAddr string) (*restclient.HTTPAPIConsole, error) {
+func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIConsole, error) {
 	url, err := url.Parse(restAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
 	}
 
-	return restclient.NewHTTPClientWithConfig(nil, &restclient.TransportConfig{
-		Host:     url.Host,
-		BasePath: restClientBasePath,
-		Schemes:  []string{url.Scheme},
-	}), nil
+	httpClient := http.DefaultClient
+	httpClient.Timeout = timeout
+	transport := httptransport.NewWithClient(url.Host, restClientBasePath, []string{url.Scheme}, httpClient)
+
+	return restclient.New(transport, nil), nil
 }
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
@@ -50,37 +70,49 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	return neutronQuery, nil
 }
 
-// getActiveQueries retrieves the list of registered queries filtered by owner, connection, and query type.
+// getNeutronRegisteredQueries retrieves the list of registered queries filtered by owner, connection, and query type.
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
-	// TODO: use pagination.
-	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
-		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
-			Owners:       s.registry.GetAddresses(),
-			ConnectionID: &s.connectionID,
-			Context:      ctx,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQueries: %w", err)
-	}
-
-	var (
-		payload = res.GetPayload()
-		out     = map[string]*neutrontypes.RegisteredQuery{}
-	)
-
-	for _, restQuery := range payload.RegisteredQueries {
-		neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
+	var out = map[string]*neutrontypes.RegisteredQuery{}
+	var pageKey *strfmt.Base64
+	for {
+		res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
+			&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
+				Owners:        s.registry.GetAddresses(),
+				ConnectionID:  &s.connectionID,
+				Context:       ctx,
+				PaginationKey: pageKey,
+			},
+		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to cast ToNeutronRegisteredQuery: %w", err)
+			return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQueries: %w", err)
 		}
+
+		payload := res.GetPayload()
+
+		for _, restQuery := range payload.RegisteredQueries {
+			neutronQuery, err := restQuery.ToNeutronRegisteredQuery()
+			if err != nil {
+				return nil, fmt.Errorf("failed to cast ToNeutronRegisteredQuery: %w", err)
+			}
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
 			continue
 		}
 		out[restQuery.ID] = neutronQuery
 		instrumenters.IncQueriesToProcess()
+			if !s.isWatchedMsgType(neutronQuery.QueryType) {
+				continue
+			}
+
+			out[restQuery.ID] = neutronQuery
+		}
+		if payload.Pagination != nil && payload.Pagination.NextKey.String() != "" {
+			pageKey = &payload.Pagination.NextKey
+		} else {
+			break
+		}
 	}
+	s.logger.Debug("total queries fetched", zap.Int("queries number", len(out)))
 
 	return out, nil
 }
@@ -113,7 +145,7 @@ func (s *Subscriber) subscriberName() string {
 	return "neutron-rpcClient"
 }
 
-// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+// getQueryUpdatedSubscription returns a Query to filter out interchain "query_updated" events.
 func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.connectionID,
@@ -122,7 +154,7 @@ func (s *Subscriber) getQueryUpdatedSubscription() string {
 	)
 }
 
-// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+// getQueryRemovedSubscription returns a Query to filter out interchain "query_removed" events.
 func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
 		connectionIdAttr, s.connectionID,
@@ -131,7 +163,7 @@ func (s *Subscriber) getQueryRemovedSubscription() string {
 	)
 }
 
-// subscribeQuery returns a ActiveQuery to filter out interchain ActiveQuery events.
+// getNewBlockHeaderSubscription returns a Query to filter out interchain "NewBlockHeader" events.
 func (s *Subscriber) getNewBlockHeaderSubscription() string {
 	return fmt.Sprintf("%s='%s'",
 		eventAttr, types.EventNewBlockHeader,
