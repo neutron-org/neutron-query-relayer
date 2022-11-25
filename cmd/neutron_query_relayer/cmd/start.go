@@ -10,11 +10,11 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/monitoring"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -57,6 +57,7 @@ func startRelayer() {
 		app.TxSubmitCheckerContext,
 		app.TrustedHeadersFetcherContext,
 		app.KVProcessorContext,
+		monitoring.MonitoringLoggerContext,
 	)
 	if err != nil {
 		log.Fatalf("couldn't initialize loggers registry: %s", err)
@@ -68,15 +69,6 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
-
-	http.Handle("/metrics", promhttp.Handler())
-	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
-		if err != nil {
-			logger.Fatal("failed to serve metrics", zap.Error(err))
-		}
-	}()
-	logger.Info("metrics handler set up")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -91,6 +83,15 @@ func startRelayer() {
 			logger.Error("failed to close storage", zap.Error(err))
 		}
 	}(storage)
+
+	http.Handle("/metrics", monitoring.NewPromWrapper(logRegistry, storage))
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
+		if err != nil {
+			logger.Fatal("failed to serve metrics", zap.Error(err))
+		}
+	}()
+	logger.Info("metrics handler set up")
 
 	wg.Add(1)
 	go func() {

@@ -1,4 +1,4 @@
-package instrumenters
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,6 +45,11 @@ var (
 		Name: "submitted_txs",
 		Help: "The total number of submitted txs (counter)",
 	}, []string{labelType})
+
+	unsuccessfulTxsQueueSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "unsuccessful_txs",
+		Help: "The total number of unsuccessful txs in the storage",
+	})
 )
 
 func incFailedRequests() {
@@ -120,4 +125,8 @@ func IncFailedTxSubmit() {
 	relayerProofs.With(prometheus.Labels{
 		labelType: typeFailed,
 	}).Inc()
+}
+
+func SetUnsuccessfulTxsSizeQueue(size int) {
+	unsuccessfulTxsQueueSize.Set(float64(size))
 }
