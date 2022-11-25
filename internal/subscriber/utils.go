@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"net/url"
 	"time"
+
+	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
@@ -95,11 +96,11 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 				return nil, fmt.Errorf("failed to cast ToNeutronRegisteredQuery: %w", err)
 			}
 
-		if !s.isWatchedMsgType(neutronQuery.QueryType) {
-			continue
-		}
-		out[restQuery.ID] = neutronQuery
-		instrumenters.IncQueriesToProcess()
+			if !s.isWatchedMsgType(neutronQuery.QueryType) {
+				continue
+			}
+			out[restQuery.ID] = neutronQuery
+			instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 			if !s.isWatchedMsgType(neutronQuery.QueryType) {
 				continue
 			}

@@ -3,8 +3,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/avast/retry-go/v4"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	"go.uber.org/zap"
+
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
@@ -23,9 +28,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-	"go.uber.org/zap"
-	"time"
 )
 
 var (

@@ -3,9 +3,10 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"sync"
 	"time"
+
+	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -204,12 +205,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 			continue
 		}
 
-		// We don't want to increment counter if an existing query is being updated
-		_, ok := s.activeQueries[queryID]
-		if !ok {
-			instrumenters.IncQueriesToProcess()
-		}
-
+		instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
 		s.logger.Debug("Query updated(created)", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
@@ -238,7 +234,7 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 
 		// Delete the query from the active queries list.
 		delete(s.activeQueries, queryID)
-		instrumenters.DecQueriesToProcess()
+		instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 		s.logger.Debug("Query removed", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
 	}
 

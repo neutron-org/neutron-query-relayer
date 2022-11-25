@@ -136,10 +136,6 @@ func SetSubscriberTaskQueueNumElements(numElements int) {
 	subscriberTaskQueueNumElements.With(prometheus.Labels{}).Set(float64(numElements))
 }
 
-func IncQueriesToProcess() {
-	queriesToProcess.With(prometheus.Labels{}).Inc()
-}
-
-func DecQueriesToProcess() {
-	queriesToProcess.With(prometheus.Labels{}).Dec()
+func SetQueriesToProcessNumElements(numElements int) {
+	queriesToProcess.With(prometheus.Labels{}).Set(float64(numElements))
 }

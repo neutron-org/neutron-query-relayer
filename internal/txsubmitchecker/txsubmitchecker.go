@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"time"
+
+	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 
 	"github.com/avast/retry-go/v4"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -84,11 +85,11 @@ func (tc *TxSubmitChecker) processSubmittedTx(ctx context.Context, tx *relay.Pen
 
 	if txResponse.TxResult.Code == abci.CodeTypeOK {
 		instrumenters.IncSuccessTxSubmit()
-				tc.updateTxStatus(tx, relay.SubmittedTxInfo{
-					Status: relay.Committed,
-				})
-			} else {
-				instrumenters.IncFailedTxSubmit()
+		tc.updateTxStatus(tx, relay.SubmittedTxInfo{
+			Status: relay.Committed,
+		})
+	} else {
+		instrumenters.IncFailedTxSubmit()
 		tc.updateTxStatus(tx, relay.SubmittedTxInfo{
 			Status:  relay.ErrorOnCommit,
 			Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
