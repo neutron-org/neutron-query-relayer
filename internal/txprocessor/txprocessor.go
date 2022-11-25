@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"regexp"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -21,6 +23,7 @@ type TXProcessor struct {
 	submitter                   relay.Submitter
 	logger                      *zap.Logger
 	checkSubmittedTxStatusDelay time.Duration
+	ignoreErrorsRegexp          *regexp.Regexp
 }
 
 func NewTxProcessor(
@@ -28,13 +31,16 @@ func NewTxProcessor(
 	storage relay.Storage,
 	submitter relay.Submitter,
 	logger *zap.Logger,
-	checkSubmittedTxStatusDelay time.Duration) TXProcessor {
+	checkSubmittedTxStatusDelay time.Duration,
+	ignoreErrorsRegexp string,
+) TXProcessor {
 	txProcessor := TXProcessor{
 		trustedHeaderFetcher:        trustedHeaderFetcher,
 		storage:                     storage,
 		submitter:                   submitter,
 		logger:                      logger,
 		checkSubmittedTxStatusDelay: checkSubmittedTxStatusDelay,
+		ignoreErrorsRegexp:          regexp.MustCompile(ignoreErrorsRegexp),
 	}
 
 	return txProcessor
@@ -81,6 +87,11 @@ func (r TXProcessor) submitTxWithProofs(
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, block)
 	if err != nil {
+		// check error with regexp
+		if !r.ignoreErrorsRegexp.MatchString(err.Error()) {
+			r.logger.Error("failed to submit tx proof", zap.Error(err))
+			os.Exit(3)
+		}
 		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 		errSetStatus := r.storage.SetTxStatus(
 			queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
