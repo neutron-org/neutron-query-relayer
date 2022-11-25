@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
@@ -93,30 +92,15 @@ func startRelayer() {
 		}
 	}(storage)
 
+	wg.Add(1)
 	go func() {
-		server := &http.Server{
-			Addr:    fmt.Sprintf(":%d", cfg.WebserverPort),
-			Handler: webserver.Router(logRegistry, storage),
-		}
-		go func() {
-			if err := server.ListenAndServe(); err != nil {
-				if err != http.ErrServerClosed {
-					logger.Fatal("failed to serve webserver", zap.Error(err))
-				}
-			}
-		}()
+		defer wg.Done()
 
-		<-ctx.Done()
-
-		logger.Info("shutting down the api webserver")
-		webserverCtx, cancelWebserverCtx := context.WithTimeout(context.Background(), time.Second*5)
-		if err := server.Shutdown(webserverCtx); err != nil {
-			logger.Error("failed to shutdown api webserver gracefully: %w", zap.Error(err))
-			cancelWebserverCtx()
-			return
+		err := webserver.Run(ctx, logRegistry, storage, int(cfg.WebserverPort))
+		if err != nil {
+			logger.Error("WebServer exited with an error", zap.Error(err))
+			cancel()
 		}
-		cancelWebserverCtx()
-		logger.Info("api webserver shut down successfully")
 	}()
 
 	var (

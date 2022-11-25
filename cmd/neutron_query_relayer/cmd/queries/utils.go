@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -12,13 +13,18 @@ const UrlFlagName = "url"
 const getTimeout = time.Second * 5
 
 func get(host string, resource string) string {
-	url := host + resource
+	u, err := url.Parse(host)
+	if err != nil {
+		log.Fatal("host parsing error: ", err)
+	}
+
+	u.Path = resource
 
 	client := http.Client{
 		Timeout: getTimeout,
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
