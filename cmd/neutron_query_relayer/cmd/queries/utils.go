@@ -1,7 +1,8 @@
 package queries
 
 import (
-	"io/ioutil"
+	"bytes"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -37,11 +38,11 @@ func get(host string, resource string) string {
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
-
-	body, readErr := ioutil.ReadAll(res.Body)
+	var body bytes.Buffer
+	_, readErr := io.Copy(&body, res.Body)
 	if readErr != nil {
 		log.Fatal(readErr)
 	}
 
-	return string(body)
+	return body.String()
 }
