@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
-
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	tmhttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -99,12 +97,6 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 			if !s.isWatchedMsgType(neutronQuery.QueryType) {
 				continue
 			}
-			out[restQuery.ID] = neutronQuery
-			instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
-			if !s.isWatchedMsgType(neutronQuery.QueryType) {
-				continue
-			}
-
 			out[restQuery.ID] = neutronQuery
 		}
 		if payload.Pagination != nil && payload.Pagination.NextKey.String() != "" {

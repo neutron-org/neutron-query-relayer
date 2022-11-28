@@ -53,7 +53,7 @@ var (
 
 	queriesToProcess = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "queries_to_process",
-		Help: "The total number of queries to process (counter)",
+		Help: "The total number of active registered queries to process (counter)",
 	}, []string{})
 )
 

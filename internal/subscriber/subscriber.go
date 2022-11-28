@@ -100,6 +100,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
 	}
 	s.activeQueries = queries
+	instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 
 	// Make sure we try to unsubscribe from events if an error occurs.
 	defer s.unsubscribe()
@@ -205,9 +206,9 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 			continue
 		}
 
-		instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
+		instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 		s.logger.Debug("Query updated(created)", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
 	}
 
