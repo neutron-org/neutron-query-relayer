@@ -2,15 +2,12 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/monitoring"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
@@ -38,7 +35,7 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(startCmd)
 }
 
 func startRelayer() {
@@ -57,7 +54,7 @@ func startRelayer() {
 		app.TxSubmitCheckerContext,
 		app.TrustedHeadersFetcherContext,
 		app.KVProcessorContext,
-		monitoring.MonitoringLoggerContext,
+		webserver.MonitoringLoggerContext,
 	)
 	if err != nil {
 		log.Fatalf("couldn't initialize loggers registry: %s", err)
@@ -83,16 +80,7 @@ func startRelayer() {
 			logger.Error("failed to close storage", zap.Error(err))
 		}
 	}(storage)
-
-	http.Handle("/metrics", monitoring.NewPromWrapper(logRegistry, storage))
-	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
-		if err != nil {
-			logger.Fatal("failed to serve metrics", zap.Error(err))
-		}
-	}()
-	logger.Info("metrics handler set up")
-
+	
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

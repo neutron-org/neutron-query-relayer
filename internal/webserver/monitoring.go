@@ -1,10 +1,10 @@
-package monitoring
+package webserver
 
 import (
+	"github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"net/http"
 
 	nlogger "github.com/neutron-org/neutron-logger"
-	"github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 

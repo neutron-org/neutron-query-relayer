@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -14,7 +15,6 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
 
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"

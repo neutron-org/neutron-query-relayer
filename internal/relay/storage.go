@@ -6,7 +6,7 @@ import "time"
 type PendingSubmittedTxInfo struct {
 	// QueryID is the query_id transactions was submitted for
 	QueryID uint64
-	// SubmittedTxHash is the hash of the *remote fetched transaction* was submitted
+	// SubmittedTxHash is the hash of a transaction we fetched from the remote chain
 	SubmittedTxHash string
 	// NeutronHash is the hash of the *neutron chain transaction* which is responsible for delivering remote transaction to neutron
 	NeutronHash string
@@ -15,14 +15,14 @@ type PendingSubmittedTxInfo struct {
 type UnsuccessfulTxInfo struct {
 	// QueryID is the query_id transactions was submitted for
 	QueryID uint64
-	// SubmittedTxHash is the hash of the *remote fetched transaction* was submitted
+	// SubmittedTxHash is the hash of a transaction we fetched from the remote chain
 	SubmittedTxHash string
 	// NeutronHash is the hash of the *neutron chain transaction* which is responsible for delivering remote transaction to neutron
 	NeutronHash string
 	// ErrorTime is the time when the error was added
 	ErrorTime time.Time
-	// Type is the status of unsuccessful tx
-	Type SubmittedTxStatus
+	// Status is the status of unsuccessful tx
+	Status SubmittedTxStatus
 	// Message is the more descriptive message for the error
 	Message string
 }

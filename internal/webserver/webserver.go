@@ -19,6 +19,7 @@ import (
 const (
 	ServerContext           = "webserver"
 	UnsuccessfulTxsResource = "/unsuccessful-txs"
+	PrometheusMetrics       = "/metrics"
 )
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request)
@@ -59,8 +60,10 @@ func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Stora
 }
 
 func Router(logRegistry *nlogger.Registry, storage relay.Storage) *mux.Router {
+	promHandler := NewPromWrapper(logRegistry, storage)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(UnsuccessfulTxsResource, UnsuccessfulTxs(logRegistry.Get(ServerContext), storage))
+	router.Handle(PrometheusMetrics, promHandler)
 	return router
 }
 

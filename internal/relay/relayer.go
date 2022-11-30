@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"strings"
 	"time"
 
 	"github.com/cosmos/relayer/v2/relayer"
 
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 
