@@ -22,8 +22,6 @@ const (
 	PrometheusMetrics       = "/metrics"
 )
 
-type HandlerFunc func(w http.ResponseWriter, r *http.Request)
-
 func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Storage, WebServerPort int) error {
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", WebServerPort),
@@ -36,8 +34,8 @@ func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Stora
 		if err := server.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
 				logger.Error("failed to serve webserver", zap.Error(err))
+				errch <- err
 			}
-			errch <- err
 		}
 	}()
 
@@ -62,12 +60,12 @@ func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Stora
 func Router(logRegistry *nlogger.Registry, storage relay.Storage) *mux.Router {
 	promHandler := NewPromWrapper(logRegistry, storage)
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc(UnsuccessfulTxsResource, UnsuccessfulTxs(logRegistry.Get(ServerContext), storage))
+	router.HandleFunc(UnsuccessfulTxsResource, unsuccessfulTxs(logRegistry.Get(ServerContext), storage))
 	router.Handle(PrometheusMetrics, promHandler)
 	return router
 }
 
-func UnsuccessfulTxs(logger *zap.Logger, storage relay.Storage) HandlerFunc {
+func unsuccessfulTxs(logger *zap.Logger, storage relay.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res, err := storage.GetAllUnsuccessfulTxs()
 		if err != nil {

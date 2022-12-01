@@ -27,7 +27,7 @@ func NewPromWrapper(logRegistry *nlogger.Registry, storage relay.Storage) PromWr
 	}
 }
 
-func (p PromWrapper) FillUnsuccessfulTxsMetric() {
+func (p PromWrapper) fillUnsuccessfulTxsMetric() {
 	txs, err := p.storage.GetAllUnsuccessfulTxs()
 	if err != nil {
 		p.logger.Error("failed to get unsuccessful txs from storage", zap.Error(err))
@@ -36,6 +36,6 @@ func (p PromWrapper) FillUnsuccessfulTxsMetric() {
 }
 
 func (p PromWrapper) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	p.FillUnsuccessfulTxsMetric()
+	p.fillUnsuccessfulTxsMetric()
 	p.promHandler.ServeHTTP(res, req)
 }
