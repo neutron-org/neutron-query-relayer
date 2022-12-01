@@ -1,4 +1,4 @@
-package webserver
+package http
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	ServerContext           = "webserver"
+	ServerContext           = "http"
 	UnsuccessfulTxsResource = "/unsuccessful-txs"
 	PrometheusMetrics       = "/metrics"
 )
@@ -33,7 +33,7 @@ func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Stora
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
-				logger.Error("failed to serve webserver", zap.Error(err))
+				logger.Error("failed to serve http", zap.Error(err))
 				errch <- err
 			}
 		}
@@ -45,15 +45,15 @@ func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Stora
 	case <-ctx.Done():
 	}
 
-	logger.Info("shutting down the api webserver")
+	logger.Info("shutting down the api http")
 	webserverCtx, cancelWebserverCtx := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancelWebserverCtx()
 	if err := server.Shutdown(webserverCtx); err != nil {
-		logger.Error("failed to shutdown api webserver gracefully: %w", zap.Error(err))
+		logger.Error("failed to shutdown api http gracefully: %w", zap.Error(err))
 		return nil
 	}
 
-	logger.Info("api webserver shut down successfully")
+	logger.Info("api http shut down successfully")
 	return nil
 }
 

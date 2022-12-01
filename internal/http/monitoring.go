@@ -1,4 +1,4 @@
-package webserver
+package http
 
 import (
 	"github.com/neutron-org/neutron-query-relayer/internal/metrics"

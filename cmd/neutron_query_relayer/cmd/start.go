@@ -10,7 +10,7 @@ import (
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/webserver"
+	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -44,7 +44,7 @@ func startRelayer() {
 		app.AppContext,
 		app.SubscriberContext,
 		app.RelayerContext,
-		webserver.ServerContext,
+		icqhttp.ServerContext,
 		app.TargetChainRPCClientContext,
 		app.NeutronChainRPCClientContext,
 		app.TargetChainProviderContext,
@@ -54,7 +54,7 @@ func startRelayer() {
 		app.TxSubmitCheckerContext,
 		app.TrustedHeadersFetcherContext,
 		app.KVProcessorContext,
-		webserver.MonitoringLoggerContext,
+		icqhttp.MonitoringLoggerContext,
 	)
 	if err != nil {
 		log.Fatalf("couldn't initialize loggers registry: %s", err)
@@ -80,12 +80,12 @@ func startRelayer() {
 			logger.Error("failed to close storage", zap.Error(err))
 		}
 	}(storage)
-	
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		err := webserver.Run(ctx, logRegistry, storage, int(cfg.WebserverPort))
+		err := icqhttp.Run(ctx, logRegistry, storage, int(cfg.WebserverPort))
 		if err != nil {
 			logger.Error("WebServer exited with an error", zap.Error(err))
 			cancel()
