@@ -11,11 +11,14 @@ import (
 
 const getTimeout = time.Second * 5
 
+// ICQClient provides high level methods to work with ICQ webserver api
 type ICQClient struct {
 	host   *url.URL
 	client http.Client
 }
 
+// NewICQClient takes a host as a single argument and returns an ICQClient in case of well formatted host arg
+// host format is <scheme>://<host>[:<port>], e.g. http://myicq.host, https://myicq.host, http://myicq.host:8080
 func NewICQClient(host string) (*ICQClient, error) {
 	u, err := url.Parse(host)
 	if err != nil {
