@@ -130,7 +130,7 @@ func (r TXProcessor) submitTxWithProofs(
 		return fmt.Errorf("failed to store tx: %w", errSetStatus)
 	}
 
-	r.logger.Error("\"could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
+	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
 	return nil
 }
 
