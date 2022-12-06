@@ -85,7 +85,7 @@ func startRelayer() {
 	go func() {
 		defer wg.Done()
 
-		err := icqhttp.Run(ctx, logRegistry, storage, int(cfg.WebserverPort))
+		err := icqhttp.Run(ctx, logRegistry, storage, cfg.ListenAddr)
 		if err != nil {
 			logger.Error("WebServer exited with an error", zap.Error(err))
 			cancel()

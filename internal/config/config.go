@@ -27,7 +27,7 @@ type NeutronQueryRelayerConfig struct {
 	CheckSubmittedTxStatusDelay time.Duration            `split_words:"true" default:"10s"`
 	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`
 	InitialTxSearchOffset       uint64                   `split_words:"true" default:"0"`
-	WebserverPort               uint16                   `split_words:"true" default:"9999"`
+	ListenAddr                  string                   `split_words:"true" default:"127.0.0.1:9999"`
 }
 
 const EnvPrefix string = "RELAYER"

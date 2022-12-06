@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -22,9 +21,9 @@ const (
 	PrometheusMetrics       = "/metrics"
 )
 
-func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Storage, WebServerPort int) error {
+func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Storage, ListenAddr string) error {
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", WebServerPort),
+		Addr:    ListenAddr,
 		Handler: Router(logRegistry, storage),
 	}
 	logger := logRegistry.Get(ServerContext)
