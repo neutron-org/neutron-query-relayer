@@ -117,7 +117,7 @@ func (tc *TxSubmitChecker) retryGetTxStatus(
 }
 
 func (tc *TxSubmitChecker) updateTxStatus(tx *relay.PendingSubmittedTxInfo, status relay.SubmittedTxInfo) {
-	err := tc.storage.SetTxStatus(tx.QueryID, tx.SubmittedTxHash, tx.NeutronHash, status)
+	err := tc.storage.SetTxStatus(tx.QueryID, tx.SubmittedTxHash, tx.NeutronHash, status, nil)
 	if err != nil {
 		tc.logger.Error(
 			"failed to update tx status in storage",

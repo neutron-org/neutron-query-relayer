@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
@@ -61,4 +62,31 @@ func (c ICQClient) GetUnsuccessfulTxs() ([]relay.UnsuccessfulTxInfo, error) {
 	}
 
 	return txs, nil
+}
+
+func (c ICQClient) ResubmitTxs(txs ResubmitRequest) error {
+	u := *c.host
+	u.Path = ResubmitTxs
+	body := bytes.Buffer{}
+	encoder := json.NewEncoder(&body)
+	err := encoder.Encode(txs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal txs: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, u.String(), &body)
+	if err != nil {
+		return fmt.Errorf("failed to build http request: %w", err)
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to make http request: %w", err)
+	}
+
+	if res.StatusCode != 200 {
+		return fmt.Errorf("got unexpected http response status code: %d", res.StatusCode)
+	}
+
+	return nil
 }

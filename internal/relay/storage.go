@@ -1,6 +1,8 @@
 package relay
 
-import "time"
+import (
+	"time"
+)
 
 // PendingSubmittedTxInfo contains information about transaction which was submitted but has to be confirmed (committed or not)
 type PendingSubmittedTxInfo struct {
@@ -14,17 +16,17 @@ type PendingSubmittedTxInfo struct {
 
 type UnsuccessfulTxInfo struct {
 	// QueryID is the query_id transactions was submitted for
-	QueryID uint64
+	QueryID uint64 `json:"query_id"`
 	// SubmittedTxHash is the hash of a transaction we fetched from the remote chain
-	SubmittedTxHash string
+	SubmittedTxHash string `json:"submitted_tx_hash"`
 	// NeutronHash is the hash of the *neutron chain transaction* which is responsible for delivering remote transaction to neutron
-	NeutronHash string
+	NeutronHash string `json:"neutron_hash"`
 	// ErrorTime is the time when the error was added
-	ErrorTime time.Time
+	ErrorTime time.Time `json:"error_time"`
 	// Status is the status of unsuccessful tx
-	Status SubmittedTxStatus
+	Status SubmittedTxStatus `json:"type"`
 	// Message is the more descriptive message for the error
-	Message string
+	Message string `json:"message"`
 }
 
 // SubmittedTxInfo is a struct which contains status of fetched and submitted transaction
@@ -52,9 +54,10 @@ const (
 type Storage interface {
 	GetAllPendingTxs() ([]*PendingSubmittedTxInfo, error)
 	GetAllUnsuccessfulTxs() ([]*UnsuccessfulTxInfo, error)
+	GetCachedTx(queryID uint64, hash string) (*Transaction, error)
 	GetLastQueryHeight(queryID uint64) (block uint64, found bool, err error)
 	SetLastQueryHeight(queryID uint64, block uint64) error
-	SetTxStatus(queryID uint64, hash string, neutronHash string, status SubmittedTxInfo) (err error)
+	SetTxStatus(queryID uint64, hash string, neutronHash string, status SubmittedTxInfo, processedTx *Transaction) (err error)
 	TxExists(queryID uint64, hash string) (exists bool, err error)
 	Close() error
 }

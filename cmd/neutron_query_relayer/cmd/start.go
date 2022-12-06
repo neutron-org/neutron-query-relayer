@@ -81,17 +81,6 @@ func startRelayer() {
 		}
 	}(storage)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		err := icqhttp.Run(ctx, logRegistry, storage, cfg.ListenAddr)
-		if err != nil {
-			logger.Error("WebServer exited with an error", zap.Error(err))
-			cancel()
-		}
-	}()
-
 	var (
 		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
@@ -111,6 +100,17 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := icqhttp.Run(ctx, logRegistry, storage, relayer.GetTxProcessor(), submittedTxsTasksQueue, cfg.ListenAddr)
+		if err != nil {
+			logger.Error("WebServer exited with an error", zap.Error(err))
+			cancel()
+		}
+	}()
 
 	wg.Add(1)
 	go func() {

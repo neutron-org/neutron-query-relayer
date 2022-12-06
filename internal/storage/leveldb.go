@@ -17,6 +17,7 @@ import (
 const (
 	SubmittedTxStatusPrefix    = "submitted_txs"
 	UnsuccessfulTxStatusPrefix = "unsuccessful_txs"
+	CachedTxs                  = "cached_txs"
 )
 
 // LevelDBStorage Basically has a simple structure inside: we have 2 maps
@@ -77,6 +78,37 @@ func (s *LevelDBStorage) GetAllUnsuccessfulTxs() ([]*relay.UnsuccessfulTxInfo, e
 	return txs, nil
 }
 
+// GetCachedTx returns a cached remote tx
+func (s *LevelDBStorage) GetCachedTx(queryID uint64, hash string) (*relay.Transaction, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	key := constructCacheTxKey(queryID, hash)
+	data, err := s.db.Get(key, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Transaction for query_id + hash {%d %s}: %w", queryID, hash, err)
+	}
+
+	fmt.Println("DATA: ", data)
+	fmt.Println("DATA STRING: ", string(data))
+
+	var txInfo relay.Transaction
+	err = json.Unmarshal(data, &txInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal data into Transaction: %w", err)
+	}
+	fmt.Println("DECODED TX: ", txInfo)
+
+	txMap := make(map[string]interface{})
+	err = json.Unmarshal(data, &txMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal data into Transaction: %w", err)
+	}
+	fmt.Println("DECODED TXMAP: ", txMap)
+
+	return &txInfo, nil
+}
+
 // GetLastQueryHeight returns last update block for KV query
 func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found bool, err error) {
 	s.mutex.Lock()
@@ -98,6 +130,14 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found
 	return res, true, nil
 }
 
+func (s *LevelDBStorage) SaveTxData(queryID uint64, hash string, tx relay.Transaction) error {
+	return nil
+}
+
+func (s *LevelDBStorage) RemoveTxData(queryID uint64, hash string) error {
+	return nil
+}
+
 // SetTxStatus sets status for given tx
 // queryID + hash can be one of 4 statuses:
 //  1. Error while submitting tx - relay.ErrorOnSubmit
@@ -106,7 +146,7 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found
 //     2.b) tx successfully committed - relay.Committed
 //
 // To convert status from "2" to either "2.a" or "2.b" we use additional SubmittedTxStatusPrefix storage to track txs
-func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, txInfo relay.SubmittedTxInfo) (err error) {
+func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash string, txInfo relay.SubmittedTxInfo, processedTx *relay.Transaction) (err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -126,13 +166,20 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		return fmt.Errorf("failed to set tx txInfo: %w", err)
 	}
 
+	if processedTx != nil {
+		err = cacheProcessedTx(t, queryID, hash, *processedTx)
+		if err != nil {
+			return fmt.Errorf("failed to cache processed tx: %w", err)
+		}
+	}
+
 	if txInfo.Status == relay.Submitted {
-		txInfo := relay.PendingSubmittedTxInfo{
+		pendingTxInfo := relay.PendingSubmittedTxInfo{
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
 			NeutronHash:     neutronHash,
 		}
-		err = saveIntoPendingQueue(t, neutronHash, txInfo)
+		err = saveIntoPendingQueue(t, neutronHash, pendingTxInfo)
 		if err != nil {
 			return fmt.Errorf("failed to saved txInfo into pending queue: %w", err)
 		}
@@ -144,7 +191,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 	}
 
 	if txInfo.Status == relay.ErrorOnCommit || txInfo.Status == relay.ErrorOnSubmit {
-		txInfo := relay.UnsuccessfulTxInfo{
+		unsuccessfulTxInfo := relay.UnsuccessfulTxInfo{
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
 			NeutronHash:     neutronHash,
@@ -152,7 +199,19 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 			Status:          txInfo.Status,
 			Message:         txInfo.Message,
 		}
-		err = saveIntoErrorQueue(t, neutronHash, txInfo)
+		err = saveIntoUnsuccessfulQueue(t, queryID, hash, unsuccessfulTxInfo)
+		if err != nil {
+			return err
+		}
+	}
+
+	if txInfo.Status == relay.Committed {
+		err = removeFromUnsuccessfulQueue(t, queryID, hash)
+		if err != nil {
+			return err
+		}
+
+		err = removeCachedTx(t, queryID, hash)
 		if err != nil {
 			return fmt.Errorf("failed to saved txInfo into error queue: %w", err)
 		}
@@ -221,8 +280,8 @@ func removeFromPendingQueue(t *leveldb.Transaction, neutronTXHash string) error 
 	return nil
 }
 
-func saveIntoErrorQueue(t *leveldb.Transaction, neutronTXHash string, txInfo relay.UnsuccessfulTxInfo) error {
-	key := consatructErrorQueueKey(neutronTXHash)
+func saveIntoUnsuccessfulQueue(t *leveldb.Transaction, queryID uint64, tXHash string, txInfo relay.UnsuccessfulTxInfo) error {
+	key := constructUnsuccessfulQueueKey(queryID, tXHash)
 	data, err := json.Marshal(txInfo)
 	if err != nil {
 		return fmt.Errorf("failed to marshal UnsuccessfulTxInfo: %w", err)
@@ -234,6 +293,47 @@ func saveIntoErrorQueue(t *leveldb.Transaction, neutronTXHash string, txInfo rel
 	}
 
 	return nil
+}
+
+func removeFromUnsuccessfulQueue(t *leveldb.Transaction, queryID uint64, tXHash string) error {
+	key := constructUnsuccessfulQueueKey(queryID, tXHash)
+	err := t.Delete(key, nil)
+	if err != nil {
+		return fmt.Errorf("failed to remove UnsuccessfulTxInfo under the key %d%s: %w", queryID, tXHash, err)
+	}
+
+	return nil
+}
+
+func removeCachedTx(t *leveldb.Transaction, queryID uint64, tXHash string) error {
+	key := constructCacheTxKey(queryID, tXHash)
+	err := t.Delete(key, nil)
+	if err != nil {
+		return fmt.Errorf("failed to remove cached tx under the key %d%s: %w", queryID, tXHash, err)
+	}
+
+	return nil
+}
+
+func cacheProcessedTx(t *leveldb.Transaction, queryID uint64, tXHash string, tx relay.Transaction) error {
+	key := constructCacheTxKey(queryID, tXHash)
+	data, err := json.Marshal(tx)
+	if err != nil {
+		return fmt.Errorf("failed to marshal relay.Transaction: %w", err)
+	}
+
+	fmt.Println(tx)
+
+	err = t.Put(key, data, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func constructCacheTxKey(queryID uint64, tXHash string) []byte {
+	return append([]byte(CachedTxs), constructTxStatusKey(queryID, tXHash)...)
 }
 
 func uintToBytes(num uint64) []byte {
@@ -249,8 +349,8 @@ func bytesToUint(bytes []byte) (uint64, error) {
 	return num, nil
 }
 
-func consatructErrorQueueKey(neutronTXHash string) []byte {
-	key := []byte(UnsuccessfulTxStatusPrefix + neutronTXHash)
+func constructUnsuccessfulQueueKey(queryID uint64, neutronTXHash string) []byte {
+	key := append([]byte(UnsuccessfulTxStatusPrefix), constructTxStatusKey(queryID, neutronTXHash)...)
 	return key
 }
 

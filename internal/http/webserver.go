@@ -18,13 +18,23 @@ import (
 const (
 	ServerContext           = "http"
 	UnsuccessfulTxsResource = "/unsuccessful-txs"
+	ResubmitTxs             = "/resubmit-txs"
 	PrometheusMetrics       = "/metrics"
 )
 
-func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Storage, ListenAddr string) error {
+type ResubmitTx struct {
+	QueryID uint64 `json:"query_id"`
+	Hash    string `json:"hash"`
+}
+
+type ResubmitRequest struct {
+	Txs []ResubmitTx `json:"txs"`
+}
+
+func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Storage, txProcessor relay.TXProcessor, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo, ListenAddr string) error {
 	server := &http.Server{
 		Addr:    ListenAddr,
-		Handler: Router(logRegistry, storage),
+		Handler: Router(logRegistry, storage, txProcessor, submittedTxsTasksQueue),
 	}
 	logger := logRegistry.Get(ServerContext)
 	errch := make(chan error)
@@ -56,10 +66,11 @@ func Run(ctx context.Context, logRegistry *nlogger.Registry, storage relay.Stora
 	return nil
 }
 
-func Router(logRegistry *nlogger.Registry, storage relay.Storage) *mux.Router {
+func Router(logRegistry *nlogger.Registry, storage relay.Storage, txProcessor relay.TXProcessor, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) *mux.Router {
 	promHandler := NewPromWrapper(logRegistry, storage)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(UnsuccessfulTxsResource, unsuccessfulTxs(logRegistry.Get(ServerContext), storage))
+	router.HandleFunc(ResubmitTxs, resubmitFailedTxs(logRegistry.Get(ServerContext), storage, txProcessor, submittedTxsTasksQueue))
 	router.Handle(PrometheusMetrics, promHandler)
 	return router
 }
@@ -79,6 +90,44 @@ func unsuccessfulTxs(logger *zap.Logger, storage relay.Storage) http.HandlerFunc
 		if err != nil {
 			logger.Error("failed to encode result of GetAllUnsuccessfulTxs", zap.Error(err))
 			http.Error(w, "Error processing request", http.StatusInternalServerError)
+		}
+	}
+}
+
+func resubmitFailedTxs(logger *zap.Logger, store relay.Storage, txProcessor relay.TXProcessor, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			logger.Error("failed to process resubmitFailedTxs request, only the POST method is allowed.", zap.String("requested_method", r.Method))
+			http.Error(w, "Error processing request", http.StatusMethodNotAllowed)
+			return
+		}
+
+		reqBody := ResubmitRequest{}
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&reqBody)
+		if err != nil {
+			logger.Error("failed to decode request body of resubmitFailedTxs", zap.Error(err))
+			http.Error(w, "Error processing request", http.StatusInternalServerError)
+			return
+		}
+
+		for _, txInfo := range reqBody.Txs {
+			logger.Debug("resubmitting tx", zap.Uint64("query_id", txInfo.QueryID), zap.String("hash", txInfo.Hash))
+			tx, err := store.GetCachedTx(txInfo.QueryID, txInfo.Hash)
+			if err != nil {
+				logger.Error("failed to get unsuccessful tx", zap.Error(err))
+				http.Error(w, "Error processing request", http.StatusInternalServerError)
+				return
+			}
+			logger.Debug("tx", zap.Any("tx", *tx))
+			// we do not want to pass r.Context() at this place, because r.Context() is canceled at the end of the function
+			// but we have delayed call of txsubmitchecker which depends on the context passed into the ProcessAndSubmit
+			err = txProcessor.ProcessAndSubmit(context.Background(), txInfo.QueryID, *tx, submittedTxsTasksQueue, true)
+			if err != nil {
+				logger.Error("failed to process and resubmit tx", zap.Error(err))
+				http.Error(w, "Error processing request", http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 }

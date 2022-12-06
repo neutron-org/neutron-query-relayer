@@ -90,6 +90,10 @@ func (r *Relayer) Run(
 	}
 }
 
+func (r *Relayer) GetTxProcessor() TXProcessor {
+	return r.txProcessor
+}
+
 // processMessageKV handles an incoming KV interchain query message and passes it to the kvProcessor for further processing.
 func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 	r.logger.Debug("running processMessageKV for msg", zap.Uint64("query_id", m.QueryId))
@@ -125,7 +129,7 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX, submittedT
 				zap.Uint64("next_height_to_process", tx.Height))
 		}
 		lastProcessedHeight = tx.Height
-		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx, submittedTxsTasksQueue)
+		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx, submittedTxsTasksQueue,false)
 		if err != nil {
 			return fmt.Errorf("failed to process txs: %w", err)
 		}

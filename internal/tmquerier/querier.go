@@ -30,7 +30,7 @@ func NewQuerier(client *rpcclienthttp.HTTP, chainId string, validatorAccountPref
 // the Tendermint block containing the state root. The query will be
 // performed at one below this height (at the IAVL version) in order to obtain
 // the correct merkle proof. Proof queries at height less than or equal to 2 are
-// not supported. Queries with a client context height of 0 will perform a query
+// not supported. Txs with a client context height of 0 will perform a query
 // at the latest state available.
 // Issue: https://github.com/cosmos/cosmos-sdk/issues/6567
 // NOTE: returned uint64 height=(HEIGHT + 1) which is a height of a block with root_hash proofs it, NOT the block number that we got value for

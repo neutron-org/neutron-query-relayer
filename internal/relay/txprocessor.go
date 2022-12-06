@@ -10,8 +10,8 @@ import (
 
 // Transaction represents single searched tx with height
 type Transaction struct {
-	Tx     *neutrontypes.TxValue
-	Height uint64
+	Tx     *neutrontypes.TxValue `json:"tx"`
+	Height uint64                `json:"height"`
 }
 
 // TXQuerier fetches transactions from a remote chain with specified txFilter
@@ -32,5 +32,5 @@ type ChainClient interface {
 
 // TXProcessor precesses transactions from a remote chain and sends them to the neutron
 type TXProcessor interface {
-	ProcessAndSubmit(ctx context.Context, queryID uint64, tx Transaction, submittedTxsTasksQueue chan PendingSubmittedTxInfo) error
+	ProcessAndSubmit(ctx context.Context, queryID uint64, tx Transaction, submittedTxsTasksQueue chan PendingSubmittedTxInfo,force bool) error
 }
