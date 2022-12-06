@@ -95,8 +95,6 @@ func (r TXProcessor) submitTxWithProofs(
 			return fmt.Errorf("failed to store tx: %w", err)
 		}
 
-		// We submit the PendingSubmittedTxInfo only after checkSubmittedTxStatusDelay to reduce the possibility of
-		// unsuccessful checks (the block is 100% not ready here yet).
 		go r.delayedTxStatusCheck(ctx, relay.PendingSubmittedTxInfo{
 			QueryID:         queryID,
 			SubmittedTxHash: hash,
@@ -124,6 +122,8 @@ func (r TXProcessor) submitTxWithProofs(
 	return nil
 }
 
+// We submit the PendingSubmittedTxInfo only after checkSubmittedTxStatusDelay to reduce the possibility of
+// unsuccessful checks (the block is 100% not ready here yet).
 func (r TXProcessor) delayedTxStatusCheck(ctx context.Context, tx relay.PendingSubmittedTxInfo, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
 ) {
 	var t = time.NewTimer(r.checkSubmittedTxStatusDelay)
