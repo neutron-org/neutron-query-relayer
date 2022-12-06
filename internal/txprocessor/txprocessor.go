@@ -108,17 +108,15 @@ func (r TXProcessor) submitTxWithProofs(
 
 	// check error with regexp
 	if !r.ignoreErrorsRegexp.MatchString(err.Error()) {
-		r.logger.Error("critical error: failed to submit tx proof", zap.Error(err))
-		return err
+		return relay.NewErrSubmitTxProofCritical(err)
 	}
 
+	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
 	errSetStatus := r.storage.SetTxStatus(
 		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
 	if errSetStatus != nil {
 		return fmt.Errorf("failed to store tx: %w", errSetStatus)
 	}
-
-	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
 	return nil
 }
 
