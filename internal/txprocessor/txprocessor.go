@@ -116,6 +116,7 @@ func (r TXProcessor) submitTxWithProofs(
 		r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
 		return nil
 	}
+	neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 
 	// check error with regexp
 	if !r.ignoreErrorsRegexp.MatchString(err.Error()) {
@@ -123,7 +124,6 @@ func (r TXProcessor) submitTxWithProofs(
 		return err
 	}
 
-	neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 	errSetStatus := r.storage.SetTxStatus(
 		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
 	if errSetStatus != nil {
