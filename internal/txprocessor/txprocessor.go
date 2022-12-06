@@ -120,7 +120,7 @@ func (r TXProcessor) submitTxWithProofs(
 
 	// check error with regexp
 	if !r.ignoreErrorsRegexp.MatchString(err.Error()) {
-		r.logger.Error("failed to submit tx proof", zap.Error(err))
+		r.logger.Error("critical error: failed to submit tx proof", zap.Error(err))
 		return err
 	}
 

@@ -80,7 +80,9 @@ func (r *Relayer) Run(
 			if err != nil {
 				r.logger.Error("could not process message", zap.Uint64("query_id", query.Id), zap.Error(err))
 				neutronmetrics.AddFailedRequest(string(query.QueryType), time.Since(start).Seconds())
-				return err
+				if strings.Contains(err.Error(), "critical error") {
+					return err
+				}
 			} else {
 				neutronmetrics.AddSuccessRequest(string(query.QueryType), time.Since(start).Seconds())
 			}
