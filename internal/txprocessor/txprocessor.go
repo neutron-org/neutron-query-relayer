@@ -97,21 +97,11 @@ func (r TXProcessor) submitTxWithProofs(
 
 		// We submit the PendingSubmittedTxInfo only after checkSubmittedTxStatusDelay to reduce the possibility of
 		// unsuccessful checks (the block is 100% not ready here yet).
-		go func() {
-			var t = time.NewTimer(r.checkSubmittedTxStatusDelay)
-			select {
-			case <-t.C:
-				submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
-					QueryID:         queryID,
-					SubmittedTxHash: hash,
-					NeutronHash:     neutronTxHash,
-				}
-			case <-ctx.Done():
-				r.logger.Info("Cancelled PendingSubmittedTxInfo delayed checking",
-					zap.Uint64("query_id", queryID),
-					zap.String("submitted_tx_hash", hash))
-			}
-		}()
+		go r.delayedTxStatusCheck(ctx, relay.PendingSubmittedTxInfo{
+			QueryID:         queryID,
+			SubmittedTxHash: hash,
+			NeutronHash:     neutronTxHash,
+		}, submittedTxsTasksQueue)
 
 		r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
 		return nil
@@ -132,6 +122,23 @@ func (r TXProcessor) submitTxWithProofs(
 
 	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
 	return nil
+}
+
+func (r TXProcessor) delayedTxStatusCheck(ctx context.Context, tx relay.PendingSubmittedTxInfo, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
+) {
+	var t = time.NewTimer(r.checkSubmittedTxStatusDelay)
+	select {
+	case <-t.C:
+		submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
+			QueryID:         tx.QueryID,
+			SubmittedTxHash: tx.SubmittedTxHash,
+			NeutronHash:     tx.NeutronHash,
+		}
+	case <-ctx.Done():
+		r.logger.Info("Cancelled PendingSubmittedTxInfo delayed checking",
+			zap.Uint64("query_id", tx.QueryID),
+			zap.String("submitted_tx_hash", tx.SubmittedTxHash))
+	}
 }
 
 func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neutrontypes.Block, error) {
