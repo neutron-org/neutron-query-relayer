@@ -85,38 +85,65 @@ func (r TXProcessor) submitTxWithProofs(
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, block)
-
 	if err == nil {
-		neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
-		err = r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{
-			Status: relay.Submitted,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to store tx: %w", err)
-		}
-
-		go r.delayedTxStatusCheck(ctx, relay.PendingSubmittedTxInfo{
-			QueryID:         queryID,
-			SubmittedTxHash: hash,
-			NeutronHash:     neutronTxHash,
-		}, submittedTxsTasksQueue)
-
-		r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
-		return nil
+		return r.processSuccessfulTxSubmission(ctx, queryID, hash, neutronTxHash, proofStart, submittedTxsTasksQueue)
+	} else {
+		return r.processFailedTxSubmission(err, queryID, hash, neutronTxHash, proofStart)
 	}
+}
+
+// processSuccessfulTxSubmission stores the tx status in the storage and submits the PendingSubmittedTxInfo to
+// submittedTxsTasksQueue.
+func (r *TXProcessor) processSuccessfulTxSubmission(
+	ctx context.Context,
+	queryID uint64,
+	hash string,
+	neutronTxHash string,
+	proofStart time.Time,
+	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
+) error {
+	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
+	err := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{
+		Status: relay.Submitted,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to store tx: %w", err)
+	}
+
+	go r.delayedTxStatusCheck(ctx, relay.PendingSubmittedTxInfo{
+		QueryID:         queryID,
+		SubmittedTxHash: hash,
+		NeutronHash:     neutronTxHash,
+	}, submittedTxsTasksQueue)
+
+	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
+
+	return nil
+}
+
+// processFailedTxSubmission checks whether the error is ignored. If it's ignored, it stores the tx status in the
+// storage; otherwise it escalates the error.
+func (r *TXProcessor) processFailedTxSubmission(
+	err error,
+	queryID uint64,
+	hash string,
+	neutronTxHash string,
+	proofStart time.Time,
+) error {
 	neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
+	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
 
 	// check error with regexp
 	if !r.ignoreErrorsRegexp.MatchString(err.Error()) {
 		return relay.NewErrSubmitTxProofCritical(err)
 	}
 
-	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
 	errSetStatus := r.storage.SetTxStatus(
 		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
 	if errSetStatus != nil {
-		return fmt.Errorf("failed to store tx: %w", errSetStatus)
+		return fmt.Errorf("failed to SetTxStatus: %w", errSetStatus)
 	}
+
 	return nil
 }
 
