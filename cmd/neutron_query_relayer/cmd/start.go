@@ -3,13 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
