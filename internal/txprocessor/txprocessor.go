@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"time"
+
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -28,7 +29,8 @@ func NewTxProcessor(
 	storage relay.Storage,
 	submitter relay.Submitter,
 	logger *zap.Logger,
-	checkSubmittedTxStatusDelay time.Duration) TXProcessor {
+	checkSubmittedTxStatusDelay time.Duration,
+) TXProcessor {
 	txProcessor := TXProcessor{
 		trustedHeaderFetcher:        trustedHeaderFetcher,
 		storage:                     storage,
@@ -45,24 +47,7 @@ func (r TXProcessor) ProcessAndSubmit(
 	queryID uint64,
 	tx relay.Transaction,
 	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
-	force bool,
 ) error {
-	hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
-	txExists, err := r.storage.TxExists(queryID, hash)
-	if err != nil {
-		return fmt.Errorf("failed to check tx existence: %w", err)
-	}
-
-	if txExists && !force {
-		r.logger.Debug("transaction already submitted",
-			zap.Uint64("query_id", queryID),
-			zap.String("hash", hash),
-			zap.Uint64("height", tx.Height))
-		return nil
-	} else if txExists && force {
-		r.logger.Debug("transaction already submitted. submit forced", zap.Uint64("query_id", queryID), zap.String("hash", hash), zap.Uint64("height", tx.Height))
-	}
-
 	block, err := r.txToBlock(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to prepare block: %w", err)
@@ -77,7 +62,8 @@ func (r TXProcessor) ProcessAndSubmit(
 func (r TXProcessor) submitTxWithProofs(
 	ctx context.Context,
 	queryID uint64,
-	txHeight uint64, block *neutrontypes.Block,
+	txHeight uint64,
+	block *neutrontypes.Block,
 	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
 ) error {
 	proofStart := time.Now()
@@ -100,7 +86,6 @@ func (r TXProcessor) submitTxWithProofs(
 
 		r.logger.Error("failed to process tx", zap.Error(err), zap.Uint64("query_id", queryID), zap.Uint64("height", txHeight), zap.String("hash", hash))
 		return nil
-		// return fmt.Errorf("could not submit proof for %s with query_id=%d: %w", neutrontypes.InterchainQueryTypeTX, queryID, err)
 	}
 
 	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())

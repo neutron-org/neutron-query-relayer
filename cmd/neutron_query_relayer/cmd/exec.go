@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
-	"github.com/spf13/cobra"
 	"strconv"
+
+	"github.com/spf13/cobra"
+
+	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
 )
 
 // ExecCmd represents the exec command
@@ -47,10 +49,10 @@ var resubmitFailedTx = &cobra.Command{
 
 		err = client.ResubmitTxs(req)
 		if err != nil {
-			return fmt.Errorf("failed to get unsuccessful txs: %w", err)
+			return fmt.Errorf("failed to resubmit unsuccessful tx: %w", err)
 		}
 
-		fmt.Printf("Tx %d %s resubmitted successfully", queryID, hash)
+		fmt.Printf("Tx queryID=%d hash=%s resubmitted successfully", queryID, hash)
 		return nil
 	},
 }

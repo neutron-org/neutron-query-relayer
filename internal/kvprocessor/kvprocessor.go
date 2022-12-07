@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"time"
+
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"

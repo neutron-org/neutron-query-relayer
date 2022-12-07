@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 )
 
 const getTimeout = time.Second * 5

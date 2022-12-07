@@ -3,8 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/syndtr/goleveldb/leveldb"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 
@@ -70,7 +74,7 @@ func Router(logRegistry *nlogger.Registry, storage relay.Storage, txProcessor re
 	promHandler := NewPromWrapper(logRegistry, storage)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc(UnsuccessfulTxsResource, unsuccessfulTxs(logRegistry.Get(ServerContext), storage))
-	router.HandleFunc(ResubmitTxs, resubmitFailedTxs(logRegistry.Get(ServerContext), storage, txProcessor, submittedTxsTasksQueue))
+	router.HandleFunc(ResubmitTxs, resubmitFailedTxs(logRegistry.Get(ServerContext), storage, txProcessor, submittedTxsTasksQueue)).Methods(http.MethodPost)
 	router.Handle(PrometheusMetrics, promHandler)
 	return router
 }
@@ -96,18 +100,12 @@ func unsuccessfulTxs(logger *zap.Logger, storage relay.Storage) http.HandlerFunc
 
 func resubmitFailedTxs(logger *zap.Logger, store relay.Storage, txProcessor relay.TXProcessor, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			logger.Error("failed to process resubmitFailedTxs request, only the POST method is allowed.", zap.String("requested_method", r.Method))
-			http.Error(w, "Error processing request", http.StatusMethodNotAllowed)
-			return
-		}
-
 		reqBody := ResubmitRequest{}
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&reqBody)
 		if err != nil {
 			logger.Error("failed to decode request body of resubmitFailedTxs", zap.Error(err))
-			http.Error(w, "Error processing request", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Error processing request: %s", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -116,16 +114,22 @@ func resubmitFailedTxs(logger *zap.Logger, store relay.Storage, txProcessor rela
 			tx, err := store.GetCachedTx(txInfo.QueryID, txInfo.Hash)
 			if err != nil {
 				logger.Error("failed to get unsuccessful tx", zap.Error(err))
-				http.Error(w, "Error processing request", http.StatusInternalServerError)
+				httpErrorCode := http.StatusInternalServerError
+				httpErrorMessage := fmt.Sprintf("Error processing request: %s", err)
+				if errors.As(err, &leveldb.ErrNotFound) {
+					httpErrorCode = http.StatusBadRequest
+					httpErrorMessage = fmt.Sprintf("no tx found with queryID=%d and hash=%s", txInfo.QueryID, txInfo.Hash)
+				}
+				http.Error(w, httpErrorMessage, httpErrorCode)
 				return
 			}
 			logger.Debug("tx", zap.Any("tx", *tx))
 			// we do not want to pass r.Context() at this place, because r.Context() is canceled at the end of the function
 			// but we have delayed call of txsubmitchecker which depends on the context passed into the ProcessAndSubmit
-			err = txProcessor.ProcessAndSubmit(context.Background(), txInfo.QueryID, *tx, submittedTxsTasksQueue, true)
+			err = txProcessor.ProcessAndSubmit(context.Background(), txInfo.QueryID, *tx, submittedTxsTasksQueue)
 			if err != nil {
 				logger.Error("failed to process and resubmit tx", zap.Error(err))
-				http.Error(w, "Error processing request", http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("Error processing request: %s", err), http.StatusInternalServerError)
 				return
 			}
 		}

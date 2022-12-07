@@ -89,22 +89,17 @@ func (s *LevelDBStorage) GetCachedTx(queryID uint64, hash string) (*relay.Transa
 		return nil, fmt.Errorf("failed to get Transaction for query_id + hash {%d %s}: %w", queryID, hash, err)
 	}
 
-	fmt.Println("DATA: ", data)
-	fmt.Println("DATA STRING: ", string(data))
-
 	var txInfo relay.Transaction
 	err = json.Unmarshal(data, &txInfo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data into Transaction: %w", err)
 	}
-	fmt.Println("DECODED TX: ", txInfo)
 
 	txMap := make(map[string]interface{})
 	err = json.Unmarshal(data, &txMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data into Transaction: %w", err)
 	}
-	fmt.Println("DECODED TXMAP: ", txMap)
 
 	return &txInfo, nil
 }
@@ -128,14 +123,6 @@ func (s *LevelDBStorage) GetLastQueryHeight(queryID uint64) (block uint64, found
 	}
 
 	return res, true, nil
-}
-
-func (s *LevelDBStorage) SaveTxData(queryID uint64, hash string, tx relay.Transaction) error {
-	return nil
-}
-
-func (s *LevelDBStorage) RemoveTxData(queryID uint64, hash string) error {
-	return nil
 }
 
 // SetTxStatus sets status for given tx
@@ -167,7 +154,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 	}
 
 	if processedTx != nil {
-		err = cacheProcessedTx(t, queryID, hash, *processedTx)
+		err = cacheProcessedTx(t, queryID, hash, processedTx)
 		if err != nil {
 			return fmt.Errorf("failed to cache processed tx: %w", err)
 		}
@@ -181,7 +168,7 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		}
 		err = saveIntoPendingQueue(t, neutronHash, pendingTxInfo)
 		if err != nil {
-			return fmt.Errorf("failed to saved txInfo into pending queue: %w", err)
+			return fmt.Errorf("failed to save txInfo into pending queue: %w", err)
 		}
 	} else if txInfo.Status == relay.Committed || txInfo.Status == relay.ErrorOnCommit {
 		err = removeFromPendingQueue(t, neutronHash)
@@ -201,19 +188,19 @@ func (s *LevelDBStorage) SetTxStatus(queryID uint64, hash string, neutronHash st
 		}
 		err = saveIntoUnsuccessfulQueue(t, queryID, hash, unsuccessfulTxInfo)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to save unsuccessfulTxInfo into Unsuccessful queue: %w", err)
 		}
 	}
 
 	if txInfo.Status == relay.Committed {
 		err = removeFromUnsuccessfulQueue(t, queryID, hash)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to remove txInfo from UnsuccessfulQueue: %w", err)
 		}
 
 		err = removeCachedTx(t, queryID, hash)
 		if err != nil {
-			return fmt.Errorf("failed to saved txInfo into error queue: %w", err)
+			return fmt.Errorf("failed to remove cachedTxData from the cached queue: %w", err)
 		}
 	}
 
@@ -241,7 +228,7 @@ func (s *LevelDBStorage) SetLastQueryHeight(queryID uint64, block uint64) error 
 
 	err := s.db.Put(uintToBytes(queryID), uintToBytes(block), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save last query height to storage: %w", err)
 	}
 
 	return nil
@@ -264,7 +251,7 @@ func saveIntoPendingQueue(t *leveldb.Transaction, neutronTXHash string, txInfo r
 
 	err = t.Put(key, data, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save txInfo into the pending queue: %w", err)
 	}
 
 	return nil
@@ -274,7 +261,7 @@ func removeFromPendingQueue(t *leveldb.Transaction, neutronTXHash string) error 
 	key := constructPendingQueueKey(neutronTXHash)
 	err := t.Delete(key, nil)
 	if err != nil {
-		return fmt.Errorf("failed to remove PendingSubmittedTxInfo under the key %s: %w", neutronTXHash, err)
+		return fmt.Errorf("failed to remove PendingSubmittedTxInfo with neuton tx hash=%s: %w", neutronTXHash, err)
 	}
 
 	return nil
@@ -289,7 +276,7 @@ func saveIntoUnsuccessfulQueue(t *leveldb.Transaction, queryID uint64, tXHash st
 
 	err = t.Put(key, data, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save unsuccessful txInfo(queryID=%d hash=%s) into the storage: %w", queryID, tXHash, err)
 	}
 
 	return nil
@@ -299,7 +286,7 @@ func removeFromUnsuccessfulQueue(t *leveldb.Transaction, queryID uint64, tXHash 
 	key := constructUnsuccessfulQueueKey(queryID, tXHash)
 	err := t.Delete(key, nil)
 	if err != nil {
-		return fmt.Errorf("failed to remove UnsuccessfulTxInfo under the key %d%s: %w", queryID, tXHash, err)
+		return fmt.Errorf("failed to remove UnsuccessfulTxInfo with queryID=%d hasj=%s: %w", queryID, tXHash, err)
 	}
 
 	return nil
@@ -309,24 +296,22 @@ func removeCachedTx(t *leveldb.Transaction, queryID uint64, tXHash string) error
 	key := constructCacheTxKey(queryID, tXHash)
 	err := t.Delete(key, nil)
 	if err != nil {
-		return fmt.Errorf("failed to remove cached tx under the key %d%s: %w", queryID, tXHash, err)
+		return fmt.Errorf("failed to remove cached tx under with queryID=%d hasj=%s: %w", queryID, tXHash, err)
 	}
 
 	return nil
 }
 
-func cacheProcessedTx(t *leveldb.Transaction, queryID uint64, tXHash string, tx relay.Transaction) error {
+func cacheProcessedTx(t *leveldb.Transaction, queryID uint64, tXHash string, tx *relay.Transaction) error {
 	key := constructCacheTxKey(queryID, tXHash)
 	data, err := json.Marshal(tx)
 	if err != nil {
 		return fmt.Errorf("failed to marshal relay.Transaction: %w", err)
 	}
 
-	fmt.Println(tx)
-
 	err = t.Put(key, data, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save cachedTx in the storage: %w", err)
 	}
 
 	return nil

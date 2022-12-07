@@ -1,12 +1,14 @@
 package http
 
 import (
-	"github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"net/http"
+
+	"github.com/neutron-org/neutron-query-relayer/internal/metrics"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"go.uber.org/zap"
 )

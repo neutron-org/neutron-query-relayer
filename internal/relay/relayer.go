@@ -2,11 +2,15 @@ package relay
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"strings"
 	"time"
+
+	tmtypes "github.com/tendermint/tendermint/types"
+
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/cosmos/relayer/v2/relayer"
 
@@ -129,7 +133,22 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX, submittedT
 				zap.Uint64("next_height_to_process", tx.Height))
 		}
 		lastProcessedHeight = tx.Height
-		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx, submittedTxsTasksQueue,false)
+
+		hash := hex.EncodeToString(tmtypes.Tx(tx.Tx.Data).Hash())
+		txExists, err := r.storage.TxExists(m.QueryId, hash)
+		if err != nil {
+			return fmt.Errorf("failed to check tx existence: %w", err)
+		}
+
+		if txExists {
+			r.logger.Debug("transaction already submitted",
+				zap.Uint64("query_id", m.QueryId),
+				zap.String("hash", hash),
+				zap.Uint64("height", tx.Height))
+			continue
+		}
+
+		err = r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx, submittedTxsTasksQueue)
 		if err != nil {
 			return fmt.Errorf("failed to process txs: %w", err)
 		}
