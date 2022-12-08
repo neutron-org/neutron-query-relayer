@@ -26,7 +26,6 @@ import (
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
-	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
@@ -102,10 +101,6 @@ func NewDefaultRelayer(
 	storage relay.Storage,
 	deps *DependencyContainer,
 ) (*relay.Relayer, error) {
-	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
-	globalCfg := neutronapp.GetDefaultConfig()
-	globalCfg.Seal()
-
 	var (
 		txProcessor = txprocessor.NewTxProcessor(
 			deps.GetTrustedHeaderFetcher(), storage, deps.GetProofSubmitter(), logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)

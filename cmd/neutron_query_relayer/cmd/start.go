@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	neutronapp "github.com/neutron-org/neutron/app"
 	"log"
 	"os"
 	"os/signal"
@@ -39,6 +40,10 @@ func init() {
 }
 
 func startRelayer() {
+	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
+	globalCfg := neutronapp.GetDefaultConfig()
+	globalCfg.Seal()
+
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
 		app.AppContext,
