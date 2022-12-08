@@ -85,11 +85,10 @@ func (r TXProcessor) submitTxWithProofs(
 	proofStart := time.Now()
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, block)
-	if err == nil {
-		return r.processSuccessfulTxSubmission(ctx, queryID, hash, neutronTxHash, proofStart, submittedTxsTasksQueue)
-	} else {
+	if err != nil {
 		return r.processFailedTxSubmission(err, queryID, hash, neutronTxHash, proofStart)
 	}
+	return r.processSuccessfulTxSubmission(ctx, queryID, hash, neutronTxHash, proofStart, submittedTxsTasksQueue)
 }
 
 // processSuccessfulTxSubmission stores the tx status in the storage and submits the PendingSubmittedTxInfo to
