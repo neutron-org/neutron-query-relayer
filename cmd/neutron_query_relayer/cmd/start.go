@@ -91,7 +91,12 @@ func startRelayer() {
 		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
 	}
 
-	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
+	deps, err := app.NewDefaultDependencyContainer(ctx, cfg, logRegistry, storage)
+	if err != nil {
+		logger.Fatal("failed to initialize dependency container", zap.Error(err))
+	}
+
+	relayer, err := app.NewDefaultRelayer(cfg, logRegistry, storage, deps)
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultRelayer", zap.Error(err))
 	}
@@ -105,7 +110,7 @@ func startRelayer() {
 	go func() {
 		defer wg.Done()
 
-		err := icqhttp.Run(ctx, logRegistry, storage, relayer.GetTxProcessor(), submittedTxsTasksQueue, cfg.ListenAddr)
+		err := icqhttp.Run(ctx, logRegistry, storage, deps.GetTxProcessor(), submittedTxsTasksQueue, cfg.ListenAddr)
 		if err != nil {
 			logger.Error("WebServer exited with an error", zap.Error(err))
 			cancel()

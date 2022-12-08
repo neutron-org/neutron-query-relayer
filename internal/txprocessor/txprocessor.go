@@ -30,8 +30,8 @@ func NewTxProcessor(
 	submitter relay.Submitter,
 	logger *zap.Logger,
 	checkSubmittedTxStatusDelay time.Duration,
-) TXProcessor {
-	txProcessor := TXProcessor{
+) *TXProcessor {
+	txProcessor := &TXProcessor{
 		trustedHeaderFetcher:        trustedHeaderFetcher,
 		storage:                     storage,
 		submitter:                   submitter,

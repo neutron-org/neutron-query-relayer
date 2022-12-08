@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
+	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
+
 	"github.com/avast/retry-go/v4"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 
@@ -16,18 +19,12 @@ import (
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
-	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
-	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
-	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
-	"github.com/neutron-org/neutron-query-relayer/internal/txquerier"
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutronapp "github.com/neutron-org/neutron/app"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -100,74 +97,35 @@ func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry
 
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
-	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
-	storage relay.Storage) (*relay.Relayer, error) {
+	storage relay.Storage,
+	deps *DependencyContainer,
+) (*relay.Relayer, error) {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
-	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize target rpc client: %w", err)
-	}
-
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create neutron client: %w", err)
-	}
-
-	connParams, err := loadConnParams(ctx, neutronClient, targetClient, cfg.NeutronChain.RESTAddr,
-		cfg.NeutronChain.ConnectionID, logRegistry.Get(AppContext))
-	if err != nil {
-		return nil, fmt.Errorf("cannot load network params: %w", err)
-	}
-
-	targetQuerier, err := tmquerier.NewQuerier(targetClient, connParams.targetChainID, cfg.TargetChain.ValidatorAccountPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to target chain: %w", err)
-	}
-
-	codec := raw.MakeCodecDefault()
-	keybase, err := submit.TestKeybase(connParams.neutronChainID, cfg.NeutronChain.HomeDir)
-	if err != nil {
-		return nil, fmt.Errorf("cannot initialize keybase: %w", err)
-	}
-
-	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logRegistry.Get(TxSenderContext), connParams.neutronChainID)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create tx sender: %w", err)
-	}
-
-	neutronChain, targetChain, err := loadChains(cfg, logRegistry, connParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to loadChains: %w", err)
-	}
-
 	var (
-		proofSubmitter       = submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
-		txQuerier            = txquerier.NewTXQuerySrv(targetQuerier.Client)
-		trustedHeaderFetcher = trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
-		txProcessor          = txprocessor.NewTxProcessor(
-			trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)
+		txProcessor = txprocessor.NewTxProcessor(
+			deps.GetTrustedHeaderFetcher(), storage, deps.GetProofSubmitter(), logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)
 		kvProcessor = kvprocessor.NewKVProcessor(
-			trustedHeaderFetcher,
-			targetQuerier,
+			deps.GetTrustedHeaderFetcher(),
+			deps.GetTargetQuerier(),
 			cfg.MinKvUpdatePeriod,
 			logRegistry.Get(KVProcessorContext),
-			proofSubmitter,
+			deps.GetProofSubmitter(),
 			storage,
-			targetChain,
-			neutronChain,
+			deps.GetTargetChain(),
+			deps.GetTargetChain(),
 		)
 		relayer = relay.NewRelayer(
 			cfg,
-			txQuerier,
+			deps.GetTxQuerier(),
 			storage,
 			txProcessor,
 			kvProcessor,
-			targetChain,
+			deps.GetTargetChain(),
 			logRegistry.Get(RelayerContext),
 		)
 	)

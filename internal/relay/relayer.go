@@ -94,10 +94,6 @@ func (r *Relayer) Run(
 	}
 }
 
-func (r *Relayer) GetTxProcessor() TXProcessor {
-	return r.txProcessor
-}
-
 // processMessageKV handles an incoming KV interchain query message and passes it to the kvProcessor for further processing.
 func (r *Relayer) processMessageKV(ctx context.Context, m *MessageKV) error {
 	r.logger.Debug("running processMessageKV for msg", zap.Uint64("query_id", m.QueryId))
