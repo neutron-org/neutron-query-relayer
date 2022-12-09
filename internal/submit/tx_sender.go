@@ -14,7 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
@@ -37,7 +37,7 @@ type TxSender struct {
 	ctx           context.Context
 	sequence      uint64
 	accountNumber uint64
-	keybase       keyring.Keyring
+	keybase       sdkkeyring.Keyring
 	baseTxf       tx.Factory
 	txConfig      client.TxConfig
 	rpcClient     rpcclient.Client
@@ -53,7 +53,7 @@ func NewTxSender(
 	rpcClient rpcclient.Client,
 	marshaller codec.ProtoCodecMarshaler,
 	cfg config.NeutronChainConfig,
-	keybase keyring.Keyring,
+	keybase sdkkeyring.Keyring,
 	keyName string,
 	logger *zap.Logger,
 	neutronChainID string,

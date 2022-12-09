@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"github.com/avast/retry-go/v4"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
@@ -17,11 +17,11 @@ import (
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/keyring"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/relayer_keyring"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
@@ -131,7 +131,7 @@ func NewDefaultRelayer(
 	}
 
 	codec := raw.MakeCodecDefault()
-	keybase, keyName, err := relayer_keyring.InitializeKeyring(
+	keybase, keyName, err := keyring.InitializeKeyring(
 		cfg.NeutronChain.KeyringBackend,
 		cfg.NeutronChain.KeyringPassword,
 		cfg.NeutronChain.HomeDir,
@@ -203,7 +203,7 @@ func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig) (relay.Storage, err
 }
 
 func loadNeutronChain(cfg config.NeutronQueryRelayerConfig,
-	keybase keyring.Keyring, keyName string, logRegistry *nlogger.Registry, connParams *connectionParams,
+	keybase sdkkeyring.Keyring, keyName string, logRegistry *nlogger.Registry, connParams *connectionParams,
 ) (neutronChain *cosmosrelayer.Chain, err error) {
 	neutronChain, err = relay.GetNeutronChain(logRegistry.Get(NeutronChainProviderContext), cfg.NeutronChain, connParams.neutronChainID, keyName)
 

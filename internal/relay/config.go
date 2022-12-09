@@ -3,7 +3,7 @@ package relay
 import (
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
@@ -19,7 +19,7 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID
 		RPCAddr:       cfg.RPCAddr,
 		AccountPrefix: neutronapp.Bech32MainPrefix,
 		// we ignore provided keyring here since we're to substitute it later after initialization
-		KeyringBackend: keyring.BackendMemory,
+		KeyringBackend: sdkkeyring.BackendMemory,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
 		Debug:          cfg.Debug,
@@ -40,7 +40,7 @@ func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig, chainID s
 		ChainID:        chainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,
-		KeyringBackend: keyring.BackendMemory,
+		KeyringBackend: sdkkeyring.BackendMemory,
 		Debug:          cfg.Debug,
 		Timeout:        cfg.Timeout.String(),
 		OutputFormat:   cfg.OutputFormat,
