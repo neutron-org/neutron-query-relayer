@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,8 +11,9 @@ import (
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
-	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
+	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 

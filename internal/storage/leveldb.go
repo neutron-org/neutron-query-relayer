@@ -9,6 +9,8 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb/util"
 
+	"github.com/syndtr/goleveldb/leveldb/util"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/syndtr/goleveldb/leveldb"

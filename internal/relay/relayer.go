@@ -66,6 +66,7 @@ func (r *Relayer) Run(
 		select {
 		case query := <-queriesTasksQueue:
 			start := time.Now()
+			neutronmetrics.SetSubscriberTaskQueueNumElements(len(queriesTasksQueue))
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
