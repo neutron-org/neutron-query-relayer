@@ -132,17 +132,17 @@ func NewDefaultRelayer(
 
 	codec := raw.MakeCodecDefault()
 	keybase, keyName, err := keyring.InitializeKeyring(
-		cfg.NeutronChain.KeyringBackend,
-		cfg.NeutronChain.KeyringPassword,
+		cfg.Keyring.Backend,
+		cfg.Keyring.Password,
 		cfg.NeutronChain.HomeDir,
-		cfg.NeutronChain.SignKeyName,
-		cfg.NeutronChain.SignKeySeed,
-		cfg.NeutronChain.SignKeyHdPath,
+		cfg.Keyring.KeyName,
+		cfg.Keyring.KeySeed,
+		cfg.Keyring.KeyHdPath,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize keybase: %w", err)
 	}
-	logger.Debug("keyring initialized", zap.String("keyring_backend", cfg.NeutronChain.KeyringBackend))
+	logger.Debug("keyring initialized", zap.String("keyring_backend", cfg.Keyring.Backend))
 
 	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, *cfg.NeutronChain, keybase, keyName, logRegistry.Get(TxSenderContext), connParams.neutronChainID)
 	if err != nil {
