@@ -37,17 +37,13 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID
 
 func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig, chainID string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            "",
 		ChainID:        chainID,
 		RPCAddr:        cfg.RPCAddr,
 		AccountPrefix:  cfg.AccountPrefix,
 		KeyringBackend: keyring.BackendMemory,
-		GasAdjustment:  0.0,
-		GasPrices:      "",
 		Debug:          cfg.Debug,
 		Timeout:        cfg.Timeout.String(),
 		OutputFormat:   cfg.OutputFormat,
-		SignModeStr:    "",
 	}
 	chain, err := getChain(logger, provCfg, "", cfg.Debug)
 	if err != nil {
