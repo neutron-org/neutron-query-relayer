@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/avast/retry-go/v4"
 	abci "github.com/tendermint/tendermint/abci/types"

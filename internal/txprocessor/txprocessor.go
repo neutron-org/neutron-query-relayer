@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 	"time"
+
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	tmtypes "github.com/tendermint/tendermint/types"

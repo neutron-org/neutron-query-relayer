@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
+
 	"github.com/spf13/cobra"
+
+	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
 )
 
 var urlICQ string

@@ -10,7 +10,6 @@ import (
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 	"go.uber.org/zap"
 
-
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 
 	nlogger "github.com/neutron-org/neutron-logger"
