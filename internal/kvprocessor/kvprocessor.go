@@ -41,7 +41,7 @@ func NewKVProcessor(
 	submitter relay.Submitter,
 	storage relay.Storage,
 	targetChain *relayer.Chain,
-	neutronChain *relayer.Chain) relay.KVProcessor {
+	neutronChain *relayer.Chain) *KVProcessor {
 	return &KVProcessor{
 		trustedHeaderFetcher: trustedHeaderFetcher,
 		querier:              querier,
@@ -133,6 +133,7 @@ func (p *KVProcessor) submitKVWithProof(
 
 	st := time.Now()
 	if err = p.submitter.SubmitKVProof(
+		ctx,
 		uint64(height-1),
 		srcHeader.GetHeight().GetRevisionNumber(),
 		queryID,

@@ -3,15 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
-
-	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
-
-	"github.com/avast/retry-go/v4"
-	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
-
 	"time"
 
+	"github.com/avast/retry-go/v4"
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
+	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 	"go.uber.org/zap"
 
@@ -24,6 +21,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
+	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
@@ -69,11 +67,14 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 	}
 
 	subscriber, err := relaysubscriber.NewSubscriber(
-		cfg.NeutronChain.RPCAddr,
-		cfg.NeutronChain.RESTAddr,
-		cfg.NeutronChain.ConnectionID,
-		registry.New(cfg.Registry),
-		watchedMsgTypes,
+		&subscriber.SubscriberConfig{
+			RPCAddress:   cfg.NeutronChain.RPCAddr,
+			RESTAddress:  cfg.NeutronChain.RESTAddr,
+			Timeout:      cfg.NeutronChain.Timeout,
+			ConnectionID: cfg.NeutronChain.ConnectionID,
+			WatchedTypes: watchedMsgTypes,
+			Registry:     registry.New(cfg.Registry),
+		},
 		logRegistry.Get(SubscriberContext),
 	)
 	if err != nil {

@@ -16,8 +16,8 @@ func New(cfg *RegistryConfig) *Registry {
 	return r
 }
 
-// Registry is the relayer watch list registry. It contains a list of addresses, and the relayer
-// relays only works with interchain queries registered by these addresses.
+// Registry is the relayer's watch list registry. It contains a list of addresses, and the relayer
+// only works with interchain queries that are under these addresses' ownership.
 type Registry struct {
 	addresses map[string]struct{}
 }

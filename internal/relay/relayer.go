@@ -24,14 +24,13 @@ const TxHeight = "tx.height"
 // 2. dispatches each query by type to fetch proof for the right query
 // 3. submits proof for a query back to the Neutron chain
 type Relayer struct {
-	cfg             config.NeutronQueryRelayerConfig
-	txQuerier       TXQuerier
-	logger          *zap.Logger
-	storage         Storage
-	txProcessor     TXProcessor
-	txSubmitChecker TxSubmitChecker
-	kvProcessor     KVProcessor
-	targetChain     *relayer.Chain
+	cfg         config.NeutronQueryRelayerConfig
+	txQuerier   TXQuerier
+	logger      *zap.Logger
+	storage     Storage
+	txProcessor TXProcessor
+	kvProcessor KVProcessor
+	targetChain *relayer.Chain
 }
 
 func NewRelayer(
@@ -67,6 +66,7 @@ func (r *Relayer) Run(
 		select {
 		case query := <-queriesTasksQueue:
 			start := time.Now()
+			neutronmetrics.SetSubscriberTaskQueueNumElements(len(queriesTasksQueue))
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}
@@ -118,7 +118,6 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX, submittedT
 		if tx.Height > lastProcessedHeight && lastProcessedHeight > 0 {
 			err := r.storage.SetLastQueryHeight(m.QueryId, lastProcessedHeight)
 			if err != nil {
-				// TODO: should we stop after a first error
 				return fmt.Errorf("failed to save last height of query: %w", err)
 			}
 			r.logger.Debug("block completely processed",
@@ -129,7 +128,6 @@ func (r *Relayer) processMessageTX(ctx context.Context, m *MessageTX, submittedT
 		lastProcessedHeight = tx.Height
 		err := r.txProcessor.ProcessAndSubmit(ctx, m.QueryId, tx, submittedTxsTasksQueue)
 		if err != nil {
-			// TODO: should we stop after a first error
 			return fmt.Errorf("failed to process txs: %w", err)
 		}
 	}

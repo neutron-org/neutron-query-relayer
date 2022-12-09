@@ -1,8 +1,6 @@
 package relay
 
-import (
-	"context"
-)
+import "context"
 
 // KVProcessor processes event query KV type. Obtains the proof for a query we need to process, and sends it to  the neutron
 type KVProcessor interface {

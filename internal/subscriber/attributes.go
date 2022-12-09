@@ -2,10 +2,9 @@ package subscriber
 
 import (
 	"github.com/neutron-org/neutron/x/interchainqueries/types"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-const eventTypePrefix = neutrontypes.EventTypeNeutronMessage
+const eventTypePrefix = types.EventTypeNeutronMessage
 
 // types of keys for parsing incoming events
 const (
