@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -73,6 +74,11 @@ func (r *Relayer) Run(
 			case string(neutrontypes.InterchainQueryTypeTX):
 				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
 				err = r.processMessageTX(ctx, msg, submittedTxsTasksQueue)
+
+				var critErr ErrSubmitTxProofCritical
+				if errors.As(errors.Unwrap(err), &critErr) {
+					return err
+				}
 			default:
 				err = fmt.Errorf("unknown query type: %s", query.QueryType)
 			}
@@ -80,9 +86,6 @@ func (r *Relayer) Run(
 			if err != nil {
 				r.logger.Error("could not process message", zap.Uint64("query_id", query.Id), zap.Error(err))
 				neutronmetrics.AddFailedRequest(string(query.QueryType), time.Since(start).Seconds())
-				if strings.Contains(err.Error(), "critical error") {
-					return err
-				}
 			} else {
 				neutronmetrics.AddSuccessRequest(string(query.QueryType), time.Since(start).Seconds())
 			}
