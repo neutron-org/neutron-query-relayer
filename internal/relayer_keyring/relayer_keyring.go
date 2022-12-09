@@ -1,9 +1,8 @@
 package relayer_keyring
 
 import (
-	"bytes"
 	"fmt"
-	"io"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -12,31 +11,8 @@ import (
 	neutronapp "github.com/neutron-org/neutron/app"
 )
 
-type passReader struct {
-	pass string
-	buf  *bytes.Buffer
-}
-
-func newPassReader(pass string) io.Reader {
-	return &passReader{
-		pass: pass,
-		buf:  new(bytes.Buffer),
-	}
-}
-
-func (r *passReader) Read(p []byte) (n int, err error) {
-	n, err = r.buf.Read(p)
-	if err == io.EOF || n == 0 {
-		r.buf.WriteString(r.pass + "\n")
-
-		n, err = r.buf.Read(p)
-	}
-
-	return n, err
-}
-
 func InitializeKeyring(keyringBackend, keyringPassword, homeDir, keyName, keySeed, hdPath string) (keyring.Keyring, string, error) {
-	passReader := newPassReader(keyringPassword)
+	passReader := strings.NewReader(keyringPassword)
 
 	keybase, err := keyring.New(neutronapp.Bech32MainPrefix, keyringBackend, homeDir, passReader)
 	if err != nil {
