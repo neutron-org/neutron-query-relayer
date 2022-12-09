@@ -149,9 +149,14 @@ func NewDefaultRelayer(
 		return nil, fmt.Errorf("cannot create tx sender: %w", err)
 	}
 
-	neutronChain, targetChain, err := loadChains(cfg, keybase, keyName, logRegistry, connParams)
+	neutronChain, err := loadNeutronChain(cfg, keybase, keyName, logRegistry, connParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to loadChains: %w", err)
+		return nil, fmt.Errorf("failed to load Neutron chain: %w", err)
+	}
+
+	targetChain, err := loadTargetChain(cfg, logRegistry, connParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target chain: %w", err)
 	}
 
 	var (
@@ -197,46 +202,51 @@ func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig) (relay.Storage, err
 	return leveldbStorage, nil
 }
 
-func loadChains(
-	cfg config.NeutronQueryRelayerConfig,
+func loadNeutronChain(cfg config.NeutronQueryRelayerConfig,
 	keybase keyring.Keyring, keyName string, logRegistry *nlogger.Registry, connParams *connectionParams,
-) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain, connParams.targetChainID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
-	}
-
-	if err := targetChain.AddPath(connParams.targetClientID, connParams.targetConnectionID); err != nil {
-		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
-	}
-
-	if err := targetChain.ChainProvider.Init(); err != nil {
-		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
-	}
-
+) (neutronChain *cosmosrelayer.Chain, err error) {
 	neutronChain, err = relay.GetNeutronChain(logRegistry.Get(NeutronChainProviderContext), cfg.NeutronChain, connParams.neutronChainID, keyName)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
+		return nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
 	}
 
 	if err := neutronChain.AddPath(connParams.neutronClientID, cfg.NeutronChain.ConnectionID); err != nil {
-		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
+		return nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
 	}
 
 	if err := neutronChain.ChainProvider.Init(); err != nil {
-		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+		return nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
 	// Workaround to have more flexibility in keyring configuration
 	// Unfortunately, ChainProvider interface doesn't allow configuring keyring properly or passing existing one
 	provConcrete, ok := neutronChain.ChainProvider.(*cosmos.CosmosProvider)
 	if !ok {
-		return nil, nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
+		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
 	}
 	provConcrete.Keybase = keybase
 
-	return neutronChain, targetChain, nil
+	return neutronChain, nil
+}
+
+func loadTargetChain(cfg config.NeutronQueryRelayerConfig,
+	logRegistry *nlogger.Registry, connParams *connectionParams,
+) (targetChain *cosmosrelayer.Chain, err error) {
+	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain, connParams.targetChainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target chain from env: %w", err)
+	}
+
+	if err := targetChain.AddPath(connParams.targetClientID, connParams.targetConnectionID); err != nil {
+		return nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
+	}
+
+	if err := targetChain.ChainProvider.Init(); err != nil {
+		return nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+	}
+
+	return targetChain, nil
 }
 
 type connectionParams struct {
