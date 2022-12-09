@@ -223,7 +223,7 @@ func loadNeutronChain(cfg config.NeutronQueryRelayerConfig,
 	// Unfortunately, ChainProvider interface doesn't allow configuring keyring properly or passing existing one
 	provConcrete, ok := neutronChain.ChainProvider.(*cosmos.CosmosProvider)
 	if !ok {
-		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
+		return nil, fmt.Errorf("failed to cast neutron chain provider to *cosmos.CosmosProvider: got %T", neutronChain.ChainProvider)
 	}
 	provConcrete.Keybase = keybase
 
