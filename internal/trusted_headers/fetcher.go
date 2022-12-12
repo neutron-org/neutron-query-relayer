@@ -8,7 +8,6 @@ import (
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/avast/retry-go/v4"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
@@ -56,7 +55,7 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 // FetchTrustedHeaderForHeight returns the best suitable TrustedHeader for given height
 // Arguments:
 // `height` - remote chain block height X = transaction with such block height
-func (thf *TrustedHeaderFetcher) FetchTrustedHeaderForHeight(ctx context.Context, height uint64) (header ibcexported.Header, err error) {
+func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header ibcexported.Header, err error) {
 	start := time.Now()
 
 	// tries to find height of the closest consensus state height that is less or equal than provided height
@@ -76,57 +75,6 @@ func (thf *TrustedHeaderFetcher) FetchTrustedHeaderForHeight(ctx context.Context
 	neutronmetrics.RecordActionDuration("TrustedHeaderFetcher", time.Since(start).Seconds())
 
 	return
-}
-
-// FetchTrustedHeadersForHeights returns two Headers for height and height+1 packed into *codectypes.Any value
-// We need two blocks in Neutron to verify both delivery of tx and inclusion in block:
-// - We need to know block X (`header`) to verify inclusion of transaction for block X (inclusion proof)
-// - We need to know block X+1 (`nextHeader`) to verify response of transaction for block X
-// since LastResultsHash is root hash of all results from the txs from the previous block (delivery proof)
-//
-// Arguments:
-// `height` - remote chain block height X = transaction with such block height
-func (thf *TrustedHeaderFetcher) FetchTrustedHeadersForHeights(ctx context.Context, height uint64) (header *codectypes.Any, nextHeader *codectypes.Any, err error) {
-	start := time.Now()
-
-	// tries to find height of the closest consensus state height that is less or equal than provided height
-	trustedHeight, err := thf.getTrustedHeight(ctx, height)
-	if err != nil {
-		err = fmt.Errorf("no satisfying consensus state found: %w", err)
-		return
-	}
-	thf.logger.Debug("Found suitable consensus state with trusted height", zap.Uint64("height", trustedHeight.RevisionHeight))
-
-	header, err = thf.packedTrustedHeaderAtHeight(ctx, trustedHeight, height)
-	if err != nil {
-		err = fmt.Errorf("failed to get header for src chain: %w", err)
-		return
-	}
-
-	nextHeader, err = thf.packedTrustedHeaderAtHeight(ctx, trustedHeight, height+1)
-	if err != nil {
-		err = fmt.Errorf("failed to get next header for src chain: %w", err)
-		return
-	}
-
-	neutronmetrics.RecordActionDuration("TrustedHeaderFetcher", time.Since(start).Seconds())
-
-	return
-}
-
-// packedTrustedHeaderAtHeight finds trusted header at height and packs it for sending
-func (thf *TrustedHeaderFetcher) packedTrustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (*codectypes.Any, error) {
-	header, err := thf.trustedHeaderAtHeight(ctx, trustedHeight, height)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get header with trusted height: %w", err)
-	}
-
-	packedHeader, err := clienttypes.PackHeader(header)
-	if err != nil {
-		return nil, fmt.Errorf("failed to pack header: %w", err)
-	}
-
-	return packedHeader, nil
 }
 
 // trustedHeaderAtHeight returns a Header with injected necessary trusted fields (TrustedHeight and TrustedValidators) for a height

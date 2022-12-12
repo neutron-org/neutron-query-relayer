@@ -13,6 +13,8 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
 
+	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
@@ -172,11 +174,41 @@ func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neut
 	return &block, nil
 }
 
+// prepareHeaders returns two Headers for height and height+1 packed into *codectypes.Any value
+// We need two blocks in Neutron to verify both delivery of tx and inclusion in block:
+// - We need to know block X (`header`) to verify inclusion of transaction for block X (inclusion proof)
+// - We need to know block X+1 (`nextHeader`) to verify response of transaction for block X
+// since LastResultsHash is root hash of all results from the txs from the previous block (delivery proof)
+//
+// Arguments:
+// `height` - remote chain block height X = transaction with such block height
 func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (
 	packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
-	packedHeader, packedNextHeader, err = r.trustedHeaderFetcher.FetchTrustedHeadersForHeights(ctx, txStruct.Height)
+
+	packedHeader, err = r.getTrustedHeader(ctx, txStruct.Height)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get header for src chain: %w", err)
+		return nil, nil, fmt.Errorf("failed to get header with trusted height: %w", err)
+	}
+
+	packedNextHeader, err = r.getTrustedHeader(ctx, txStruct.Height+1)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get next header with trusted height: %w", err)
+	}
+
+	return
+}
+
+func (r TXProcessor) getTrustedHeader(ctx context.Context, height uint64) (
+	packedHeader *codectypes.Any, err error) {
+
+	header, err := r.trustedHeaderFetcher.Fetch(ctx, height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get header with trusted height: %w", err)
+	}
+
+	packedHeader, err = clienttypes.PackHeader(header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pack header: %w", err)
 	}
 
 	return
