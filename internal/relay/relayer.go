@@ -12,8 +12,6 @@ import (
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
-
 	"github.com/cosmos/relayer/v2/relayer"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"

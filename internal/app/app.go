@@ -7,12 +7,8 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
 
-	"time"
-
 	"github.com/avast/retry-go/v4"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/storage"
 

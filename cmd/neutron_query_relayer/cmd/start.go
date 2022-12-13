@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"context"
-	neutronapp "github.com/neutron-org/neutron/app"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	neutronapp "github.com/neutron-org/neutron/app"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
