@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
+
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"go.uber.org/zap"
@@ -98,6 +100,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, tasks chan neutrontypes.Regi
 		return fmt.Errorf("could not getNeutronRegisteredQueries: %w", err)
 	}
 	s.activeQueries = queries
+	instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 
 	// Make sure we try to unsubscribe from events if an error occurs.
 	defer s.unsubscribe()
@@ -157,6 +160,7 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutronty
 
 		// Send the query to the tasks queue.
 		tasks <- *activeQuery
+		instrumenters.SetSubscriberTaskQueueNumElements(len(tasks))
 
 		// Set the LastSubmittedResultLocalHeight to the current height.
 		activeQuery.LastSubmittedResultLocalHeight = currentHeight
@@ -204,6 +208,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 
 		// Save the updated query information to memory.
 		s.activeQueries[queryID] = neutronQuery
+		instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 		s.logger.Debug("Query updated(created)", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
 	}
 
@@ -230,6 +235,7 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 
 		// Delete the query from the active queries list.
 		delete(s.activeQueries, queryID)
+		instrumenters.SetQueriesToProcessNumElements(len(s.activeQueries))
 		s.logger.Debug("Query removed", zap.String("query_id", queryID), zap.Int("total_queries_number", len(s.activeQueries)))
 	}
 

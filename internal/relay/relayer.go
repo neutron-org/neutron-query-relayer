@@ -12,6 +12,8 @@ import (
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
+
 	"github.com/cosmos/relayer/v2/relayer"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
@@ -70,6 +72,7 @@ func (r *Relayer) Run(
 		select {
 		case query := <-queriesTasksQueue:
 			start := time.Now()
+			neutronmetrics.SetSubscriberTaskQueueNumElements(len(queriesTasksQueue))
 			switch query.QueryType {
 			case string(neutrontypes.InterchainQueryTypeKV):
 				msg := &MessageKV{QueryId: query.Id, KVKeys: query.Keys}

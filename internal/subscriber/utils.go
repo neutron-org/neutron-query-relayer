@@ -97,7 +97,6 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 			if !s.isWatchedMsgType(neutronQuery.QueryType) {
 				continue
 			}
-
 			out[restQuery.ID] = neutronQuery
 		}
 		if payload.Pagination != nil && payload.Pagination.NextKey.String() != "" {
