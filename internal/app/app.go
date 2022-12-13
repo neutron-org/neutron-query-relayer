@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
+	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 	"go.uber.org/zap"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/keyring"
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
@@ -105,6 +108,8 @@ func NewDefaultRelayer(
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
 
+	logger := logRegistry.Get(AppContext)
+
 	targetClient, err := raw.NewRPCClient(cfg.TargetChain.RPCAddr, cfg.TargetChain.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize target rpc client: %w", err)
@@ -127,19 +132,32 @@ func NewDefaultRelayer(
 	}
 
 	codec := raw.MakeCodecDefault()
-	keybase, err := submit.TestKeybase(connParams.neutronChainID, cfg.NeutronChain.HomeDir)
+	keybase, keyName, err := keyring.InitializeKeyring(
+		cfg.Keyring.Backend,
+		cfg.Keyring.Password,
+		cfg.NeutronChain.HomeDir,
+		cfg.Keyring.KeyName,
+		cfg.Keyring.KeySeed,
+		cfg.Keyring.KeyHdPath,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize keybase: %w", err)
 	}
+	logger.Debug("keyring initialized", zap.String("keyring_backend", cfg.Keyring.Backend))
 
-	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, keybase, *cfg.NeutronChain, logRegistry.Get(TxSenderContext), connParams.neutronChainID)
+	txSender, err := submit.NewTxSender(ctx, neutronClient, codec.Marshaller, *cfg.NeutronChain, keybase, keyName, logRegistry.Get(TxSenderContext), connParams.neutronChainID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create tx sender: %w", err)
 	}
 
-	neutronChain, targetChain, err := loadChains(cfg, logRegistry, connParams)
+	neutronChain, err := loadNeutronChain(cfg, keybase, keyName, logRegistry, connParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to loadChains: %w", err)
+		return nil, fmt.Errorf("failed to load Neutron chain: %w", err)
+	}
+
+	targetChain, err := loadTargetChain(cfg, logRegistry, connParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target chain: %w", err)
 	}
 
 	var (
@@ -171,7 +189,7 @@ func NewDefaultRelayer(
 	return relayer, nil
 }
 
-func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {
+func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig) (relay.Storage, error) {
 	var (
 		err            error
 		leveldbStorage relay.Storage
@@ -185,38 +203,51 @@ func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger)
 	return leveldbStorage, nil
 }
 
-func loadChains(
-	cfg config.NeutronQueryRelayerConfig,
-	logRegistry *nlogger.Registry,
-	connParams *connectionParams,
-) (neutronChain *cosmosrelayer.Chain, targetChain *cosmosrelayer.Chain, err error) {
-	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain, connParams.targetChainID)
+func loadNeutronChain(cfg config.NeutronQueryRelayerConfig,
+	keybase sdkkeyring.Keyring, keyName string, logRegistry *nlogger.Registry, connParams *connectionParams,
+) (neutronChain *cosmosrelayer.Chain, err error) {
+	neutronChain, err = relay.GetNeutronChain(logRegistry.Get(NeutronChainProviderContext), cfg.NeutronChain, connParams.neutronChainID, keyName)
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load target chain from env: %w", err)
-	}
-
-	if err := targetChain.AddPath(connParams.targetClientID, connParams.targetConnectionID); err != nil {
-		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
-	}
-
-	if err := targetChain.ChainProvider.Init(); err != nil {
-		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
-	}
-
-	neutronChain, err = relay.GetNeutronChain(logRegistry.Get(NeutronChainProviderContext), cfg.NeutronChain, connParams.neutronChainID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
+		return nil, fmt.Errorf("failed to load neutron chain from env: %w", err)
 	}
 
 	if err := neutronChain.AddPath(connParams.neutronClientID, cfg.NeutronChain.ConnectionID); err != nil {
-		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
+		return nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
 	}
 
 	if err := neutronChain.ChainProvider.Init(); err != nil {
-		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+		return nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
-	return neutronChain, targetChain, nil
+	// Workaround to have more flexibility in keyring configuration
+	// Unfortunately, ChainProvider interface doesn't allow configuring keyring properly or passing existing one
+	provConcrete, ok := neutronChain.ChainProvider.(*cosmos.CosmosProvider)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast neutron chain provider to *cosmos.CosmosProvider: got %T", neutronChain.ChainProvider)
+	}
+	provConcrete.Keybase = keybase
+
+	return neutronChain, nil
+}
+
+func loadTargetChain(cfg config.NeutronQueryRelayerConfig,
+	logRegistry *nlogger.Registry, connParams *connectionParams,
+) (targetChain *cosmosrelayer.Chain, err error) {
+	targetChain, err = relay.GetTargetChain(logRegistry.Get(TargetChainProviderContext), cfg.TargetChain, connParams.targetChainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target chain from env: %w", err)
+	}
+
+	if err := targetChain.AddPath(connParams.targetClientID, connParams.targetConnectionID); err != nil {
+		return nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
+	}
+
+	if err := targetChain.ChainProvider.Init(); err != nil {
+		return nil, fmt.Errorf("failed to Init source chain provider: %w", err)
+	}
+
+	return targetChain, nil
 }
 
 type connectionParams struct {

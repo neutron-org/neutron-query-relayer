@@ -19,6 +19,7 @@ import (
 type NeutronQueryRelayerConfig struct {
 	NeutronChain                *NeutronChainConfig      `split_words:"true"`
 	TargetChain                 *TargetChainConfig       `split_words:"true"`
+	Keyring                     *KeyringConfig           `split_words:"true"`
 	Registry                    *registry.RegistryConfig `split_words:"true"`
 	AllowTxQueries              bool                     `required:"true" split_words:"true"`
 	AllowKVCallbacks            bool                     `required:"true" split_words:"true"`
@@ -33,20 +34,27 @@ type NeutronQueryRelayerConfig struct {
 
 const EnvPrefix string = "RELAYER"
 
+// NeutronChainConfig TODO: research if HomeDir parameter is needed for something but keys (so it might be optional and ignored for memory keyring)
 type NeutronChainConfig struct {
-	RPCAddr        string        `required:"true" split_words:"true"`
-	RESTAddr       string        `required:"true" split_words:"true"`
-	HomeDir        string        `required:"true" split_words:"true"`
-	SignKeyName    string        `required:"true" split_words:"true"`
-	Timeout        time.Duration `split_words:"true" default:"10s"`
-	GasPrices      string        `required:"true" split_words:"true"`
-	GasLimit       uint64        `split_words:"true" default:"0"`
-	GasAdjustment  float64       `required:"true" split_words:"true"`
-	ConnectionID   string        `required:"true" split_words:"true"`
-	Debug          bool          `split_words:"true" default:"false"`
-	KeyringBackend string        `required:"true" split_words:"true"`
-	OutputFormat   string        `split_words:"true" default:"json"`
-	SignModeStr    string        `split_words:"true" default:"direct"`
+	RPCAddr       string        `required:"true" split_words:"true"`
+	RESTAddr      string        `required:"true" split_words:"true"`
+	HomeDir       string        `required:"true" split_words:"true"`
+	Timeout       time.Duration `split_words:"true" default:"10s"`
+	GasPrices     string        `required:"true" split_words:"true"`
+	GasLimit      uint64        `split_words:"true" default:"0"`
+	GasAdjustment float64       `required:"true" split_words:"true"`
+	ConnectionID  string        `required:"true" split_words:"true"`
+	Debug         bool          `split_words:"true" default:"false"`
+	OutputFormat  string        `split_words:"true" default:"json"`
+	SignModeStr   string        `split_words:"true" default:"direct"`
+}
+
+type KeyringConfig struct {
+	KeyName   string `split_words:"true"`
+	KeySeed   string `split_words:"true"`
+	KeyHdPath string `split_words:"true"`
+	Backend   string `required:"true" split_words:"true"`
+	Password  string `split_words:"true"`
 }
 
 type TargetChainConfig struct {

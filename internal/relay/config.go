@@ -3,6 +3,7 @@ package relay
 import (
 	"fmt"
 
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
@@ -11,13 +12,14 @@ import (
 	neutronapp "github.com/neutron-org/neutron/app"
 )
 
-func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID string) (*relayer.Chain, error) {
+func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID string, keyName string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:            cfg.SignKeyName,
-		ChainID:        chainID,
-		RPCAddr:        cfg.RPCAddr,
-		AccountPrefix:  neutronapp.Bech32MainPrefix,
-		KeyringBackend: cfg.KeyringBackend,
+		Key:           keyName,
+		ChainID:       chainID,
+		RPCAddr:       cfg.RPCAddr,
+		AccountPrefix: neutronapp.Bech32MainPrefix,
+		// we ignore provided keyring here since we're to substitute it later after initialization
+		KeyringBackend: sdkkeyring.BackendMemory,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
 		Debug:          cfg.Debug,
@@ -35,19 +37,13 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID
 
 func GetTargetChain(logger *zap.Logger, cfg *config.TargetChainConfig, chainID string) (*relayer.Chain, error) {
 	provCfg := cosmos.CosmosProviderConfig{
-		Key:           "",
-		ChainID:       chainID,
-		RPCAddr:       cfg.RPCAddr,
-		AccountPrefix: cfg.AccountPrefix,
-		// we don't have any needs in keys for target chain
-		// but since "KeyringBackend" can't be an empty string we explicitly set it to "test" value to avoid errors
-		KeyringBackend: "test",
-		GasAdjustment:  0.0,
-		GasPrices:      "",
+		ChainID:        chainID,
+		RPCAddr:        cfg.RPCAddr,
+		AccountPrefix:  cfg.AccountPrefix,
+		KeyringBackend: sdkkeyring.BackendMemory,
 		Debug:          cfg.Debug,
 		Timeout:        cfg.Timeout.String(),
 		OutputFormat:   cfg.OutputFormat,
-		SignModeStr:    "",
 	}
 	chain, err := getChain(logger, provCfg, "", cfg.Debug)
 	if err != nil {
@@ -67,13 +63,6 @@ func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ChainProvider for %w", err)
 	}
-
-	// Without this hack it doesn't want to work with normal home dir layout for some reason.
-	provConcrete, ok := prov.(*cosmos.CosmosProvider)
-	if !ok {
-		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
-	}
-	provConcrete.Config.KeyDirectory = homepath
 
 	return relayer.NewChain(logger, prov, debug), nil
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdkkeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
@@ -36,7 +36,7 @@ type TxSender struct {
 	lock          sync.Mutex
 	sequence      uint64
 	accountNumber uint64
-	keybase       keyring.Keyring
+	keybase       sdkkeyring.Keyring
 	baseTxf       tx.Factory
 	txConfig      client.TxConfig
 	rpcClient     rpcclient.Client
@@ -47,25 +47,18 @@ type TxSender struct {
 	logger        *zap.Logger
 }
 
-func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
-	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil)
-	if err != nil {
-		return keybase, fmt.Errorf("error creating keybase for chainId=%s and keyringRootDir=%s: %w", chainID, keyringRootDir, err)
-	}
-
-	return keybase, nil
-}
-
 func NewTxSender(
 	ctx context.Context,
 	rpcClient rpcclient.Client,
 	marshaller codec.ProtoCodecMarshaler,
-	keybase keyring.Keyring,
 	cfg config.NeutronChainConfig,
+	keybase sdkkeyring.Keyring,
+	keyName string,
 	logger *zap.Logger,
 	neutronChainID string,
 ) (*TxSender, error) {
 	txConfig := authtxtypes.NewTxConfig(marshaller, authtxtypes.DefaultSignModes)
+
 	baseTxf := tx.Factory{}.
 		WithKeybase(keybase).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
@@ -81,7 +74,7 @@ func NewTxSender(
 		baseTxf:     baseTxf,
 		rpcClient:   rpcClient,
 		chainID:     neutronChainID,
-		signKeyName: cfg.SignKeyName,
+		signKeyName: keyName,
 		gasPrices:   cfg.GasPrices,
 		gasLimit:    cfg.GasLimit,
 		logger:      logger,

@@ -52,7 +52,7 @@ Clone the following repositories to the same folder where the neutron-query-rela
 1. copy `.env.example` and rename the copy to `.env`
 2. set env from env list via way you prefer and run relayer:
 
-`export $(grep -v '^#' .env | xargs) && make dev`
+`./run_dev.sh`
 
 ### Testing via docker
 
@@ -85,16 +85,19 @@ Relayer:
 | `RELAYER_NEUTRON_CHAIN_RPC_ADDR`                 | `string`          | rpc address of neutron chain                                                                                                                                               | required |
 | `RELAYER_NEUTRON_CHAIN_REST_ADDR`                | `string`          | rest address of neutron chain                                                                                                                                              | required |
 | `RELAYER_NEUTRON_CHAIN_HOME_DIR   `              | `string`          | path to keys directory                                                                                                                                                     | required |
-| `RELAYER_NEUTRON_CHAIN_SIGN_KEY_NAME`            | `string`          | key name                                                                                                                                                                   | required |
 | `RELAYER_NEUTRON_CHAIN_TIMEOUT `                 | `time`            | timeout of neutron chain provider                                                                                                                                          | optional |
 | `RELAYER_NEUTRON_CHAIN_GAS_PRICES`               | `string`          | specifies how much the user is willing to pay per unit of gas, which can be one or multiple denominations of token                                                         | required |
 | `RELAYER_NEUTRON_CHAIN_GAS_LIMIT`                | `string`          | the maximum price a relayer user is willing to pay for relayer's paid blockchain actions                                                                                   | required |
 | `RELAYER_NEUTRON_CHAIN_GAS_ADJUSTMENT`           | `float`           | used to scale gas up in order to avoid underestimating. For example, users can specify their gas adjustment as 1.5 to use 1.5 times the estimated gas                      | required |
 | `RELAYER_NEUTRON_CHAIN_CONNECTION_ID`            | `string`          | neutron chain connection ID                                                                                                                                                | required |
 | `RELAYER_NEUTRON_CHAIN_DEBUG `                   | `bool`            | flag to run neutron chain provider in debug mode                                                                                                                           | optional |
-| `RELAYER_NEUTRON_CHAIN_KEYRING_BACKEND`          | `string`          | [see](https://docs.cosmos.network/master/run-node/keyring.html#the-kwallet-backend)                                                                                        | required |
 | `RELAYER_NEUTRON_CHAIN_OUTPUT_FORMAT`            | `json`  OR `yaml` | neutron chain provider output format                                                                                                                                       | required |
 | `RELAYER_NEUTRON_CHAIN_SIGN_MODE_STR `           | `string`          | [see](https://docs.cosmos.network/master/core/transactions.html#signing-transactions) also consider use short variation, e.g. `direct`                                     | optional |
+| `RELAYER_KEYRING_BACKEND`                        | `string`          | keyring backend where the Neutron key for ICQ relayer is stored                                                                                                            | required |
+| `RELAYER_KEYRING_PASSWORD`                       | `string`          | password for keyring backend (required for `os`, `file`, `pass`, `kwallet`; ignored for `memory` and `test`)                                                               | optional |
+| `RELAYER_KEYRING_KEY_NAME`                       | `string`          | key name (required for any backend type but `memory`)                                                                                                                      | optional |
+| `RELAYER_KEYRING_KEY_SEED`                       | `string`          | key seed (required for `memory` backend, ignored for any other type)                                                                                                       | optional |
+| `RELAYER_KEYRING_KEY_HD_PATH`                    | `string`          | key HD path (optional for `memory` backend, ignored for any other type)                                                                                                    | optional |
 | `RELAYER_TARGET_CHAIN_RPC_ADDR`                  | `string`          | rpc address of target chain                                                                                                                                                | required |
 | `RELAYER_TARGET_CHAIN_ACCOUNT_PREFIX `           | `string`          | target chain account prefix                                                                                                                                                | required |
 | `RELAYER_TARGET_CHAIN_VALIDATOR_ACCOUNT_PREFIX ` | `string`          | target chain validator account prefix                                                                                                                                      | required |
