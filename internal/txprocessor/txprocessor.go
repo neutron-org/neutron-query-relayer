@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -21,6 +22,7 @@ type TXProcessor struct {
 	submitter                   relay.Submitter
 	logger                      *zap.Logger
 	checkSubmittedTxStatusDelay time.Duration
+	ignoreErrorsRegexp          *regexp.Regexp
 }
 
 func NewTxProcessor(
@@ -28,13 +30,16 @@ func NewTxProcessor(
 	storage relay.Storage,
 	submitter relay.Submitter,
 	logger *zap.Logger,
-	checkSubmittedTxStatusDelay time.Duration) TXProcessor {
+	checkSubmittedTxStatusDelay time.Duration,
+	ignoreErrorsRegexp string,
+) TXProcessor {
 	txProcessor := TXProcessor{
 		trustedHeaderFetcher:        trustedHeaderFetcher,
 		storage:                     storage,
 		submitter:                   submitter,
 		logger:                      logger,
 		checkSubmittedTxStatusDelay: checkSubmittedTxStatusDelay,
+		ignoreErrorsRegexp:          regexp.MustCompile(ignoreErrorsRegexp),
 	}
 
 	return txProcessor
@@ -81,45 +86,83 @@ func (r TXProcessor) submitTxWithProofs(
 	hash := hex.EncodeToString(tmtypes.Tx(block.Tx.Data).Hash())
 	neutronTxHash, err := r.submitter.SubmitTxProof(ctx, queryID, block)
 	if err != nil {
-		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
-		errSetStatus := r.storage.SetTxStatus(
-			queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
-		if errSetStatus != nil {
-			return fmt.Errorf("failed to store tx: %w", errSetStatus)
-		}
-
-		return fmt.Errorf("could not submit proof for %s with query_id=%d: %w",
-			neutrontypes.InterchainQueryTypeTX, queryID, err)
+		return r.processFailedTxSubmission(err, queryID, hash, neutronTxHash, proofStart)
 	}
+	return r.processSuccessfulTxSubmission(ctx, queryID, hash, neutronTxHash, proofStart, submittedTxsTasksQueue)
+}
 
+// processSuccessfulTxSubmission stores the tx status in the storage and submits the PendingSubmittedTxInfo to
+// submittedTxsTasksQueue.
+func (r *TXProcessor) processSuccessfulTxSubmission(
+	ctx context.Context,
+	queryID uint64,
+	hash string,
+	neutronTxHash string,
+	proofStart time.Time,
+	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
+) error {
 	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
-	err = r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{
+	err := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{
 		Status: relay.Submitted,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to store tx: %w", err)
 	}
 
-	// We submit the PendingSubmittedTxInfo only after checkSubmittedTxStatusDelay to reduce the possibility of
-	// unsuccessful checks (the block is 100% not ready here yet).
-	go func() {
-		var t = time.NewTimer(r.checkSubmittedTxStatusDelay)
-		select {
-		case <-t.C:
-			submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
-				QueryID:         queryID,
-				SubmittedTxHash: hash,
-				NeutronHash:     neutronTxHash,
-			}
-		case <-ctx.Done():
-			r.logger.Info("Cancelled PendingSubmittedTxInfo delayed checking",
-				zap.Uint64("query_id", queryID),
-				zap.String("submitted_tx_hash", hash))
-		}
-	}()
+	go r.delayedTxStatusCheck(ctx, relay.PendingSubmittedTxInfo{
+		QueryID:         queryID,
+		SubmittedTxHash: hash,
+		NeutronHash:     neutronTxHash,
+	}, submittedTxsTasksQueue)
 
 	r.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID))
+
 	return nil
+}
+
+// processFailedTxSubmission checks whether the error is ignored. If it's ignored, it stores the tx status in the
+// storage; otherwise it escalates the error.
+func (r *TXProcessor) processFailedTxSubmission(
+	err error,
+	queryID uint64,
+	hash string,
+	neutronTxHash string,
+	proofStart time.Time,
+) error {
+	neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
+	r.logger.Error("could not submit proof", zap.Error(err), zap.Uint64("query_id", queryID))
+
+	// check error with regexp
+	if !r.ignoreErrorsRegexp.MatchString(err.Error()) {
+		return relay.NewErrSubmitTxProofCritical(err)
+	}
+
+	errSetStatus := r.storage.SetTxStatus(
+		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
+	if errSetStatus != nil {
+		return fmt.Errorf("failed to SetTxStatus: %w", errSetStatus)
+	}
+
+	return nil
+}
+
+// We submit the PendingSubmittedTxInfo only after checkSubmittedTxStatusDelay to reduce the possibility of
+// unsuccessful checks (the block is 100% not ready here yet).
+func (r TXProcessor) delayedTxStatusCheck(ctx context.Context, tx relay.PendingSubmittedTxInfo, submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
+) {
+	var t = time.NewTimer(r.checkSubmittedTxStatusDelay)
+	select {
+	case <-t.C:
+		submittedTxsTasksQueue <- relay.PendingSubmittedTxInfo{
+			QueryID:         tx.QueryID,
+			SubmittedTxHash: tx.SubmittedTxHash,
+			NeutronHash:     tx.NeutronHash,
+		}
+	case <-ctx.Done():
+		r.logger.Info("Cancelled PendingSubmittedTxInfo delayed checking",
+			zap.Uint64("query_id", tx.QueryID),
+			zap.String("submitted_tx_hash", tx.SubmittedTxHash))
+	}
 }
 
 func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neutrontypes.Block, error) {
