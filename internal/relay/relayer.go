@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -75,6 +76,11 @@ func (r *Relayer) Run(
 			case string(neutrontypes.InterchainQueryTypeTX):
 				msg := &MessageTX{QueryId: query.Id, TransactionsFilter: query.TransactionsFilter}
 				err = r.processMessageTX(ctx, msg, submittedTxsTasksQueue)
+
+				var critErr ErrSubmitTxProofCritical
+				if errors.As(errors.Unwrap(err), &critErr) {
+					return err
+				}
 			default:
 				err = fmt.Errorf("unknown query type: %s", query.QueryType)
 			}
