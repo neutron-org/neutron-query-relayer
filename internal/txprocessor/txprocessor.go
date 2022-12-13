@@ -78,9 +78,9 @@ func (r TXProcessor) submitTxWithProofs(
 		Height: txHeight,
 	}
 	if err != nil {
-		return r.processFailedTxSubmission(err, queryID, hash, neutronTxHash, proofStart)
+		return r.processFailedTxSubmission(err, queryID, hash, neutronTxHash, processedTx, proofStart)
 	}
-	return r.processSuccessfulTxSubmission(ctx, queryID, hash, neutronTxHash, proofStart, submittedTxsTasksQueue)
+	return r.processSuccessfulTxSubmission(ctx, queryID, hash, neutronTxHash, processedTx, proofStart, submittedTxsTasksQueue)
 }
 
 // processSuccessfulTxSubmission stores the tx status in the storage and submits the PendingSubmittedTxInfo to
@@ -90,13 +90,14 @@ func (r *TXProcessor) processSuccessfulTxSubmission(
 	queryID uint64,
 	hash string,
 	neutronTxHash string,
+	tx relay.Transaction,
 	proofStart time.Time,
 	submittedTxsTasksQueue chan relay.PendingSubmittedTxInfo,
 ) error {
 	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
 	err := r.storage.SetTxStatus(queryID, hash, neutronTxHash, relay.SubmittedTxInfo{
 		Status: relay.Submitted,
-	})
+	}, &tx)
 	if err != nil {
 		return fmt.Errorf("failed to store tx submit status: %w", err)
 	}
@@ -119,6 +120,7 @@ func (r *TXProcessor) processFailedTxSubmission(
 	queryID uint64,
 	hash string,
 	neutronTxHash string,
+	tx relay.Transaction,
 	proofStart time.Time,
 ) error {
 	neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeTX), time.Since(proofStart).Seconds())
@@ -130,7 +132,7 @@ func (r *TXProcessor) processFailedTxSubmission(
 	}
 
 	errSetStatus := r.storage.SetTxStatus(
-		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
+		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()}, &tx)
 	if errSetStatus != nil {
 		return fmt.Errorf("failed to store tx submit status: %w", errSetStatus)
 	}
