@@ -103,7 +103,7 @@ func NewDefaultRelayer(
 ) (*relay.Relayer, error) {
 	var (
 		txProcessor = txprocessor.NewTxProcessor(
-			deps.GetTrustedHeaderFetcher(), storage, deps.GetProofSubmitter(), logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay)
+			deps.GetTrustedHeaderFetcher(), storage, deps.GetProofSubmitter(), logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay, cfg.IgnoreErrorsRegex)
 		kvProcessor = kvprocessor.NewKVProcessor(
 			deps.GetTrustedHeaderFetcher(),
 			deps.GetTargetQuerier(),

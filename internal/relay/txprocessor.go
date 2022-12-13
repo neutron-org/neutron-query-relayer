@@ -34,3 +34,19 @@ type ChainClient interface {
 type TXProcessor interface {
 	ProcessAndSubmit(ctx context.Context, queryID uint64, tx Transaction, submittedTxsTasksQueue chan PendingSubmittedTxInfo) error
 }
+
+// NewErrSubmitTxProofCritical creates a new ErrSubmitTxProofCritical.
+func NewErrSubmitTxProofCritical(details error) ErrSubmitTxProofCritical {
+	return ErrSubmitTxProofCritical{details: details}
+}
+
+// ErrSubmitTxProofCritical is an error type that represents errors critical for the Relayer.
+type ErrSubmitTxProofCritical struct {
+	// details is the inner error.
+	details error
+}
+
+// Error implements the error interface.
+func (e ErrSubmitTxProofCritical) Error() string {
+	return "failed to submit tx proof: " + e.details.Error()
+}
