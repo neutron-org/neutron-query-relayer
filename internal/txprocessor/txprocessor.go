@@ -107,7 +107,7 @@ func (r *TXProcessor) processSuccessfulTxSubmission(
 		Status: relay.Submitted,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to store tx: %w", err)
+		return fmt.Errorf("failed to store tx submit status: %w", err)
 	}
 
 	go r.delayedTxStatusCheck(ctx, relay.PendingSubmittedTxInfo{
@@ -141,7 +141,7 @@ func (r *TXProcessor) processFailedTxSubmission(
 	errSetStatus := r.storage.SetTxStatus(
 		queryID, hash, neutronTxHash, relay.SubmittedTxInfo{Status: relay.ErrorOnSubmit, Message: err.Error()})
 	if errSetStatus != nil {
-		return fmt.Errorf("failed to SetTxStatus: %w", errSetStatus)
+		return fmt.Errorf("failed to store tx submit status: %w", errSetStatus)
 	}
 
 	return nil
