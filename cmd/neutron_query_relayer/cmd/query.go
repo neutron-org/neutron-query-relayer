@@ -22,7 +22,7 @@ var QueryCmd = &cobra.Command{
 }
 
 func init() {
-	QueryCmd.PersistentFlags().StringVarP(&urlICQ, UrlFlagName, "u", "http://localhost:10001", "server url")
+	QueryCmd.PersistentFlags().StringVarP(&urlICQ, UrlFlagName, "u", "http://localhost:9999", "server url")
 	QueryCmd.AddCommand(UnsuccessfulTxs)
 	rootCmd.AddCommand(QueryCmd)
 }

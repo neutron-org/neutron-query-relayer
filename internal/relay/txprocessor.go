@@ -10,8 +10,8 @@ import (
 
 // Transaction represents single searched tx with height
 type Transaction struct {
-	Tx     *neutrontypes.TxValue
-	Height uint64
+	Tx     *neutrontypes.TxValue `json:"tx"`
+	Height uint64                `json:"height"`
 }
 
 // TXQuerier fetches transactions from a remote chain with specified txFilter

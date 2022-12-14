@@ -8,6 +8,8 @@ import (
 	"sync"
 	"syscall"
 
+	neutronapp "github.com/neutron-org/neutron/app"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
 	"github.com/spf13/cobra"
@@ -39,6 +41,10 @@ func init() {
 }
 
 func startRelayer() {
+	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
+	globalCfg := neutronapp.GetDefaultConfig()
+	globalCfg.Seal()
+
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
 		app.AppContext,
@@ -81,17 +87,6 @@ func startRelayer() {
 		}
 	}(storage)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		err := icqhttp.Run(ctx, logRegistry, storage, cfg.ListenAddr)
-		if err != nil {
-			logger.Error("WebServer exited with an error", zap.Error(err))
-			cancel()
-		}
-	}()
-
 	var (
 		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
 		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
@@ -102,7 +97,12 @@ func startRelayer() {
 		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
 	}
 
-	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
+	deps, err := app.NewDefaultDependencyContainer(ctx, cfg, logRegistry, storage)
+	if err != nil {
+		logger.Fatal("failed to initialize dependency container", zap.Error(err))
+	}
+
+	relayer, err := app.NewDefaultRelayer(cfg, logRegistry, storage, deps)
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultRelayer", zap.Error(err))
 	}
@@ -111,6 +111,17 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := icqhttp.Run(ctx, logRegistry, storage, deps.GetTxProcessor(), submittedTxsTasksQueue, cfg.ListenAddr)
+		if err != nil {
+			logger.Error("WebServer exited with an error", zap.Error(err))
+			cancel()
+		}
+	}()
 
 	wg.Add(1)
 	go func() {
