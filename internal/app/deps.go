@@ -119,6 +119,10 @@ func (c DependencyContainer) GetTargetChain() *cosmosrelayer.Chain {
 	return c.targetChain
 }
 
+func (c DependencyContainer) GetNeutronChain() *cosmosrelayer.Chain {
+	return c.neutronChain
+}
+
 func (c DependencyContainer) GetProofSubmitter() relay.Submitter {
 	return c.proofSubmitter
 }

@@ -112,7 +112,7 @@ func NewDefaultRelayer(
 			deps.GetProofSubmitter(),
 			storage,
 			deps.GetTargetChain(),
-			deps.GetTargetChain(),
+			deps.GetNeutronChain(),
 		)
 		relayer = relay.NewRelayer(
 			cfg,
