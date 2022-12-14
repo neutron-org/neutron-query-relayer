@@ -286,7 +286,7 @@ func removeFromUnsuccessfulQueue(t *leveldb.Transaction, queryID uint64, tXHash 
 	key := constructUnsuccessfulQueueKey(queryID, tXHash)
 	err := t.Delete(key, nil)
 	if err != nil {
-		return fmt.Errorf("failed to remove UnsuccessfulTxInfo with queryID=%d hasj=%s: %w", queryID, tXHash, err)
+		return fmt.Errorf("failed to remove UnsuccessfulTxInfo with queryID=%d hash=%s: %w", queryID, tXHash, err)
 	}
 
 	return nil
@@ -296,7 +296,7 @@ func removeCachedTx(t *leveldb.Transaction, queryID uint64, tXHash string) error
 	key := constructCacheTxKey(queryID, tXHash)
 	err := t.Delete(key, nil)
 	if err != nil {
-		return fmt.Errorf("failed to remove cached tx under with queryID=%d hasj=%s: %w", queryID, tXHash, err)
+		return fmt.Errorf("failed to remove cached tx under with queryID=%d hash=%s: %w", queryID, tXHash, err)
 	}
 
 	return nil
