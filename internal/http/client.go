@@ -84,8 +84,16 @@ func (c ICQClient) ResubmitTxs(txs ResubmitRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to make http request: %w", err)
 	}
+	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
+	if res.StatusCode == 400 {
+		errBody := bytes.Buffer{}
+		_, err = errBody.ReadFrom(res.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response(code 400) body: %w", err)
+		}
+		return fmt.Errorf(errBody.String())
+	} else if res.StatusCode != 200 {
 		return fmt.Errorf("got unexpected http response status code: %d", res.StatusCode)
 	}
 
