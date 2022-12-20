@@ -44,8 +44,8 @@ Clone the following repositories to the same folder where the neutron-query-rela
 
 #### terminal 2
 
-1. `cd neutron-contracts`
-2. run test_*.sh files from the root of the neutron-contracts project (e.g. `./test_tx_query_result.sh`).
+1. `cd neutron-dev-contracts`
+2. run test_*.sh files from the root of the neutron-dev-contracts project (e.g. `./test_tx_query_result.sh`).
 
 #### terminal 3
 
