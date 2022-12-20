@@ -181,7 +181,7 @@ func (r TXProcessor) txToBlock(ctx context.Context, tx relay.Transaction) (*neut
 // since LastResultsHash is root hash of all results from the txs from the previous block (delivery proof)
 //
 // Arguments:
-// `height` - remote chain block height X = transaction with such block height
+// `txStruct` - Transaction that represents single tx with height
 func (r TXProcessor) prepareHeaders(ctx context.Context, txStruct relay.Transaction) (
 	packedHeader *codectypes.Any, packedNextHeader *codectypes.Any, err error) {
 
