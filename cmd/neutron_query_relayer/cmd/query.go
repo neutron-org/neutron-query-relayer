@@ -51,6 +51,9 @@ var UnsuccessfulTxs = &cobra.Command{
 		encoder := json.NewEncoder(&response)
 		encoder.SetIndent("", "  ")
 		err = encoder.Encode(txs)
+		if err != nil {
+			return fmt.Errorf("failed to encode unsuccessful transactions: %w", err)
+		}
 
 		fmt.Printf("Unsuccessful txs:\n%s\n", response.String())
 
