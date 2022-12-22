@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/avast/retry-go/v4"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"

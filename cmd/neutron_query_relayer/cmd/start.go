@@ -2,19 +2,20 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
+	neutronapp "github.com/neutron-org/neutron/app"
+
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
 
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
@@ -40,11 +41,16 @@ func init() {
 }
 
 func startRelayer() {
+	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
+	globalCfg := neutronapp.GetDefaultConfig()
+	globalCfg.Seal()
+
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
 		app.AppContext,
 		app.SubscriberContext,
 		app.RelayerContext,
+		icqhttp.ServerContext,
 		app.TargetChainRPCClientContext,
 		app.NeutronChainRPCClientContext,
 		app.TargetChainProviderContext,
@@ -54,6 +60,7 @@ func startRelayer() {
 		app.TxSubmitCheckerContext,
 		app.TrustedHeadersFetcherContext,
 		app.KVProcessorContext,
+		icqhttp.MonitoringLoggerContext,
 	)
 	if err != nil {
 		log.Fatalf("couldn't initialize loggers registry: %s", err)
@@ -66,26 +73,17 @@ func startRelayer() {
 		logger.Fatal("cannot initialize relayer config", zap.Error(err))
 	}
 
-	http.Handle("/metrics", promhttp.Handler())
-	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.PrometheusPort), nil)
-		if err != nil {
-			logger.Fatal("failed to serve metrics", zap.Error(err))
-		}
-	}()
-	logger.Info("metrics handler set up")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
 	// The storage has to be shared because of the LevelDB single process restriction.
 	storage, err := app.NewDefaultStorage(cfg, logger)
 	if err != nil {
-		logger.Fatal("Failed to create NewDefaultStorage", zap.Error(err))
+		logger.Fatal("failed to create NewDefaultStorage", zap.Error(err))
 	}
 	defer func(storage relay.Storage) {
 		if err := storage.Close(); err != nil {
-			logger.Error("Failed to close storage", zap.Error(err))
+			logger.Error("failed to close storage", zap.Error(err))
 		}
 	}(storage)
 
@@ -99,7 +97,12 @@ func startRelayer() {
 		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
 	}
 
-	relayer, err := app.NewDefaultRelayer(ctx, cfg, logRegistry, storage)
+	deps, err := app.NewDefaultDependencyContainer(ctx, cfg, logRegistry, storage)
+	if err != nil {
+		logger.Fatal("failed to initialize dependency container", zap.Error(err))
+	}
+
+	relayer, err := app.NewDefaultRelayer(cfg, logRegistry, storage, deps)
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultRelayer", zap.Error(err))
 	}
@@ -108,6 +111,17 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := icqhttp.Run(ctx, logRegistry, storage, deps.GetTxProcessor(), submittedTxsTasksQueue, cfg.ListenAddr)
+		if err != nil {
+			logger.Error("WebServer exited with an error", zap.Error(err))
+			cancel()
+		}
+	}()
 
 	wg.Add(1)
 	go func() {

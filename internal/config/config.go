@@ -26,8 +26,8 @@ type NeutronQueryRelayerConfig struct {
 	StoragePath                 string                   `required:"true" split_words:"true"`
 	CheckSubmittedTxStatusDelay time.Duration            `split_words:"true" default:"10s"`
 	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`
-	PrometheusPort              uint16                   `split_words:"true" default:"9999"`
 	InitialTxSearchOffset       uint64                   `split_words:"true" default:"0"`
+	ListenAddr                  string                   `split_words:"true" default:"127.0.0.1:9999"`
 	IgnoreErrorsRegex           string                   `split_words:"true" default:"(execute wasm contract failed|failed to build tx query string)"`
 }
 

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/rpc/core/types"

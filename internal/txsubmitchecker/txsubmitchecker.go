@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	instrumenters "github.com/neutron-org/neutron-query-relayer/cmd/neutron_query_relayer/metrics"
+	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/avast/retry-go/v4"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -92,7 +92,7 @@ func (tc *TxSubmitChecker) processSubmittedTx(ctx context.Context, tx *relay.Pen
 		instrumenters.IncFailedTxSubmit()
 		tc.updateTxStatus(tx, relay.SubmittedTxInfo{
 			Status:  relay.ErrorOnCommit,
-			Message: fmt.Sprintf("%d", txResponse.TxResult.Code),
+			Message: fmt.Sprintf("Code: %d, Log: %s", txResponse.TxResult.Code, txResponse.TxResult.Log),
 		})
 	}
 
@@ -121,7 +121,7 @@ func (tc *TxSubmitChecker) retryGetTxStatus(
 }
 
 func (tc *TxSubmitChecker) updateTxStatus(tx *relay.PendingSubmittedTxInfo, status relay.SubmittedTxInfo) {
-	err := tc.storage.SetTxStatus(tx.QueryID, tx.SubmittedTxHash, tx.NeutronHash, status)
+	err := tc.storage.SetTxStatus(tx.QueryID, tx.SubmittedTxHash, tx.NeutronHash, status, nil)
 	if err != nil {
 		tc.logger.Error(
 			"failed to update tx status in storage",

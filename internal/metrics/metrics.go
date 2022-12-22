@@ -1,4 +1,4 @@
-package instrumenters
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,6 +45,11 @@ var (
 		Name: "submitted_txs",
 		Help: "The total number of submitted txs (counter)",
 	}, []string{labelType})
+
+	unsuccessfulTxsQueueSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "unsuccessful_txs",
+		Help: "The total number of unsuccessful txs in the storage",
+	})
 
 	subscriberTaskQueueNumElements = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "subscriber_task_queue_num_elements",
@@ -130,6 +135,10 @@ func IncFailedTxSubmit() {
 	submittedTxCounter.With(prometheus.Labels{
 		labelType: typeFailed,
 	}).Inc()
+}
+
+func SetUnsuccessfulTxsSizeQueue(size int) {
+	unsuccessfulTxsQueueSize.Set(float64(size))
 }
 
 func SetSubscriberTaskQueueNumElements(numElements int) {
