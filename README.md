@@ -34,7 +34,7 @@ For more configuration parameters see [Environment section](#Environment).
 Clone the following repositories to the same folder where the neutron-query-relayer folder is located:
 
 1. `git clone git@github.com:neutron-org/neutron.git`
-2. `git clone git@github.com:neutron-org/neutron-contracts.git`
+2. `git clone git@github.com:neutron-org/neutron-dev-contracts.git`
 3. `git clone git@github.com:neutron-org/neutron-integration-tests.git` for testing using docker
 
 #### terminal 1
@@ -44,8 +44,8 @@ Clone the following repositories to the same folder where the neutron-query-rela
 
 #### terminal 2
 
-1. `cd neutron-contracts`
-2. run test_*.sh files from the root of the neutron-contracts project (e.g. `./test_tx_query_result.sh`).
+1. `cd neutron-dev-contracts`
+2. run test_*.sh files from the root of the neutron-dev-contracts project (e.g. `./test_tx_query_result.sh`).
 
 #### terminal 3
 
