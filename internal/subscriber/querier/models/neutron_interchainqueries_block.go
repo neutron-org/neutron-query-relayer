@@ -14,23 +14,23 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// NeutronInterchainadapterInterchainqueriesBlock neutron interchainadapter interchainqueries block
+// NeutronInterchainqueriesBlock neutron interchainqueries block
 //
-// swagger:model neutron.interchainadapter.interchainqueries.Block
-type NeutronInterchainadapterInterchainqueriesBlock struct {
+// swagger:model neutron.interchainqueries.Block
+type NeutronInterchainqueriesBlock struct {
 
 	// header
-	Header *NeutronInterchainadapterInterchainqueriesBlockHeader `json:"header,omitempty"`
+	Header *NeutronInterchainqueriesBlockHeader `json:"header,omitempty"`
 
 	// next block header
-	NextBlockHeader *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader `json:"next_block_header,omitempty"`
+	NextBlockHeader *NeutronInterchainqueriesBlockNextBlockHeader `json:"next_block_header,omitempty"`
 
 	// tx
-	Tx *NeutronInterchainadapterInterchainqueriesBlockTx `json:"tx,omitempty"`
+	Tx *NeutronInterchainqueriesBlockTx `json:"tx,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block
-func (m *NeutronInterchainadapterInterchainqueriesBlock) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block
+func (m *NeutronInterchainqueriesBlock) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateHeader(formats); err != nil {
@@ -51,7 +51,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) Validate(formats strfmt
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlock) validateHeader(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlock) validateHeader(formats strfmt.Registry) error {
 	if swag.IsZero(m.Header) { // not required
 		return nil
 	}
@@ -70,7 +70,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) validateHeader(formats 
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlock) validateNextBlockHeader(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlock) validateNextBlockHeader(formats strfmt.Registry) error {
 	if swag.IsZero(m.NextBlockHeader) { // not required
 		return nil
 	}
@@ -89,7 +89,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) validateNextBlockHeader
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlock) validateTx(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlock) validateTx(formats strfmt.Registry) error {
 	if swag.IsZero(m.Tx) { // not required
 		return nil
 	}
@@ -108,8 +108,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) validateTx(formats strf
 	return nil
 }
 
-// ContextValidate validate this neutron interchainadapter interchainqueries block based on the context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlock) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this neutron interchainqueries block based on the context it is used
+func (m *NeutronInterchainqueriesBlock) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateHeader(ctx, formats); err != nil {
@@ -130,7 +130,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) ContextValidate(ctx con
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateHeader(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlock) contextValidateHeader(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Header != nil {
 		if err := m.Header.ContextValidate(ctx, formats); err != nil {
@@ -146,7 +146,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateHeader(c
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateNextBlockHeader(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlock) contextValidateNextBlockHeader(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.NextBlockHeader != nil {
 		if err := m.NextBlockHeader.ContextValidate(ctx, formats); err != nil {
@@ -162,7 +162,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateNextBloc
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateTx(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlock) contextValidateTx(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Tx != nil {
 		if err := m.Tx.ContextValidate(ctx, formats); err != nil {
@@ -179,7 +179,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) contextValidateTx(ctx c
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlock) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlock) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -187,8 +187,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) MarshalBinary() ([]byte
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlock) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlock
+func (m *NeutronInterchainqueriesBlock) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlock
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) UnmarshalBinary(b []byt
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockHeader We need to know block X to verify inclusion of transaction for block X
+// NeutronInterchainqueriesBlockHeader We need to know block X to verify inclusion of transaction for block X
 //
 // `Any` contains an arbitrary serialized protocol buffer message along with a
 // URL that describes the type of the serialized message.
@@ -280,8 +280,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlock) UnmarshalBinary(b []byt
 //	  "value": "1.212s"
 //	}
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockHeader
-type NeutronInterchainadapterInterchainqueriesBlockHeader struct {
+// swagger:model NeutronInterchainqueriesBlockHeader
+type NeutronInterchainqueriesBlockHeader struct {
 
 	// A URL/resource name that uniquely identifies the type of the serialized
 	// protocol buffer message. This string must contain at least
@@ -313,18 +313,18 @@ type NeutronInterchainadapterInterchainqueriesBlockHeader struct {
 	AtType string `json:"@type,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block header
-func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block header
+func (m *NeutronInterchainqueriesBlockHeader) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this neutron interchainadapter interchainqueries block header based on context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this neutron interchainqueries block header based on context it is used
+func (m *NeutronInterchainqueriesBlockHeader) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockHeader) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -332,8 +332,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) MarshalBinary() (
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockHeader
+func (m *NeutronInterchainqueriesBlockHeader) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockHeader
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) UnmarshalBinary(b
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader We need to know block X+1 to verify response of transaction for block X
+// NeutronInterchainqueriesBlockNextBlockHeader We need to know block X+1 to verify response of transaction for block X
 // since LastResultsHash is root hash of all results from the txs from the previous block
 //
 // `Any` contains an arbitrary serialized protocol buffer message along with a
@@ -426,8 +426,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockHeader) UnmarshalBinary(b
 //	  "value": "1.212s"
 //	}
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader
-type NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader struct {
+// swagger:model NeutronInterchainqueriesBlockNextBlockHeader
+type NeutronInterchainqueriesBlockNextBlockHeader struct {
 
 	// A URL/resource name that uniquely identifies the type of the serialized
 	// protocol buffer message. This string must contain at least
@@ -459,18 +459,18 @@ type NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader struct {
 	AtType string `json:"@type,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block next block header
-func (m *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block next block header
+func (m *NeutronInterchainqueriesBlockNextBlockHeader) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this neutron interchainadapter interchainqueries block next block header based on context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this neutron interchainqueries block next block header based on context it is used
+func (m *NeutronInterchainqueriesBlockNextBlockHeader) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockNextBlockHeader) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -478,8 +478,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader) MarshalB
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader
+func (m *NeutronInterchainqueriesBlockNextBlockHeader) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockNextBlockHeader
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -487,27 +487,27 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockNextBlockHeader) Unmarsha
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockTx neutron interchainadapter interchainqueries block tx
+// NeutronInterchainqueriesBlockTx neutron interchainqueries block tx
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockTx
-type NeutronInterchainadapterInterchainqueriesBlockTx struct {
+// swagger:model NeutronInterchainqueriesBlockTx
+type NeutronInterchainqueriesBlockTx struct {
 
 	// is body of the transaction
 	// Format: byte
 	Data strfmt.Base64 `json:"data,omitempty"`
 
 	// delivery proof
-	DeliveryProof *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof `json:"delivery_proof,omitempty"`
+	DeliveryProof *NeutronInterchainqueriesBlockTxDeliveryProof `json:"delivery_proof,omitempty"`
 
 	// inclusion proof
-	InclusionProof *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof `json:"inclusion_proof,omitempty"`
+	InclusionProof *NeutronInterchainqueriesBlockTxInclusionProof `json:"inclusion_proof,omitempty"`
 
 	// response
-	Response *NeutronInterchainadapterInterchainqueriesBlockTxResponse `json:"response,omitempty"`
+	Response *NeutronInterchainqueriesBlockTxResponse `json:"response,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block tx
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block tx
+func (m *NeutronInterchainqueriesBlockTx) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateDeliveryProof(formats); err != nil {
@@ -528,7 +528,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) Validate(formats strf
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateDeliveryProof(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTx) validateDeliveryProof(formats strfmt.Registry) error {
 	if swag.IsZero(m.DeliveryProof) { // not required
 		return nil
 	}
@@ -547,7 +547,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateDeliveryProof
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateInclusionProof(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTx) validateInclusionProof(formats strfmt.Registry) error {
 	if swag.IsZero(m.InclusionProof) { // not required
 		return nil
 	}
@@ -566,7 +566,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateInclusionProo
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateResponse(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTx) validateResponse(formats strfmt.Registry) error {
 	if swag.IsZero(m.Response) { // not required
 		return nil
 	}
@@ -585,8 +585,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) validateResponse(form
 	return nil
 }
 
-// ContextValidate validate this neutron interchainadapter interchainqueries block tx based on the context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this neutron interchainqueries block tx based on the context it is used
+func (m *NeutronInterchainqueriesBlockTx) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateDeliveryProof(ctx, formats); err != nil {
@@ -607,7 +607,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) ContextValidate(ctx c
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateDeliveryProof(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTx) contextValidateDeliveryProof(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.DeliveryProof != nil {
 		if err := m.DeliveryProof.ContextValidate(ctx, formats); err != nil {
@@ -623,7 +623,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateDelive
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateInclusionProof(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTx) contextValidateInclusionProof(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.InclusionProof != nil {
 		if err := m.InclusionProof.ContextValidate(ctx, formats); err != nil {
@@ -639,7 +639,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateInclus
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateResponse(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTx) contextValidateResponse(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Response != nil {
 		if err := m.Response.ContextValidate(ctx, formats); err != nil {
@@ -656,7 +656,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) contextValidateRespon
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockTx) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -664,8 +664,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) MarshalBinary() ([]by
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTx) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockTx
+func (m *NeutronInterchainqueriesBlockTx) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockTx
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -673,10 +673,10 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTx) UnmarshalBinary(b []b
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof is the Merkle Proof which proves existence of response in block with height next_block_header.Height
+// NeutronInterchainqueriesBlockTxDeliveryProof is the Merkle Proof which proves existence of response in block with height next_block_header.Height
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof
-type NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof struct {
+// swagger:model NeutronInterchainqueriesBlockTxDeliveryProof
+type NeutronInterchainqueriesBlockTxDeliveryProof struct {
 
 	// aunts
 	Aunts []strfmt.Base64 `json:"aunts"`
@@ -692,18 +692,18 @@ type NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof struct {
 	Total string `json:"total,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block tx delivery proof
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block tx delivery proof
+func (m *NeutronInterchainqueriesBlockTxDeliveryProof) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this neutron interchainadapter interchainqueries block tx delivery proof based on context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this neutron interchainqueries block tx delivery proof based on context it is used
+func (m *NeutronInterchainqueriesBlockTxDeliveryProof) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockTxDeliveryProof) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -711,8 +711,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof) MarshalB
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof
+func (m *NeutronInterchainqueriesBlockTxDeliveryProof) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockTxDeliveryProof
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -720,10 +720,10 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxDeliveryProof) Unmarsha
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof is the Merkle Proof which proves existence of data in block with height header.Height
+// NeutronInterchainqueriesBlockTxInclusionProof is the Merkle Proof which proves existence of data in block with height header.Height
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof
-type NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof struct {
+// swagger:model NeutronInterchainqueriesBlockTxInclusionProof
+type NeutronInterchainqueriesBlockTxInclusionProof struct {
 
 	// aunts
 	Aunts []strfmt.Base64 `json:"aunts"`
@@ -739,18 +739,18 @@ type NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof struct {
 	Total string `json:"total,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block tx inclusion proof
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block tx inclusion proof
+func (m *NeutronInterchainqueriesBlockTxInclusionProof) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this neutron interchainadapter interchainqueries block tx inclusion proof based on context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this neutron interchainqueries block tx inclusion proof based on context it is used
+func (m *NeutronInterchainqueriesBlockTxInclusionProof) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockTxInclusionProof) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -758,8 +758,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof) Marshal
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof
+func (m *NeutronInterchainqueriesBlockTxInclusionProof) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockTxInclusionProof
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -767,10 +767,10 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxInclusionProof) Unmarsh
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockTxResponse neutron interchainadapter interchainqueries block tx response
+// NeutronInterchainqueriesBlockTxResponse neutron interchainqueries block tx response
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockTxResponse
-type NeutronInterchainadapterInterchainqueriesBlockTxResponse struct {
+// swagger:model NeutronInterchainqueriesBlockTxResponse
+type NeutronInterchainqueriesBlockTxResponse struct {
 
 	// code
 	Code int64 `json:"code,omitempty"`
@@ -783,7 +783,7 @@ type NeutronInterchainadapterInterchainqueriesBlockTxResponse struct {
 	Data strfmt.Base64 `json:"data,omitempty"`
 
 	// events
-	Events []*NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0 `json:"events"`
+	Events []*NeutronInterchainqueriesBlockTxResponseEventsItems0 `json:"events"`
 
 	// gas used
 	GasUsed string `json:"gas_used,omitempty"`
@@ -798,8 +798,8 @@ type NeutronInterchainadapterInterchainqueriesBlockTxResponse struct {
 	Log string `json:"log,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block tx response
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block tx response
+func (m *NeutronInterchainqueriesBlockTxResponse) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateEvents(formats); err != nil {
@@ -812,7 +812,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) Validate(form
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) validateEvents(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTxResponse) validateEvents(formats strfmt.Registry) error {
 	if swag.IsZero(m.Events) { // not required
 		return nil
 	}
@@ -838,8 +838,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) validateEvent
 	return nil
 }
 
-// ContextValidate validate this neutron interchainadapter interchainqueries block tx response based on the context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this neutron interchainqueries block tx response based on the context it is used
+func (m *NeutronInterchainqueriesBlockTxResponse) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateEvents(ctx, formats); err != nil {
@@ -852,7 +852,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) ContextValida
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) contextValidateEvents(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTxResponse) contextValidateEvents(ctx context.Context, formats strfmt.Registry) error {
 
 	for i := 0; i < len(m.Events); i++ {
 
@@ -873,7 +873,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) contextValida
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockTxResponse) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -881,8 +881,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) MarshalBinary
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockTxResponse
+func (m *NeutronInterchainqueriesBlockTxResponse) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockTxResponse
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -890,22 +890,22 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponse) UnmarshalBina
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0 Event allows application developers to attach additional information to
+// NeutronInterchainqueriesBlockTxResponseEventsItems0 Event allows application developers to attach additional information to
 // ResponseBeginBlock, ResponseEndBlock, ResponseCheckTx and ResponseDeliverTx.
 // Later, transactions may be queried using these events.
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0
-type NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0 struct {
+// swagger:model NeutronInterchainqueriesBlockTxResponseEventsItems0
+type NeutronInterchainqueriesBlockTxResponseEventsItems0 struct {
 
 	// attributes
-	Attributes []*NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0 `json:"attributes"`
+	Attributes []*NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0 `json:"attributes"`
 
 	// type
 	Type string `json:"type,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block tx response events items0
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block tx response events items0
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAttributes(formats); err != nil {
@@ -918,7 +918,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) V
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) validateAttributes(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0) validateAttributes(formats strfmt.Registry) error {
 	if swag.IsZero(m.Attributes) { // not required
 		return nil
 	}
@@ -944,8 +944,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) v
 	return nil
 }
 
-// ContextValidate validate this neutron interchainadapter interchainqueries block tx response events items0 based on the context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this neutron interchainqueries block tx response events items0 based on the context it is used
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateAttributes(ctx, formats); err != nil {
@@ -958,7 +958,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) C
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) contextValidateAttributes(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0) contextValidateAttributes(ctx context.Context, formats strfmt.Registry) error {
 
 	for i := 0; i < len(m.Attributes); i++ {
 
@@ -979,7 +979,7 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) c
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -987,8 +987,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) M
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockTxResponseEventsItems0
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -996,10 +996,10 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0) U
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0 EventAttribute is a single key-value pair, associated with an event.
+// NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0 EventAttribute is a single key-value pair, associated with an event.
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0
-type NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0 struct {
+// swagger:model NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0
+type NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0 struct {
 
 	// index
 	Index bool `json:"index,omitempty"`
@@ -1013,18 +1013,18 @@ type NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0Attribu
 	Value strfmt.Base64 `json:"value,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries block tx response events items0 attributes items0
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries block tx response events items0 attributes items0
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this neutron interchainadapter interchainqueries block tx response events items0 attributes items0 based on context it is used
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this neutron interchainqueries block tx response events items0 attributes items0 based on context it is used
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1032,8 +1032,8 @@ func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0Att
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesBlockTxResponseEventsItems0AttributesItems0
+func (m *NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesBlockTxResponseEventsItems0AttributesItems0
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

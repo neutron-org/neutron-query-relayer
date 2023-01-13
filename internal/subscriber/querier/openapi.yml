@@ -6,7 +6,7 @@ info:
 paths:
   /neutron/interchainqueries/registered_queries:
     get:
-      operationId: NeutronInterchainadapterInterchainqueriesRegisteredQueries
+      operationId: NeutronInterchainqueriesRegisteredQueries
       responses:
         '200':
           description: A successful response.
@@ -347,7 +347,7 @@ paths:
         - Query
   /neutron/interchainqueries/registered_query:
     get:
-      operationId: NeutronInterchainadapterInterchainqueriesRegisteredQuery
+      operationId: NeutronInterchainqueriesRegisteredQuery
       responses:
         '200':
           description: A successful response.
@@ -942,7 +942,7 @@ paths:
       tags:
         - Query
 definitions:
-  neutron.interchainadapter.interchainqueries.Block:
+  neutron.interchainqueries.Block:
     type: object
     properties:
       next_block_header:
@@ -1365,7 +1365,7 @@ definitions:
             type: string
             format: byte
             title: is body of the transaction
-  neutron.interchainadapter.interchainqueries.KVKey:
+  neutron.interchainqueries.KVKey:
     type: object
     properties:
       path:
@@ -1377,7 +1377,7 @@ definitions:
         type: string
         format: byte
         title: Key you want to read from the storage
-  neutron.interchainadapter.interchainqueries.QueryRegisteredQueriesResponse:
+  neutron.interchainqueries.QueryRegisteredQueriesResponse:
     type: object
     properties:
       registered_queries:
@@ -1455,7 +1455,7 @@ definitions:
               PageRequest.count_total
 
               was set, its value is undefined otherwise
-  neutron.interchainadapter.interchainqueries.QueryRegisteredQueryResponse:
+  neutron.interchainqueries.QueryRegisteredQueryResponse:
     type: object
     properties:
       registered_query:
@@ -1511,7 +1511,7 @@ definitions:
             description: >-
               The remote chain last block height when the query result was
               updated.
-  neutron.interchainadapter.interchainqueries.RegisteredQuery:
+  neutron.interchainqueries.RegisteredQuery:
     type: object
     properties:
       id:
