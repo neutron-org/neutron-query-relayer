@@ -51,8 +51,8 @@ func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIC
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
-	res, err := s.restClient.Query.NeutronInterchainqueriesRegisteredQuery(
-		&query.NeutronInterchainqueriesRegisteredQueryParams{
+	res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQuery(
+		&query.NeutronInterchainQueriesRegisteredQueryParams{
 			QueryID: &queryId,
 			Context: ctx,
 		},
@@ -74,8 +74,8 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	var out = map[string]*neutrontypes.RegisteredQuery{}
 	var pageKey *strfmt.Base64
 	for {
-		res, err := s.restClient.Query.NeutronInterchainqueriesRegisteredQueries(
-			&query.NeutronInterchainqueriesRegisteredQueriesParams{
+		res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQueries(
+			&query.NeutronInterchainQueriesRegisteredQueriesParams{
 				Owners:        s.registry.GetAddresses(),
 				ConnectionID:  &s.connectionID,
 				Context:       ctx,

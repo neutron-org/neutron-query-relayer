@@ -7,7 +7,7 @@ import (
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-func (o *NeutronInterchainqueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
 	queryId, err := strconv.ParseUint(o.ID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
@@ -49,7 +49,7 @@ func (o *NeutronInterchainqueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 	}, nil
 }
 
-func (o *NeutronInterchainqueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
+func (o *NeutronInterchainQueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
 	queryId, err := strconv.ParseUint(o.ID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
