@@ -30,9 +30,9 @@ type ClientOption func(*runtime.ClientOperation)
 type ClientService interface {
 	IbcCoreConnectionV1Connection(params *IbcCoreConnectionV1ConnectionParams, opts ...ClientOption) (*IbcCoreConnectionV1ConnectionOK, error)
 
-	NeutronInterchainadapterInterchainqueriesRegisteredQueries(params *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams, opts ...ClientOption) (*NeutronInterchainadapterInterchainqueriesRegisteredQueriesOK, error)
+	NeutronInterchainQueriesRegisteredQueries(params *NeutronInterchainQueriesRegisteredQueriesParams, opts ...ClientOption) (*NeutronInterchainQueriesRegisteredQueriesOK, error)
 
-	NeutronInterchainadapterInterchainqueriesRegisteredQuery(params *NeutronInterchainadapterInterchainqueriesRegisteredQueryParams, opts ...ClientOption) (*NeutronInterchainadapterInterchainqueriesRegisteredQueryOK, error)
+	NeutronInterchainQueriesRegisteredQuery(params *NeutronInterchainQueriesRegisteredQueryParams, opts ...ClientOption) (*NeutronInterchainQueriesRegisteredQueryOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -75,22 +75,22 @@ func (a *Client) IbcCoreConnectionV1Connection(params *IbcCoreConnectionV1Connec
 }
 
 /*
-NeutronInterchainadapterInterchainqueriesRegisteredQueries neutron interchainadapter interchainqueries registered queries API
+NeutronInterchainQueriesRegisteredQueries neutron interchain queries registered queries API
 */
-func (a *Client) NeutronInterchainadapterInterchainqueriesRegisteredQueries(params *NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams, opts ...ClientOption) (*NeutronInterchainadapterInterchainqueriesRegisteredQueriesOK, error) {
+func (a *Client) NeutronInterchainQueriesRegisteredQueries(params *NeutronInterchainQueriesRegisteredQueriesParams, opts ...ClientOption) (*NeutronInterchainQueriesRegisteredQueriesOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewNeutronInterchainadapterInterchainqueriesRegisteredQueriesParams()
+		params = NewNeutronInterchainQueriesRegisteredQueriesParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "NeutronInterchainadapterInterchainqueriesRegisteredQueries",
+		ID:                 "NeutronInterchainQueriesRegisteredQueries",
 		Method:             "GET",
 		PathPattern:        "/neutron/interchainqueries/registered_queries",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
 		Params:             params,
-		Reader:             &NeutronInterchainadapterInterchainqueriesRegisteredQueriesReader{formats: a.formats},
+		Reader:             &NeutronInterchainQueriesRegisteredQueriesReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
@@ -102,32 +102,32 @@ func (a *Client) NeutronInterchainadapterInterchainqueriesRegisteredQueries(para
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*NeutronInterchainadapterInterchainqueriesRegisteredQueriesOK)
+	success, ok := result.(*NeutronInterchainQueriesRegisteredQueriesOK)
 	if ok {
 		return success, nil
 	}
 	// unexpected success response
-	unexpectedSuccess := result.(*NeutronInterchainadapterInterchainqueriesRegisteredQueriesDefault)
+	unexpectedSuccess := result.(*NeutronInterchainQueriesRegisteredQueriesDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
 /*
-NeutronInterchainadapterInterchainqueriesRegisteredQuery neutron interchainadapter interchainqueries registered query API
+NeutronInterchainQueriesRegisteredQuery neutron interchain queries registered query API
 */
-func (a *Client) NeutronInterchainadapterInterchainqueriesRegisteredQuery(params *NeutronInterchainadapterInterchainqueriesRegisteredQueryParams, opts ...ClientOption) (*NeutronInterchainadapterInterchainqueriesRegisteredQueryOK, error) {
+func (a *Client) NeutronInterchainQueriesRegisteredQuery(params *NeutronInterchainQueriesRegisteredQueryParams, opts ...ClientOption) (*NeutronInterchainQueriesRegisteredQueryOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewNeutronInterchainadapterInterchainqueriesRegisteredQueryParams()
+		params = NewNeutronInterchainQueriesRegisteredQueryParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "NeutronInterchainadapterInterchainqueriesRegisteredQuery",
+		ID:                 "NeutronInterchainQueriesRegisteredQuery",
 		Method:             "GET",
 		PathPattern:        "/neutron/interchainqueries/registered_query",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
 		Params:             params,
-		Reader:             &NeutronInterchainadapterInterchainqueriesRegisteredQueryReader{formats: a.formats},
+		Reader:             &NeutronInterchainQueriesRegisteredQueryReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
@@ -139,12 +139,12 @@ func (a *Client) NeutronInterchainadapterInterchainqueriesRegisteredQuery(params
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*NeutronInterchainadapterInterchainqueriesRegisteredQueryOK)
+	success, ok := result.(*NeutronInterchainQueriesRegisteredQueryOK)
 	if ok {
 		return success, nil
 	}
 	// unexpected success response
-	unexpectedSuccess := result.(*NeutronInterchainadapterInterchainqueriesRegisteredQueryDefault)
+	unexpectedSuccess := result.(*NeutronInterchainQueriesRegisteredQueryDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

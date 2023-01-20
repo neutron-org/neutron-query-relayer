@@ -84,6 +84,11 @@ func (o *IbcCoreConnectionV1ConnectionOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the ibc core connection v1 connection o k response
+func (o *IbcCoreConnectionV1ConnectionOK) Code() int {
+	return 200
+}
+
 func (o *IbcCoreConnectionV1ConnectionOK) Error() string {
 	return fmt.Sprintf("[GET /ibc/core/connection/v1/connections/{connection_id}][%d] ibcCoreConnectionV1ConnectionOK  %+v", 200, o.Payload)
 }
@@ -126,11 +131,6 @@ type IbcCoreConnectionV1ConnectionDefault struct {
 	Payload *IbcCoreConnectionV1ConnectionDefaultBody
 }
 
-// Code gets the status code for the ibc core connection v1 connection default response
-func (o *IbcCoreConnectionV1ConnectionDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this ibc core connection v1 connection default response has a 2xx status code
 func (o *IbcCoreConnectionV1ConnectionDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -154,6 +154,11 @@ func (o *IbcCoreConnectionV1ConnectionDefault) IsServerError() bool {
 // IsCode returns true when this ibc core connection v1 connection default response a status code equal to that given
 func (o *IbcCoreConnectionV1ConnectionDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the ibc core connection v1 connection default response
+func (o *IbcCoreConnectionV1ConnectionDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *IbcCoreConnectionV1ConnectionDefault) Error() string {
