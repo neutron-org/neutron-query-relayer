@@ -1086,8 +1086,8 @@ github.com/nats-io/nkeys v0.3.0/go.mod h1:gvUNGjVcM2IPr5rCsRsC6Wb3Hr2CQAm08dsxtV
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=
 github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354/go.mod h1:KSVJerMDfblTH7p5MZaTt+8zaT2iEk3AkVb9PQdZuE8=
 github.com/neilotoole/errgroup v0.1.5/go.mod h1:Q2nLGf+594h0CLBs/Mbg6qOr7GtqDK7C2S41udRnToE=
-github.com/neutron-org/neutron v0.1.2-0.20230118141502-f4c5170ae741 h1:v9GVVqXDd+ro2+eUaN5XuUtbmmA2k8U0PNZCTocwLQ8=
-github.com/neutron-org/neutron v0.1.2-0.20230118141502-f4c5170ae741/go.mod h1:GV6LsOMxPHTJztb8E1Apn01Uhh/dtF0tSRjHp/oxojY=
+github.com/neutron-org/neutron v0.1.2-0.20230120111605-4912c8c8b9ca h1:HVhpf28ips7Fep/+1d5isuQqiR3/pPbb6OuWCFo+z/U=
+github.com/neutron-org/neutron v0.1.2-0.20230120111605-4912c8c8b9ca/go.mod h1:2jzMC+qDU3ha6DMOy+LUjubJFltmXlQ9OZkoCvB2kxA=
 github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73 h1:E1+ittfo/+u2/TgPzOzjjGXCmP3k2+L38+woz6RJvbk=
 github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73/go.mod h1:SKEYJmWa+uOI1RBStwCpET0dLn6SNJOkyjE2UXHTvtM=
 github.com/neutron-org/wasmd v0.28.0-ics-support h1:pz4ffgAP3RnTVnG1/mYqKLteXT2GVcyved/H0QxpnKA=
