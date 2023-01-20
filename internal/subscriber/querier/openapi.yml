@@ -6,7 +6,7 @@ info:
 paths:
   /neutron/interchainqueries/registered_queries:
     get:
-      operationId: NeutronInterchainqueriesRegisteredQueries
+      operationId: NeutronInterchainQueriesRegisteredQueries
       responses:
         '200':
           description: A successful response.
@@ -347,7 +347,7 @@ paths:
         - Query
   /neutron/interchainqueries/registered_query:
     get:
-      operationId: NeutronInterchainqueriesRegisteredQuery
+      operationId: NeutronInterchainQueriesRegisteredQuery
       responses:
         '200':
           description: A successful response.
