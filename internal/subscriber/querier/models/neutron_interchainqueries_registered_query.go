@@ -14,10 +14,10 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// NeutronInterchainadapterInterchainqueriesRegisteredQuery neutron interchainadapter interchainqueries registered query
+// NeutronInterchainqueriesRegisteredQuery neutron interchainqueries registered query
 //
-// swagger:model neutron.interchainadapter.interchainqueries.RegisteredQuery
-type NeutronInterchainadapterInterchainqueriesRegisteredQuery struct {
+// swagger:model neutron.interchainqueries.RegisteredQuery
+type NeutronInterchainqueriesRegisteredQuery struct {
 
 	// The IBC connection ID for getting ConsensusState to verify proofs
 	ConnectionID string `json:"connection_id,omitempty"`
@@ -26,7 +26,7 @@ type NeutronInterchainadapterInterchainqueriesRegisteredQuery struct {
 	ID string `json:"id,omitempty"`
 
 	// The KV-storage keys for which we want to get values from remote chain
-	Keys []*NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0 `json:"keys"`
+	Keys []*NeutronInterchainqueriesRegisteredQueryKeysItems0 `json:"keys"`
 
 	// The local chain last block height when the query result was updated.
 	LastSubmittedResultLocalHeight string `json:"last_submitted_result_local_height,omitempty"`
@@ -47,8 +47,8 @@ type NeutronInterchainadapterInterchainqueriesRegisteredQuery struct {
 	UpdatePeriod string `json:"update_period,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries registered query
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries registered query
+func (m *NeutronInterchainqueriesRegisteredQuery) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateKeys(formats); err != nil {
@@ -61,7 +61,7 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) Validate(form
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) validateKeys(formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesRegisteredQuery) validateKeys(formats strfmt.Registry) error {
 	if swag.IsZero(m.Keys) { // not required
 		return nil
 	}
@@ -87,8 +87,8 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) validateKeys(
 	return nil
 }
 
-// ContextValidate validate this neutron interchainadapter interchainqueries registered query based on the context it is used
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this neutron interchainqueries registered query based on the context it is used
+func (m *NeutronInterchainqueriesRegisteredQuery) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateKeys(ctx, formats); err != nil {
@@ -101,7 +101,7 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) ContextValida
 	return nil
 }
 
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) contextValidateKeys(ctx context.Context, formats strfmt.Registry) error {
+func (m *NeutronInterchainqueriesRegisteredQuery) contextValidateKeys(ctx context.Context, formats strfmt.Registry) error {
 
 	for i := 0; i < len(m.Keys); i++ {
 
@@ -122,7 +122,7 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) contextValida
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesRegisteredQuery) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -130,8 +130,8 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) MarshalBinary
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesRegisteredQuery
+func (m *NeutronInterchainqueriesRegisteredQuery) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesRegisteredQuery
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
@@ -139,10 +139,10 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQuery) UnmarshalBina
 	return nil
 }
 
-// NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0 neutron interchainadapter interchainqueries registered query keys items0
+// NeutronInterchainqueriesRegisteredQueryKeysItems0 neutron interchainqueries registered query keys items0
 //
-// swagger:model NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0
-type NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0 struct {
+// swagger:model NeutronInterchainqueriesRegisteredQueryKeysItems0
+type NeutronInterchainqueriesRegisteredQueryKeysItems0 struct {
 
 	// Key you want to read from the storage
 	// Format: byte
@@ -152,18 +152,18 @@ type NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0 struct {
 	Path string `json:"path,omitempty"`
 }
 
-// Validate validates this neutron interchainadapter interchainqueries registered query keys items0
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0) Validate(formats strfmt.Registry) error {
+// Validate validates this neutron interchainqueries registered query keys items0
+func (m *NeutronInterchainqueriesRegisteredQueryKeysItems0) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this neutron interchainadapter interchainqueries registered query keys items0 based on context it is used
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this neutron interchainqueries registered query keys items0 based on context it is used
+func (m *NeutronInterchainqueriesRegisteredQueryKeysItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0) MarshalBinary() ([]byte, error) {
+func (m *NeutronInterchainqueriesRegisteredQueryKeysItems0) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -171,8 +171,8 @@ func (m *NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0) Mar
 }
 
 // UnmarshalBinary interface implementation
-func (m *NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0) UnmarshalBinary(b []byte) error {
-	var res NeutronInterchainadapterInterchainqueriesRegisteredQueryKeysItems0
+func (m *NeutronInterchainqueriesRegisteredQueryKeysItems0) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainqueriesRegisteredQueryKeysItems0
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
