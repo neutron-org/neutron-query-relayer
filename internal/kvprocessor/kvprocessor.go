@@ -10,10 +10,10 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
+	ibcexported "github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
+	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
-	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
 	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
@@ -173,7 +173,7 @@ func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader ibcexpor
 	var updateMsgRelayer provider.RelayerMessage
 	if err := retry.Do(func() error {
 		var err error
-		updateMsgRelayer, err = p.neutronChain.ChainProvider.UpdateClient(p.neutronChain.PathEnd.ClientID, srcHeader)
+		updateMsgRelayer, err = p.neutronChain.ChainProvider.MsgUpdateClient(p.neutronChain.PathEnd.ClientID, srcHeader)
 		return err
 	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
 		p.logger.Error(

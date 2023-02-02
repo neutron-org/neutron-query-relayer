@@ -116,7 +116,7 @@ func resubmitFailedTxs(logger *zap.Logger, store relay.Storage, txProcessor rela
 				logger.Error("failed to get unsuccessful tx", zap.Error(err))
 				httpErrorCode := http.StatusInternalServerError
 				httpErrorMessage := fmt.Sprintf("Error processing request: %s", err)
-				if errors.As(err, &leveldb.ErrNotFound) {
+				if errors.Is(err, leveldb.ErrNotFound) {
 					httpErrorCode = http.StatusBadRequest
 					httpErrorMessage = fmt.Sprintf("no tx found with queryID=%d and hash=%s", txInfo.QueryID, txInfo.Hash)
 				}
