@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	ibcclienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 )
 
 // NeutronInterchainQueriesRegisteredQueriesReader is a Reader for the NeutronInterchainQueriesRegisteredQueries structure.
@@ -647,7 +648,7 @@ type NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0 stru
 	LastSubmittedResultLocalHeight string `json:"last_submitted_result_local_height,omitempty"`
 
 	// The remote chain last block height when the query result was updated.
-	LastSubmittedResultRemoteHeight string `json:"last_submitted_result_remote_height,omitempty"`
+	LastSubmittedResultRemoteHeight ibcclienttypes.Height `json:"last_submitted_result_remote_height,omitempty"`
 
 	// The address that registered the query.
 	Owner string `json:"owner,omitempty"`
