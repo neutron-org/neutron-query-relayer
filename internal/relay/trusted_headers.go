@@ -3,7 +3,7 @@ package relay
 import (
 	"context"
 
-	"github.com/cosmos/ibc-go/v3/modules/core/exported"
+	"github.com/cosmos/ibc-go/v4/modules/core/exported"
 )
 
 // TrustedHeaderFetcher able to get trusted headers for a given height
