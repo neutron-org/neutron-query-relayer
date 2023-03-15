@@ -406,11 +406,19 @@ paths:
                       The local chain last block height when the query result
                       was updated.
                   last_submitted_result_remote_height:
-                    type: string
-                    format: uint64
+                    type: object
                     description: >-
-                      The remote chain last block height when the query result
+                      The remote chain last block height & revision number when the query result
                       was updated.
+                    properties:
+                      revision_number:
+                        type: string
+                        format: uint64
+                      revision_height:
+                        type: string
+                        format: uint64
+
+
         default:
           description: An unexpected error response.
           schema:
@@ -1432,11 +1440,17 @@ definitions:
                 The local chain last block height when the query result was
                 updated.
             last_submitted_result_remote_height:
-              type: string
-              format: uint64
+              type: object
               description: >-
-                The remote chain last block height when the query result was
-                updated.
+                The remote chain last block height & revision number when the query result
+                was updated.
+              properties:
+                revision_number:
+                  type: string
+                  format: uint64
+                revision_height:
+                  type: string
+                  format: uint64
       pagination:
         description: pagination defines the pagination in the response.
         type: object
@@ -1506,11 +1520,18 @@ definitions:
               The local chain last block height when the query result was
               updated.
           last_submitted_result_remote_height:
-            type: string
-            format: uint64
+            type: object
             description: >-
-              The remote chain last block height when the query result was
-              updated.
+              The remote chain last block height & revision number when the query result
+              was updated.
+            properties:
+              revision_number:
+                type: string
+                format: uint64
+              revision_height:
+                type: string
+                format: uint64
+
   neutron.interchainqueries.RegisteredQuery:
     type: object
     properties:
@@ -1555,6 +1576,14 @@ definitions:
         format: uint64
         description: The local chain last block height when the query result was updated.
       last_submitted_result_remote_height:
-        type: string
-        format: uint64
-        description: The remote chain last block height when the query result was updated.
+        type: object
+        description: >-
+          The remote chain last block height & revision number when the query result
+          was updated.
+        properties:
+          revision_number:
+            type: string
+            format: uint64
+          revision_height:
+            type: string
+            format: uint64
