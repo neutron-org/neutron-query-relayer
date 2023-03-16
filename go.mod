@@ -15,7 +15,7 @@ require (
 	github.com/go-openapi/validate v0.21.0
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/neutron-org/neutron v0.2.1-0.20230315100049-f1e847c12971
+	github.com/neutron-org/neutron v0.2.1-0.20230316195435-636a5b05e052
 	github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73
 	github.com/prometheus/client_golang v1.14.0
 	github.com/spf13/cobra v1.6.1
