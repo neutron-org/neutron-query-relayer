@@ -60,12 +60,10 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to get NeutronInterchainqueriesRegisteredQuery: %w", err)
 	}
-	s.logger.Debug("IMPORTANT: ", zap.Any("query body", res.GetPayload().RegisteredQuery))
 	neutronQuery, err := res.GetPayload().RegisteredQuery.ToNeutronRegisteredQuery()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get neutronQueryFromRestQuery: %w", err)
 	}
-
 	return neutronQuery, nil
 }
 
