@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	ibcclienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
@@ -23,10 +24,17 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
 
-	lastSubmittedResultRemoteHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight, 10, 64)
+	lastSubmittedResultRemoteRevisionNumber, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionNumber, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
+
+	lastSubmittedResultRemoteRevisionHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionHeight, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
+	}
+
+	queryHeight := ibcclienttypes.NewHeight(lastSubmittedResultRemoteRevisionNumber, lastSubmittedResultRemoteRevisionHeight)
 
 	var keys []*neutrontypes.KVKey
 	for _, restKey := range o.Keys {
@@ -45,7 +53,7 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 		ConnectionId:                    o.ConnectionID,
 		UpdatePeriod:                    updatePeriod,
 		LastSubmittedResultLocalHeight:  lastSubmittedResultLocalHeight,
-		LastSubmittedResultRemoteHeight: lastSubmittedResultRemoteHeight,
+		LastSubmittedResultRemoteHeight: &queryHeight,
 	}, nil
 }
 
@@ -65,9 +73,23 @@ func (o *NeutronInterchainQueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutron
 		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
 
-	lastSubmittedResultRemoteHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
+	var queryHeight ibcclienttypes.Height
+
+	if o.LastSubmittedResultRemoteHeight == nil {
+		queryHeight = ibcclienttypes.NewHeight(0, 0)
+	} else {
+		lastSubmittedResultRemoteRevisionNumber, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionNumber, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight.RevisionHeight: %w", err)
+		}
+
+		lastSubmittedResultRemoteRevisionHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionHeight, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight.RevisionHeight: %w", err)
+		}
+
+		queryHeight = ibcclienttypes.NewHeight(lastSubmittedResultRemoteRevisionNumber, lastSubmittedResultRemoteRevisionHeight)
+
 	}
 
 	var keys []*neutrontypes.KVKey
@@ -77,7 +99,6 @@ func (o *NeutronInterchainQueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutron
 			Key:  restKey.Key,
 		})
 	}
-
 	return &neutrontypes.RegisteredQuery{
 		Id:                              queryId,
 		Owner:                           o.Owner,
@@ -87,6 +108,6 @@ func (o *NeutronInterchainQueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutron
 		ConnectionId:                    o.ConnectionID,
 		UpdatePeriod:                    updatePeriod,
 		LastSubmittedResultLocalHeight:  lastSubmittedResultLocalHeight,
-		LastSubmittedResultRemoteHeight: lastSubmittedResultRemoteHeight,
+		LastSubmittedResultRemoteHeight: &queryHeight,
 	}, nil
 }

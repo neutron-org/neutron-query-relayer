@@ -646,8 +646,8 @@ type NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0 stru
 	// The local chain last block height when the query result was updated.
 	LastSubmittedResultLocalHeight string `json:"last_submitted_result_local_height,omitempty"`
 
-	// The remote chain last block height when the query result was updated.
-	LastSubmittedResultRemoteHeight string `json:"last_submitted_result_remote_height,omitempty"`
+	// last submitted result remote height
+	LastSubmittedResultRemoteHeight *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight `json:"last_submitted_result_remote_height,omitempty"`
 
 	// The address that registered the query.
 	Owner string `json:"owner,omitempty"`
@@ -667,6 +667,10 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 	var res []error
 
 	if err := o.validateKeys(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := o.validateLastSubmittedResultRemoteHeight(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -702,11 +706,34 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 	return nil
 }
 
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) validateLastSubmittedResultRemoteHeight(formats strfmt.Registry) error {
+	if swag.IsZero(o.LastSubmittedResultRemoteHeight) { // not required
+		return nil
+	}
+
+	if o.LastSubmittedResultRemoteHeight != nil {
+		if err := o.LastSubmittedResultRemoteHeight.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("last_submitted_result_remote_height")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("last_submitted_result_remote_height")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ContextValidate validate this neutron interchain queries registered queries o k body registered queries items0 based on the context it is used
 func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := o.contextValidateKeys(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := o.contextValidateLastSubmittedResultRemoteHeight(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -731,6 +758,22 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 			}
 		}
 
+	}
+
+	return nil
+}
+
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) contextValidateLastSubmittedResultRemoteHeight(ctx context.Context, formats strfmt.Registry) error {
+
+	if o.LastSubmittedResultRemoteHeight != nil {
+		if err := o.LastSubmittedResultRemoteHeight.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("last_submitted_result_remote_height")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("last_submitted_result_remote_height")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -789,6 +832,47 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0K
 // UnmarshalBinary interface implementation
 func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0KeysItems0) UnmarshalBinary(b []byte) error {
 	var res NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0KeysItems0
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
+	}
+	*o = res
+	return nil
+}
+
+/*
+NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight The remote chain last block height & revision number when the query result was updated.
+swagger:model NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight
+*/
+type NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight struct {
+
+	// revision height
+	RevisionHeight string `json:"revision_height,omitempty"`
+
+	// revision number
+	RevisionNumber string `json:"revision_number,omitempty"`
+}
+
+// Validate validates this neutron interchain queries registered queries o k body registered queries items0 last submitted result remote height
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this neutron interchain queries registered queries o k body registered queries items0 last submitted result remote height based on context it is used
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	return nil
+}
+
+// MarshalBinary interface implementation
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight) MarshalBinary() ([]byte, error) {
+	if o == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(o)
+}
+
+// UnmarshalBinary interface implementation
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight) UnmarshalBinary(b []byte) error {
+	var res NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0LastSubmittedResultRemoteHeight
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
