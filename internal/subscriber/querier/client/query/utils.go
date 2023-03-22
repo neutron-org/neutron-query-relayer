@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strconv"
 
+	ibcclienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
-func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
+func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
 	queryId, err := strconv.ParseUint(o.ID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
@@ -23,10 +24,17 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesOKBodyRegiste
 		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
 
-	lastSubmittedResultRemoteHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight, 10, 64)
+	lastSubmittedResultRemoteRevisionNumber, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionNumber, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
+
+	lastSubmittedResultRemoteRevisionHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionHeight, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
+	}
+
+	queryHeight := ibcclienttypes.NewHeight(lastSubmittedResultRemoteRevisionNumber, lastSubmittedResultRemoteRevisionHeight)
 
 	var keys []*neutrontypes.KVKey
 	for _, restKey := range o.Keys {
@@ -45,11 +53,11 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueriesOKBodyRegiste
 		ConnectionId:                    o.ConnectionID,
 		UpdatePeriod:                    updatePeriod,
 		LastSubmittedResultLocalHeight:  lastSubmittedResultLocalHeight,
-		LastSubmittedResultRemoteHeight: lastSubmittedResultRemoteHeight,
+		LastSubmittedResultRemoteHeight: &queryHeight,
 	}, nil
 }
 
-func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
+func (o *NeutronInterchainQueriesRegisteredQueryOKBodyRegisteredQuery) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {
 	queryId, err := strconv.ParseUint(o.ID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse o.ID: %w", err)
@@ -65,9 +73,23 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
 	}
 
-	lastSubmittedResultRemoteHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
+	var queryHeight ibcclienttypes.Height
+
+	if o.LastSubmittedResultRemoteHeight == nil {
+		queryHeight = ibcclienttypes.NewHeight(0, 0)
+	} else {
+		lastSubmittedResultRemoteRevisionNumber, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionNumber, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight.RevisionHeight: %w", err)
+		}
+
+		lastSubmittedResultRemoteRevisionHeight, err := strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionHeight, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight.RevisionHeight: %w", err)
+		}
+
+		queryHeight = ibcclienttypes.NewHeight(lastSubmittedResultRemoteRevisionNumber, lastSubmittedResultRemoteRevisionHeight)
+
 	}
 
 	var keys []*neutrontypes.KVKey
@@ -77,7 +99,6 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 			Key:  restKey.Key,
 		})
 	}
-
 	return &neutrontypes.RegisteredQuery{
 		Id:                              queryId,
 		Owner:                           o.Owner,
@@ -87,6 +108,6 @@ func (o *NeutronInterchainadapterInterchainqueriesRegisteredQueryOKBodyRegistere
 		ConnectionId:                    o.ConnectionID,
 		UpdatePeriod:                    updatePeriod,
 		LastSubmittedResultLocalHeight:  lastSubmittedResultLocalHeight,
-		LastSubmittedResultRemoteHeight: lastSubmittedResultRemoteHeight,
+		LastSubmittedResultRemoteHeight: &queryHeight,
 	}, nil
 }

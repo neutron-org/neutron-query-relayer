@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/relayer/v2/relayer"
-	"github.com/cosmos/relayer/v2/relayer/provider/cosmos"
+	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
@@ -63,6 +63,7 @@ func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath stri
 		logger,
 		homepath,
 		debug,
+		cfg.ChainID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ChainProvider for %w", err)

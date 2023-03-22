@@ -51,21 +51,19 @@ func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIC
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
-	res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQuery(
-		&query.NeutronInterchainadapterInterchainqueriesRegisteredQueryParams{
+	res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQuery(
+		&query.NeutronInterchainQueriesRegisteredQueryParams{
 			QueryID: &queryId,
 			Context: ctx,
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQuery: %w", err)
+		return nil, fmt.Errorf("failed to get NeutronInterchainqueriesRegisteredQuery: %w", err)
 	}
-
 	neutronQuery, err := res.GetPayload().RegisteredQuery.ToNeutronRegisteredQuery()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get neutronQueryFromRestQuery: %w", err)
 	}
-
 	return neutronQuery, nil
 }
 
@@ -74,8 +72,8 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	var out = map[string]*neutrontypes.RegisteredQuery{}
 	var pageKey *strfmt.Base64
 	for {
-		res, err := s.restClient.Query.NeutronInterchainadapterInterchainqueriesRegisteredQueries(
-			&query.NeutronInterchainadapterInterchainqueriesRegisteredQueriesParams{
+		res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQueries(
+			&query.NeutronInterchainQueriesRegisteredQueriesParams{
 				Owners:        s.registry.GetAddresses(),
 				ConnectionID:  &s.connectionID,
 				Context:       ctx,
@@ -83,7 +81,7 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 			},
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get NeutronInterchainadapterInterchainqueriesRegisteredQueries: %w", err)
+			return nil, fmt.Errorf("failed to get NeutronInterchainqueriesRegisteredQueries: %w", err)
 		}
 
 		payload := res.GetPayload()
