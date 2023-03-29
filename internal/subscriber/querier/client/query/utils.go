@@ -28,12 +28,12 @@ func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0)
 	if o.LastSubmittedResultRemoteHeight != nil {
 		lastSubmittedResultRemoteRevisionNumber, err = strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionNumber, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
+			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
 		}
 
 		lastSubmittedResultRemoteRevisionHeight, err = strconv.ParseUint(o.LastSubmittedResultRemoteHeight.RevisionHeight, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultLocalHeight: %w", err)
+			return nil, fmt.Errorf("failed to parse o.LastSubmittedResultRemoteHeight: %w", err)
 		}
 	}
 	queryHeight := ibcclienttypes.NewHeight(lastSubmittedResultRemoteRevisionNumber, lastSubmittedResultRemoteRevisionHeight)
