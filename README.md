@@ -49,10 +49,8 @@ Clone the following repositories to the same folder where the neutron-query-rela
 
 #### terminal 3
 
-1. copy `.env.example` and rename the copy to `.env`
-2. set env from env list via way you prefer and run relayer:
-
-`export $(grep -v '^#' .env | xargs) && make dev`
+1. `cp .env.example.dev .env`, edit `.env` if desired
+2. `export $(grep -v '^#' .env | xargs) && make dev`
 
 ### Testing via docker
 
