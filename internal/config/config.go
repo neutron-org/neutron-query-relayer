@@ -50,11 +50,10 @@ type NeutronChainConfig struct {
 }
 
 type TargetChainConfig struct {
-	RPCAddr                string        `required:"true" split_words:"true"`
-	ValidatorAccountPrefix string        `required:"true" split_words:"true"`
-	Timeout                time.Duration `split_words:"true" default:"10s"`
-	Debug                  bool          `split_words:"true" default:"false"`
-	OutputFormat           string        `split_words:"true" default:"json"`
+	RPCAddr      string        `required:"true" split_words:"true"`
+	Timeout      time.Duration `split_words:"true" default:"10s"`
+	Debug        bool          `split_words:"true" default:"false"`
+	OutputFormat string        `split_words:"true" default:"json"`
 }
 
 func NewNeutronQueryRelayerConfig(logger *zap.Logger) (NeutronQueryRelayerConfig, error) {

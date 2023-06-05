@@ -14,15 +14,14 @@ import (
 
 // Querier can get proofs for stored blockchain values
 type Querier struct {
-	Client                 *rpcclienthttp.HTTP
-	ChainID                string
-	ValidatorAccountPrefix string
-	cdc                    codec.LegacyAmino
+	Client  *rpcclienthttp.HTTP
+	ChainID string
+	cdc     codec.LegacyAmino
 }
 
-func NewQuerier(client *rpcclienthttp.HTTP, chainId string, validatorAccountPrefix string) (*Querier, error) {
+func NewQuerier(client *rpcclienthttp.HTTP, chainId string) (*Querier, error) {
 	legacyCdc := codec.NewLegacyAmino()
-	return &Querier{Client: client, ChainID: chainId, cdc: *legacyCdc, ValidatorAccountPrefix: validatorAccountPrefix}, nil
+	return &Querier{Client: client, ChainID: chainId, cdc: *legacyCdc}, nil
 }
 
 // QueryTendermintProof performs an ABCI query with the given key and returns
