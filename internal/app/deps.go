@@ -49,7 +49,7 @@ func NewDefaultDependencyContainer(ctx context.Context,
 		return nil, fmt.Errorf("cannot load network params: %w", err)
 	}
 
-	targetQuerier, err := tmquerier.NewQuerier(targetClient, connParams.targetChainID, cfg.TargetChain.ValidatorAccountPrefix)
+	targetQuerier, err := tmquerier.NewQuerier(targetClient, connParams.targetChainID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to target chain: %w", err)
 	}
