@@ -164,6 +164,11 @@ func get_vsc_timestamps() (map[uint64]time.Time, uint64) {
 	return vscIDtoStorageKey, uint64(abciResp.Response.Height)
 }
 
+//type TimeoutVSC struct {
+//	Time time.Time
+//	ID   uint64
+//}
+
 func main() {
 	matured := get_matured_packets()
 	fmt.Println("matured count: ", len(matured))
@@ -171,6 +176,8 @@ func main() {
 	fmt.Println("neutron-1 timestamps count: ", len(ids))
 
 	fmt.Println("Outdated packets!!!!!")
+
+	minTimeToDeliver := 400 * time.Hour
 	for id, t := range ids {
 		mTime, found := matured[id]
 		if found {
@@ -182,9 +189,13 @@ func main() {
 				fmt.Println("maturity time: ", mTime)
 				fmt.Println(t.Add(3024000000000000 * time.Nanosecond).Sub(mTime))
 			}
+			if t.Add(3024000000000000*time.Nanosecond).Sub(mTime) < minTimeToDeliver {
+				minTimeToDeliver = t.Add(3024000000000000 * time.Nanosecond).Sub(mTime)
+			}
 		}
 	}
 	fmt.Println("Outdated list end!!!!!!!!!!!!!!!!")
+	fmt.Println("min time to deliver matured packet: ", minTimeToDeliver)
 
 	fmt.Println("Timeout packets(cosmos) with no matured(neutron)")
 	for id, t := range ids {
@@ -199,10 +210,7 @@ func main() {
 	fmt.Println("Timeout packets(cosmos) with no matured(neutron) end !!!!!!!!!!!!!!!!!")
 
 	//fmt.Println("closest 5 timeout with no matured")
-	//type TimeoutVSC struct {
-	//	Time time.Time
-	//	ID   uint64
-	//}
+
 	//pList := make([]TimeoutVSC, 0, len(ids))
 	//for id, t := range ids {
 	//	pList = append(pList, TimeoutVSC{
