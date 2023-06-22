@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/kv"
 	ccv "github.com/cosmos/interchain-security/x/ccv/types"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
@@ -122,18 +122,18 @@ func get_matured_packets() map[uint64]time.Time {
 	matured := make(map[uint64]time.Time)
 	tStart := time.Now()
 	abciResp := get_raw_abci_response("https://rpc-kralum.neutron-1.neutron.org/abci_query?path=%22store/ccvconsumer/subspace%22&data=0x0c")
-	sep := []byte{10, 39, 10, 17, 12}
-	splitted := bytes.Split(abciResp.Response.GetValue(), sep)
-	//c := 0
-	for _, i := range splitted {
-		if len(i) == 0 {
-			continue
-		}
+	pairs := kv.Pairs{}
+	pairs.Unmarshal(abciResp.Response.GetValue())
+	lens := make(map[int]uint64)
+	for _, i := range pairs.Pairs {
+
 		// https://github.com/cosmos/interchain-security/blob/ed04399147a0c3847645f3e68f41ea16db4c0f48/x/ccv/consumer/types/keys.go#L145
-		maturedID := sdk.BigEndianToUint64(i[8:16])
-		maturityTime := sdk.BigEndianToUint64(i[0:8]) // unixtime nanoseconds
+		maturedID := sdk.BigEndianToUint64(i.Key[9:17])
+		maturityTime := sdk.BigEndianToUint64(i.Key[1:9]) // unixtime nanoseconds
 		matured[maturedID] = time.Unix(0, int64(maturityTime))
 	}
+	fmt.Println(lens)
+
 	fmt.Println(time.Now().Sub(tStart))
 	return matured
 }
@@ -142,96 +142,85 @@ func get_vsc_timestamps() (map[uint64]time.Time, uint64) {
 	vscIDtoStorageKey := make(map[uint64]time.Time)
 	tStart := time.Now()
 	abciResp := get_raw_abci_response("https://rpc.cosmoshub.strange.love:443/abci_query?path=%22store/provider/subspace%22&data=0x12")
-	sep := []byte{10, 59, 10, 26, 18}
-	splitted := bytes.Split(abciResp.Response.GetValue(), sep)
-	//fmt.Println(len(splitted))
-	//fmt.Println(abciResp.Response.GetValue()[:200])
-	for _, i := range splitted {
-		if len(i) == 0 {
-			continue
-		}
+	pairs := kv.Pairs{}
+	pairs.Unmarshal(abciResp.Response.GetValue())
+	for _, i := range pairs.Pairs {
 
 		// https://github.com/cosmos/interchain-security/blob/ed04399147a0c3847645f3e68f41ea16db4c0f48/x/ccv/provider/types/keys.go#L273
-		chainIDlen := sdk.BigEndianToUint64(i[0:8])
-		chainID := string(i[8 : 8+chainIDlen])
-		vscID := sdk.BigEndianToUint64(i[8+chainIDlen : 16+chainIDlen])
+		chainIDlen := sdk.BigEndianToUint64(i.Key[1:9])
+		chainID := string(i.Key[9 : 9+chainIDlen])
+		vscID := sdk.BigEndianToUint64(i.Key[9+chainIDlen : 17+chainIDlen])
 		if chainID != "neutron-1" {
 			continue
 		}
 		var err error
-		vscIDtoStorageKey[vscID], err = sdk.ParseTimeBytes(i[16+chainIDlen+2:])
+		vscIDtoStorageKey[vscID], err = sdk.ParseTimeBytes(i.Value)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		//c++
-		//if c > 10 {
-		//	break
-		//}
+
 	}
 	fmt.Println(time.Now().Sub(tStart))
 	return vscIDtoStorageKey, uint64(abciResp.Response.Height)
 }
 
-func getVSCTimestamp(height uint64, storageKey []byte) time.Time {
-	fmt.Println("starting")
-	rpc := "https://rpc.cosmoshub.strange.love:443"
-	chainid := "cosmoshub-4"
-	valaccprefix := "cosmosvaloper"
-	key := types.KVKey{
-		Path: "provider",
-		Key:  storageKey,
-	}
-	targetClient, err := raw.NewRPCClient(rpc, time.Second*10)
-	if err != nil {
-		log.Fatalf("could not initialize target rpc client: %w", err)
-	}
-
-	targetQuerier, err := tmquerier.NewQuerier(targetClient, chainid, valaccprefix)
-	if err != nil {
-		log.Fatalf("cannot connect to target chain: %w", err)
-	}
-
-	value, _, err := targetQuerier.QueryTendermintProof(context.Background(), int64(height), key.GetPath(), key.GetKey())
-	if err != nil {
-		log.Fatalf("failed to query tendermint proof for path=%s and key=%v: %w", key.GetPath(), key.GetKey(), err)
-	}
-	fmt.Println(value.Value)
-	t, err := sdk.ParseTimeBytes(value.Value)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	return t //.Add(3024000000000000 * time.Nanosecond)
-}
-
 func main() {
-	t1 := time.Now()
 	matured := get_matured_packets()
 	fmt.Println("matured count: ", len(matured))
 	ids, _ := get_vsc_timestamps()
 	fmt.Println("neutron-1 timestamps count: ", len(ids))
-	c := 0
+
+	fmt.Println("Outdated packets!!!!!")
 	for id, t := range ids {
-		fmt.Println("===========")
-		fmt.Println("vscID: ", id)
-		fmt.Println("timestamp: ", t)
-		fmt.Println("timeout (+3024000000000000): ", t.Add(3024000000000000*time.Nanosecond))
 		mTime, found := matured[id]
-		if !found {
-			fmt.Println("no maturity found")
-		} else {
-			fmt.Println("maturity time: ", mTime)
-			fmt.Println(t.Add(3024000000000000 * time.Nanosecond).Sub(matured[id]))
-		}
-		c++
-		if c > 10 {
-			break
+		if found {
+			if t.Add(3024000000000000 * time.Nanosecond).Before(mTime) {
+				fmt.Println("===============")
+				fmt.Println("vscID: ", id)
+				fmt.Println("timestamp: ", t)
+				fmt.Println("timeout (+3024000000000000): ", t.Add(3024000000000000*time.Nanosecond))
+				fmt.Println("maturity time: ", mTime)
+				fmt.Println(t.Add(3024000000000000 * time.Nanosecond).Sub(mTime))
+			}
 		}
 	}
-	fmt.Println(time.Now().Sub(t1))
-}
+	fmt.Println("Outdated list end!!!!!!!!!!!!!!!!")
 
-//func main() {
-//	b := []byte{18, 29, 50, 48, 50, 51, 45, 48, 54, 45, 48, 50, 84, 49, 50, 58, 52, 52, 58, 53, 56, 46, 51, 50, 52, 54, 48, 48, 55, 50, 52}
-//                        50, 48, 50, 51, 45, 48, 54, 45, 48, 55, 84, 50, 50, 58, 52, 53, 58, 50, 57, 46, 51, 48, 52, 54, 56, 53, 52, 49, 52
-//}
+	fmt.Println("Timeout packets(cosmos) with no matured(neutron)")
+	for id, t := range ids {
+		_, found := matured[id]
+		if !found {
+			fmt.Println("===============")
+			fmt.Println("vscID: ", id)
+			fmt.Println("timestamp: ", t)
+			fmt.Println("timeout (+3024000000000000): ", t.Add(3024000000000000*time.Nanosecond))
+		}
+	}
+	fmt.Println("Timeout packets(cosmos) with no matured(neutron) end !!!!!!!!!!!!!!!!!")
+
+	//fmt.Println("closest 5 timeout with no matured")
+	//type TimeoutVSC struct {
+	//	Time time.Time
+	//	ID   uint64
+	//}
+	//pList := make([]TimeoutVSC, 0, len(ids))
+	//for id, t := range ids {
+	//	pList = append(pList, TimeoutVSC{
+	//		Time: t,
+	//		ID:   id,
+	//	})
+	//}
+	//sort.Slice(pList, func(i, j int) bool { return pList[i].Time.Before(pList[j].Time) })
+	//c = 0
+	//for _, tvsc := range pList {
+	//	_, found := matured[tvsc.ID]
+	//	if !found {
+	//		c++
+	//		fmt.Println(tvsc)
+	//	}
+	//	if c > 5 {
+	//		break
+	//	}
+	//}
+	//fmt.Println(time.Now().Sub(t1))
+}
