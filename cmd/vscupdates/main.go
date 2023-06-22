@@ -138,13 +138,14 @@ func get_matured_packets() map[uint64]time.Time {
 	return matured
 }
 
-func get_vsc_timestamp_ids() (map[uint64][]byte, uint64) {
-	vscIDtoStorageKey := make(map[uint64][]byte)
+func get_vsc_timestamps() (map[uint64]time.Time, uint64) {
+	vscIDtoStorageKey := make(map[uint64]time.Time)
 	tStart := time.Now()
 	abciResp := get_raw_abci_response("https://rpc.cosmoshub.strange.love:443/abci_query?path=%22store/provider/subspace%22&data=0x12")
 	sep := []byte{10, 59, 10, 26, 18}
 	splitted := bytes.Split(abciResp.Response.GetValue(), sep)
-	fmt.Println(len(splitted))
+	//fmt.Println(len(splitted))
+	//fmt.Println(abciResp.Response.GetValue()[:200])
 	for _, i := range splitted {
 		if len(i) == 0 {
 			continue
@@ -157,7 +158,11 @@ func get_vsc_timestamp_ids() (map[uint64][]byte, uint64) {
 		if chainID != "neutron-1" {
 			continue
 		}
-		vscIDtoStorageKey[vscID] = append([]byte{18}, i[:16+chainIDlen]...)
+		var err error
+		vscIDtoStorageKey[vscID], err = sdk.ParseTimeBytes(i[16+chainIDlen+2:])
+		if err != nil {
+			log.Fatalln(err)
+		}
 		//c++
 		//if c > 10 {
 		//	break
@@ -190,6 +195,7 @@ func getVSCTimestamp(height uint64, storageKey []byte) time.Time {
 	if err != nil {
 		log.Fatalf("failed to query tendermint proof for path=%s and key=%v: %w", key.GetPath(), key.GetKey(), err)
 	}
+	fmt.Println(value.Value)
 	t, err := sdk.ParseTimeBytes(value.Value)
 	if err != nil {
 		log.Fatalln(err)
@@ -202,13 +208,12 @@ func main() {
 	t1 := time.Now()
 	matured := get_matured_packets()
 	fmt.Println("matured count: ", len(matured))
-	ids, h := get_vsc_timestamp_ids()
+	ids, _ := get_vsc_timestamps()
 	fmt.Println("neutron-1 timestamps count: ", len(ids))
 	c := 0
-	for id, key := range ids {
+	for id, t := range ids {
 		fmt.Println("===========")
 		fmt.Println("vscID: ", id)
-		t := getVSCTimestamp(h, key)
 		fmt.Println("timestamp: ", t)
 		fmt.Println("timeout (+3024000000000000): ", t.Add(3024000000000000*time.Nanosecond))
 		mTime, found := matured[id]
@@ -225,3 +230,8 @@ func main() {
 	}
 	fmt.Println(time.Now().Sub(t1))
 }
+
+//func main() {
+//	b := []byte{18, 29, 50, 48, 50, 51, 45, 48, 54, 45, 48, 50, 84, 49, 50, 58, 52, 52, 58, 53, 56, 46, 51, 50, 52, 54, 48, 48, 55, 50, 52}
+//                        50, 48, 50, 51, 45, 48, 54, 45, 48, 55, 84, 50, 50, 58, 52, 53, 58, 50, 57, 46, 51, 48, 52, 54, 56, 53, 52, 49, 52
+//}
