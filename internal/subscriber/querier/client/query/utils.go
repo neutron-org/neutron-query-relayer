@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	ibcclienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
+	ibcclienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 

@@ -9,9 +9,9 @@ import (
 	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/avast/retry-go/v4"
-	abci "github.com/tendermint/tendermint/abci/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	abci "github.com/cometbft/cometbft/abci/types"
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"

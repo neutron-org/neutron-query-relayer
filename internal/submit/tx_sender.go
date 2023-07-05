@@ -7,10 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/cosmos-sdk/api/tendermint/abci"
+	"cosmossdk.io/api/tendermint/abci"
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -21,7 +22,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 )
@@ -47,8 +47,8 @@ type TxSender struct {
 	logger        *zap.Logger
 }
 
-func TestKeybase(chainID string, keyringRootDir string) (keyring.Keyring, error) {
-	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil)
+func TestKeybase(chainID string, keyringRootDir string, cdc codec.Codec) (keyring.Keyring, error) {
+	keybase, err := keyring.New(chainID, "test", keyringRootDir, nil, cdc)
 	if err != nil {
 		return keybase, fmt.Errorf("error creating keybase for chainId=%s and keyringRootDir=%s: %w", chainID, keyringRootDir, err)
 	}
@@ -171,7 +171,11 @@ func (txs *TxSender) SenderAddr() (string, error) {
 		return "", fmt.Errorf("could not fetch sender info from keychain with signKeyName=%s: %w", txs.signKeyName, err)
 	}
 
-	return info.GetAddress().String(), nil
+	addr, err := info.GetAddress()
+	if err != nil {
+		return "", fmt.Errorf("failed to get addr from pubkey: %w", err)
+	}
+	return addr.String(), nil
 }
 
 // queryAccount returns BaseAccount for given account address

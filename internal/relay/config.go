@@ -73,7 +73,6 @@ func getChain(logger *zap.Logger, cfg cosmos.CosmosProviderConfig, homepath stri
 	if !ok {
 		return nil, fmt.Errorf("failed to patch CosmosProvider config (type cast failed)")
 	}
-	provConcrete.Config.KeyDirectory = homepath
-
+	provConcrete.PCfg.KeyDirectory = homepath
 	return relayer.NewChain(logger, prov, debug), nil
 }

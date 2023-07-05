@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
 
@@ -54,15 +55,15 @@ func NewDefaultDependencyContainer(ctx context.Context,
 		return nil, fmt.Errorf("cannot connect to target chain: %w", err)
 	}
 
-	codec := raw.MakeCodecDefault()
-	keybase, err := submit.TestKeybase(connParams.neutronChainID, cfg.NeutronChain.HomeDir)
+	cdc := raw.MakeCodecDefault()
+	keybase, err := submit.TestKeybase(connParams.neutronChainID, cfg.NeutronChain.HomeDir, codec.NewProtoCodec(cdc.InterfaceRegistry))
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize keybase: %w", err)
 	}
 
 	txSender, err := submit.NewTxSender(ctx,
 		neutronClient,
-		codec.Marshaller,
+		cdc.Marshaller,
 		keybase,
 		*cfg.NeutronChain,
 		logRegistry.Get(TxSenderContext),

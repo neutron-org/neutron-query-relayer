@@ -9,11 +9,11 @@ import (
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
+	tmtypes "github.com/cometbft/cometbft/types"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
 
-	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
+	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
@@ -206,7 +206,7 @@ func (r TXProcessor) getTrustedHeader(ctx context.Context, height uint64) (
 		return nil, fmt.Errorf("failed to get header with trusted height: %w", err)
 	}
 
-	packedHeader, err = clienttypes.PackHeader(header)
+	packedHeader, err = clienttypes.PackClientMessage(header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack header: %w", err)
 	}

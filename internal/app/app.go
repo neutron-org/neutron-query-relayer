@@ -14,7 +14,7 @@ import (
 
 	"time"
 
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpcclienthttp "github.com/cometbft/cometbft/rpc/client/http"
 	"go.uber.org/zap"
 
 	nlogger "github.com/neutron-org/neutron-logger"
@@ -155,7 +155,8 @@ func loadChains(
 		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
 	}
 
-	if err := targetChain.ChainProvider.Init(); err != nil {
+	// TODO: pass context
+	if err := targetChain.ChainProvider.Init(context.Background()); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
@@ -168,7 +169,8 @@ func loadChains(
 		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
 	}
 
-	if err := neutronChain.ChainProvider.Init(); err != nil {
+	// TODO: pass context
+	if err := neutronChain.ChainProvider.Init(context.Background()); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 

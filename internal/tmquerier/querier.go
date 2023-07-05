@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	abci "github.com/cometbft/cometbft/abci/types"
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
+	rpcclienthttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/cosmos-sdk/codec"
-	abci "github.com/tendermint/tendermint/abci/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
 
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
