@@ -1866,8 +1866,6 @@ github.com/ncw/swift v1.0.47/go.mod h1:23YIA4yWVnGwv2dQlN4bB7egfYX6YLn0Yo/S6zZO/
 github.com/neilotoole/errgroup v0.1.5/go.mod h1:Q2nLGf+594h0CLBs/Mbg6qOr7GtqDK7C2S41udRnToE=
 github.com/neilotoole/errgroup v0.1.6/go.mod h1:Q2nLGf+594h0CLBs/Mbg6qOr7GtqDK7C2S41udRnToE=
 github.com/networkplumbing/go-nft v0.2.0/go.mod h1:HnnM+tYvlGAsMU7yoYwXEVLLiDW9gdMmb5HoGcwpuQs=
-github.com/neutron-org/neutron v0.2.1-0.20230315100049-f1e847c12971 h1:9FVZYyGU+tImSyLjzoN4tvB8wwzOSXwT57ornmy8mxs=
-github.com/neutron-org/neutron v0.2.1-0.20230315100049-f1e847c12971/go.mod h1:3qGjV/DUNieLHbxzxJoI/6A7xDbUevf+Mg2Lr6l7Mb4=
 github.com/neutron-org/neutron v0.2.1-0.20230316195435-636a5b05e052 h1:Jg6N+TAW2q6aVGVfU58iMT8rkgB6SmPZP3bpvUXgbT0=
 github.com/neutron-org/neutron v0.2.1-0.20230316195435-636a5b05e052/go.mod h1:3qGjV/DUNieLHbxzxJoI/6A7xDbUevf+Mg2Lr6l7Mb4=
 github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73 h1:E1+ittfo/+u2/TgPzOzjjGXCmP3k2+L38+woz6RJvbk=
