@@ -72,7 +72,7 @@ func NewDefaultDependencyContainer(ctx context.Context,
 		return nil, fmt.Errorf("cannot create tx sender: %w", err)
 	}
 
-	neutronChain, targetChain, err := loadChains(cfg, logRegistry, connParams)
+	neutronChain, targetChain, err := loadChains(ctx, cfg, logRegistry, connParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to loadChains: %w", err)
 	}

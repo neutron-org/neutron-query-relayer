@@ -142,6 +142,7 @@ func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger)
 }
 
 func loadChains(
+	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
 	connParams *connectionParams,
@@ -155,8 +156,7 @@ func loadChains(
 		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
 	}
 
-	// TODO: pass context
-	if err := targetChain.ChainProvider.Init(context.Background()); err != nil {
+	if err := targetChain.ChainProvider.Init(ctx); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
@@ -169,8 +169,7 @@ func loadChains(
 		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
 	}
 
-	// TODO: pass context
-	if err := neutronChain.ChainProvider.Init(context.Background()); err != nil {
+	if err := neutronChain.ChainProvider.Init(ctx); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
