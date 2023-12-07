@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
-	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	rpcclienthttp "github.com/cometbft/cometbft/rpc/client/http"
+	jsonrpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 )
 
 const socketEndpoint = "/websocket"

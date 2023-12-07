@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/avast/retry-go/v4"
+	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 	"time"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
-	"github.com/avast/retry-go/v4"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	ibcexported "github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
@@ -149,9 +149,9 @@ func (p *KVProcessor) submitKVWithProof(
 	return nil
 }
 
-func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (ibcexported.Header, error) {
+func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (*tmclient.Header, error) {
 	start := time.Now()
-	var srcHeader ibcexported.Header
+	var srcHeader *tmclient.Header
 	if err := retry.Do(func() error {
 		var err error
 		srcHeader, err = p.trustedHeaderFetcher.Fetch(ctx, uint64(height))
@@ -167,7 +167,7 @@ func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (ibce
 	return srcHeader, nil
 }
 
-func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader ibcexported.Header) (sdk.Msg, error) {
+func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader *tmclient.Header) (sdk.Msg, error) {
 	start := time.Now()
 	// Construct UpdateClient msg
 	var updateMsgRelayer provider.RelayerMessage

@@ -3,7 +3,7 @@ package relay
 import (
 	"context"
 
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )

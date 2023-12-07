@@ -3,17 +3,18 @@ package trusted_headers
 import (
 	"context"
 	"fmt"
+	"github.com/avast/retry-go/v4"
+	ibcexported "github.com/cosmos/ibc-go/v7/modules/core/exported"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	"time"
 
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
-	ibcexported "github.com/cosmos/ibc-go/v4/modules/core/exported"
-	tmclient "github.com/cosmos/ibc-go/v4/modules/light-clients/07-tendermint/types"
+	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 	"github.com/cosmos/relayer/v2/relayer"
 	"go.uber.org/zap"
 )
@@ -56,7 +57,7 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 // FetchTrustedHeaderForHeight returns the best suitable TrustedHeader for given height
 // Arguments:
 // `height` - remote chain block height X = transaction with such block height
-func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header ibcexported.Header, err error) {
+func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header *tmclient.Header, err error) {
 	start := time.Now()
 
 	// tries to find height of the closest consensus state height that is less or equal than provided height
@@ -91,7 +92,7 @@ func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (head
 // Arguments:
 // `trustedHeight` - height of any consensus state that's height < supplied height
 // `height` - remote chain height for a header
-func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (ibcexported.Header, error) {
+func (thf *TrustedHeaderFetcher) trustedHeaderAtHeight(ctx context.Context, trustedHeight *clienttypes.Height, height uint64) (*tmclient.Header, error) {
 	header, err := thf.retryGetLightSignedHeaderAtHeight(ctx, height)
 	if err != nil {
 		return nil, fmt.Errorf("could not get light header: %w", err)
@@ -182,17 +183,20 @@ func (thf *TrustedHeaderFetcher) retryGetLightSignedHeaderAtHeight(ctx context.C
 	var tmHeader *tmclient.Header
 
 	if err := retry.Do(func() error {
-		header, err := thf.targetChain.ChainProvider.GetLightSignedHeaderAtHeight(ctx, int64(height))
+		header, err := thf.targetChain.ChainProvider.QueryIBCHeader(ctx, int64(height))
 		if err != nil {
 			return err
 		}
 
-		tmp, ok := header.(*tmclient.Header)
+		tmp, ok := header.(provider.TendermintIBCHeader)
 		if !ok {
-			return fmt.Errorf("expected header of type *tmclient.Header, got %T", header)
+			return fmt.Errorf("expected header of type provider.TendermintIBCHeader, got %T", header)
 		}
 
-		tmHeader = tmp
+		tmHeader, err = tmp.TMHeader()
+		if err != nil {
+			return fmt.Errorf("failed to convert provider.TendermintIBCHeader to tmclient.Header: %w", err)
+		}
 		return nil
 	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr); err != nil {
 		return nil, fmt.Errorf(

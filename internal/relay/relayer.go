@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 

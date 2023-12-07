@@ -8,8 +8,8 @@ import (
 
 	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
-	"github.com/tendermint/tendermint/rpc/client/http"
-	tmtypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/cometbft/cometbft/rpc/client/http"
+	tmtypes "github.com/cometbft/cometbft/rpc/core/types"
 	"go.uber.org/zap"
 
 	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"

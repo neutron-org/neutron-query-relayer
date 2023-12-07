@@ -14,7 +14,7 @@ import (
 
 	"time"
 
-	rpcclienthttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpcclienthttp "github.com/cometbft/cometbft/rpc/client/http"
 	"go.uber.org/zap"
 
 	nlogger "github.com/neutron-org/neutron-logger"
@@ -142,6 +142,7 @@ func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger)
 }
 
 func loadChains(
+	ctx context.Context,
 	cfg config.NeutronQueryRelayerConfig,
 	logRegistry *nlogger.Registry,
 	connParams *connectionParams,
@@ -155,7 +156,7 @@ func loadChains(
 		return nil, nil, fmt.Errorf("failed to AddPath to source chain: %w", err)
 	}
 
-	if err := targetChain.ChainProvider.Init(); err != nil {
+	if err := targetChain.ChainProvider.Init(ctx); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
@@ -168,7 +169,7 @@ func loadChains(
 		return nil, nil, fmt.Errorf("failed to AddPath to destination chain: %w", err)
 	}
 
-	if err := neutronChain.ChainProvider.Init(); err != nil {
+	if err := neutronChain.ChainProvider.Init(ctx); err != nil {
 		return nil, nil, fmt.Errorf("failed to Init source chain provider: %w", err)
 	}
 
