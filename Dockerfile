@@ -1,4 +1,4 @@
-FROM golang:1.21-buster as builder
+FROM golang:1.21-bullseye as builder
 
 ARG LDFLAGS
 RUN mkdir /app
