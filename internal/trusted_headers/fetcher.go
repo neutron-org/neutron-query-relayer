@@ -23,7 +23,7 @@ import (
 const consensusPageSize = 10
 
 // submissionMarginPeriod is a lag period, because we need consensusState to be valid until we approve it on the chain
-const submissionMarginPeriod = time.Minute * 5
+const submissionMarginPeriod = time.Second * 10
 
 // retries configuration for fetching light header
 var (
