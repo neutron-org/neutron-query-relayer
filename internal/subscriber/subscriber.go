@@ -32,7 +32,8 @@ type SubscriberConfig struct {
 	// ConnectionID is the Neutron's side connection ID used to filter out queries.
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
-	WatchedTypes []neutrontypes.InterchainQueryType
+	WatchedTypes    []neutrontypes.InterchainQueryType
+	WatchedQueryIDs []uint64
 	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
 	// works with interchain queries and events that are under these addresses' ownership.
 	Registry *rg.Registry
@@ -64,14 +65,20 @@ func NewSubscriber(
 		watchedTypesMap[queryType] = struct{}{}
 	}
 
+	watchedQueryIDsMap := make(map[uint64]struct{})
+	for _, queryID := range cfg.WatchedQueryIDs {
+		watchedQueryIDsMap[queryID] = struct{}{}
+	}
+
 	return &Subscriber{
 		rpcClient:  rpcClient,
 		restClient: restClient,
 
-		connectionID: cfg.ConnectionID,
-		registry:     cfg.Registry,
-		logger:       logger,
-		watchedTypes: watchedTypesMap,
+		connectionID:    cfg.ConnectionID,
+		registry:        cfg.Registry,
+		logger:          logger,
+		watchedTypes:    watchedTypesMap,
+		watchedQueryIDs: watchedQueryIDsMap,
 
 		activeQueries: map[string]*neutrontypes.RegisteredQuery{},
 	}, nil
@@ -84,10 +91,11 @@ type Subscriber struct {
 	rpcClient  *http.HTTP                 // Used to subscribe to events
 	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
-	connectionID string
-	registry     *rg.Registry
-	logger       *zap.Logger
-	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
+	connectionID    string
+	registry        *rg.Registry
+	logger          *zap.Logger
+	watchedTypes    map[neutrontypes.InterchainQueryType]struct{}
+	watchedQueryIDs map[uint64]struct{}
 
 	activeQueries map[string]*neutrontypes.RegisteredQuery
 }
@@ -202,6 +210,11 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
 			s.logger.Debug("Skipping query (wrong type)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
+			continue
+		}
+		if !s.isWatchedQueryID(neutronQuery.Id) {
+			s.logger.Debug("Skipping query (wrong ID)", zap.String("owner", owner),
 				zap.String("query_id", queryID))
 			continue
 		}

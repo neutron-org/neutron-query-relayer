@@ -95,6 +95,9 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 			if !s.isWatchedMsgType(neutronQuery.QueryType) {
 				continue
 			}
+			if !s.isWatchedQueryID(neutronQuery.Id) {
+				continue
+			}
 			out[restQuery.ID] = neutronQuery
 		}
 		if payload.Pagination != nil && payload.Pagination.NextKey.String() != "" {
@@ -165,6 +168,16 @@ func (s *Subscriber) getNewBlockHeaderSubscription() string {
 // ActiveQuery types list.
 func (s *Subscriber) isWatchedMsgType(msgType string) bool {
 	_, ex := s.watchedTypes[neutrontypes.InterchainQueryType(msgType)]
+	return ex
+}
+
+// isWatchedQueryID returns true if the given message type was added to the subscriber's watched
+// ActiveQuery IDs list.
+func (s *Subscriber) isWatchedQueryID(queryID uint64) bool {
+	if len(s.watchedQueryIDs) == 0 {
+		return true
+	}
+	_, ex := s.watchedQueryIDs[queryID]
 	return ex
 }
 

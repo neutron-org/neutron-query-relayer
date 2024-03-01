@@ -3,6 +3,7 @@ package registry
 // RegistryConfig represents the config structure for the Registry.
 type RegistryConfig struct {
 	Addresses []string
+	QueryIDS  []uint64
 }
 
 // New instantiates a new *Registry based on the cfg.
