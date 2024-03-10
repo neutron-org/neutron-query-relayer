@@ -1,4 +1,4 @@
-package txsubmitchecker
+package _txsubmitchecker
 
 import (
 	"context"

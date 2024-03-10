@@ -3,14 +3,13 @@ package trusted_headers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/avast/retry-go/v4"
 	ibcexported "github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/cosmos/relayer/v2/relayer/provider"
-	"time"
 
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
-
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/cosmos/cosmos-sdk/types/query"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
@@ -58,7 +57,6 @@ func NewTrustedHeaderFetcher(neutronChain *relayer.Chain, targetChain *relayer.C
 // Arguments:
 // `height` - remote chain block height X = transaction with such block height
 func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (header *tmclient.Header, err error) {
-	start := time.Now()
 
 	// tries to find height of the closest consensus state height that is less or equal than provided height
 	trustedHeight, err := thf.getTrustedHeight(ctx, height)
@@ -73,8 +71,6 @@ func (thf *TrustedHeaderFetcher) Fetch(ctx context.Context, height uint64) (head
 		err = fmt.Errorf("failed to get header for src chain: %w", err)
 		return
 	}
-
-	neutronmetrics.RecordActionDuration("TrustedHeaderFetcher", time.Since(start).Seconds())
 
 	return
 }

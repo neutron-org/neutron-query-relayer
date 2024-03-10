@@ -1,4 +1,4 @@
-package txquerier
+package _txquerier
 
 import (
 	"context"

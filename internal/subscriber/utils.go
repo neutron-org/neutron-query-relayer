@@ -50,7 +50,7 @@ func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIC
 }
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
-func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
+func (s *Subscriber) GetNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
 	res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQuery(
 		&query.NeutronInterchainQueriesRegisteredQueryParams{
 			QueryID: &queryId,

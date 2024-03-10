@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
@@ -15,13 +16,9 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/submit"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
 	"github.com/neutron-org/neutron-query-relayer/internal/trusted_headers"
-	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
-	"github.com/neutron-org/neutron-query-relayer/internal/txquerier"
 )
 
 type DependencyContainer struct {
-	txQuerier            relay.TXQuerier
-	txProcessor          relay.TXProcessor
 	kvProcessor          relay.KVProcessor
 	proofSubmitter       relay.Submitter
 	trustedHeaderFetcher relay.TrustedHeaderFetcher
@@ -78,14 +75,10 @@ func NewDefaultDependencyContainer(ctx context.Context,
 	}
 
 	proofSubmitter := submit.NewSubmitterImpl(txSender, cfg.AllowKVCallbacks, neutronChain.PathEnd.ClientID)
-	txQuerier := txquerier.NewTXQuerySrv(targetQuerier.Client)
 	trustedHeaderFetcher := trusted_headers.NewTrustedHeaderFetcher(neutronChain, targetChain, logRegistry.Get(TrustedHeadersFetcherContext))
-	txProcessor := txprocessor.NewTxProcessor(
-		trustedHeaderFetcher, storage, proofSubmitter, logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay, cfg.IgnoreErrorsRegex)
 	kvProcessor := kvprocessor.NewKVProcessor(
 		trustedHeaderFetcher,
 		targetQuerier,
-		cfg.MinKvUpdatePeriod,
 		logRegistry.Get(KVProcessorContext),
 		proofSubmitter,
 		storage,
@@ -93,8 +86,6 @@ func NewDefaultDependencyContainer(ctx context.Context,
 		neutronChain,
 	)
 	return &DependencyContainer{
-		txQuerier:            txQuerier,
-		txProcessor:          txProcessor,
 		kvProcessor:          kvProcessor,
 		proofSubmitter:       proofSubmitter,
 		trustedHeaderFetcher: trustedHeaderFetcher,
@@ -102,14 +93,6 @@ func NewDefaultDependencyContainer(ctx context.Context,
 		neutronChain:         neutronChain,
 		targetQuerier:        targetQuerier,
 	}, nil
-}
-
-func (c DependencyContainer) GetTxQuerier() relay.TXQuerier {
-	return c.txQuerier
-}
-
-func (c DependencyContainer) GetTxProcessor() relay.TXProcessor {
-	return c.txProcessor
 }
 
 func (c DependencyContainer) GetKvProcessor() relay.KVProcessor {

@@ -12,6 +12,8 @@ type Subscriber interface {
 	// Subscribe starts sending neutrontypes.RegisteredQuery values to the tasks channel when
 	// respective queries need to be updated.
 	Subscribe(ctx context.Context, tasks chan neutrontypes.RegisteredQuery) error
+	// returns the neutron registered query by its ID
+	GetNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error)
 }
 
 // MessageKV contains params of a KV interchain query.

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -15,32 +16,42 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	icqhttp "github.com/neutron-org/neutron-query-relayer/internal/http"
-
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 const (
-	mainContext = "main"
+	mainContext     = "main"
+	QueryIdFlagName = "query_id"
 )
 
-// startCmd represents the start command
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start the query relayer main app",
-	Run: func(cmd *cobra.Command, args []string) {
-		startRelayer()
+var queryIds []string
+
+// RunCmd represents the start command
+var RunCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run the query relayer main app",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		queryIds, err := cmd.Flags().GetStringSlice(QueryIdFlagName)
+		fmt.Println(queryIds)
+		if len(queryIds) == 0 {
+			return fmt.Errorf("empty list of query ids to relay")
+		}
+		if err != nil {
+			return err
+		}
+
+		return startRelayer(queryIds)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
+	RunCmd.PersistentFlags().StringSliceVarP(&queryIds, QueryIdFlagName, "q", []string{}, "list of query ids to relay")
+	rootCmd.AddCommand(RunCmd)
 }
 
-func startRelayer() {
+func startRelayer(queryIds []string) error {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronapp.GetDefaultConfig()
 	globalCfg.Seal()
@@ -50,17 +61,13 @@ func startRelayer() {
 		app.AppContext,
 		app.SubscriberContext,
 		app.RelayerContext,
-		icqhttp.ServerContext,
 		app.TargetChainRPCClientContext,
 		app.NeutronChainRPCClientContext,
 		app.TargetChainProviderContext,
 		app.NeutronChainProviderContext,
 		app.TxSenderContext,
-		app.TxProcessorContext,
-		app.TxSubmitCheckerContext,
 		app.TrustedHeadersFetcherContext,
 		app.KVProcessorContext,
-		icqhttp.MonitoringLoggerContext,
 	)
 	if err != nil {
 		log.Fatalf("couldn't initialize loggers registry: %s", err)
@@ -87,11 +94,6 @@ func startRelayer() {
 		}
 	}(storage)
 
-	var (
-		queriesTasksQueue      = make(chan neutrontypes.RegisteredQuery, cfg.QueriesTaskQueueCapacity)
-		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
-	)
-
 	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
@@ -102,58 +104,29 @@ func startRelayer() {
 		logger.Fatal("failed to initialize dependency container", zap.Error(err))
 	}
 
-	relayer, err := app.NewDefaultRelayer(cfg, logRegistry, storage, deps)
+	kvprocessor, err := app.NewDefaultKVProcessor(logRegistry, storage, deps)
 	if err != nil {
-		logger.Fatal("Failed to get NewDefaultRelayer", zap.Error(err))
+		logger.Fatal("Failed to get NewDefaultKVProcessor", zap.Error(err))
 	}
-
-	txSubmitChecker, err := app.NewDefaultTxSubmitChecker(cfg, logRegistry, storage)
-	if err != nil {
-		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		err := icqhttp.Run(ctx, logRegistry, storage, deps.GetTxProcessor(), submittedTxsTasksQueue, cfg.ListenAddr)
-		if err != nil {
-			logger.Error("WebServer exited with an error", zap.Error(err))
-			cancel()
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		err := txSubmitChecker.Run(ctx, submittedTxsTasksQueue)
-		if err != nil {
-			logger.Error("TxSubmitChecker exited with an error", zap.Error(err))
-			cancel()
-		}
-	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		// The subscriber writes to the tasks queue.
-		if err := subscriber.Subscribe(ctx, queriesTasksQueue); err != nil {
-			logger.Error("Subscriber exited with an error", zap.Error(err))
-			cancel()
-		}
-	}()
+		for _, queryId := range queryIds {
+			query, err := subscriber.GetNeutronRegisteredQuery(ctx, queryId)
+			if err != nil {
+				logger.Error("could not getNeutronRegisteredQueries: %w", zap.Error(err))
+			}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+			fmt.Println(query)
 
-		// The relayer reads from the tasks queue.
-		if err := relayer.Run(ctx, queriesTasksQueue, submittedTxsTasksQueue); err != nil {
-			logger.Error("Relayer exited with an error", zap.Error(err))
-			cancel()
+			msg := &relay.MessageKV{QueryId: query.Id, KVKeys: query.Keys}
+			kvprocessor.ProcessAndSubmit(ctx, msg)
 		}
+
+		fmt.Println("end of submission")
 	}()
 
 	go func() {
@@ -167,4 +140,6 @@ func startRelayer() {
 	}()
 
 	wg.Wait()
+
+	return nil
 }

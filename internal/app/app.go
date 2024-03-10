@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/kvprocessor"
-	"github.com/neutron-org/neutron-query-relayer/internal/txprocessor"
 
 	"github.com/avast/retry-go/v4"
 	cosmosrelayer "github.com/cosmos/relayer/v2/relayer"
@@ -23,9 +22,7 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
-	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
-	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
@@ -43,8 +40,6 @@ const (
 	TargetChainProviderContext   = "target_chain_provider"
 	NeutronChainProviderContext  = "neutron_chain_provider"
 	TxSenderContext              = "tx_sender"
-	TxProcessorContext           = "tx_processor"
-	TxSubmitCheckerContext       = "tx_submit_checker"
 	TrustedHeadersFetcherContext = "trusted_headers_fetcher"
 	KVProcessorContext           = "kv_processor"
 )
@@ -58,11 +53,8 @@ var (
 
 func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (relay.Subscriber, error) {
 	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
-	if cfg.AllowTxQueries {
-		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
-	}
 
-	subscriber, err := relaysubscriber.NewSubscriber(
+	subscriber, err := subscriber.NewSubscriber(
 		&subscriber.SubscriberConfig{
 			RPCAddress:   cfg.NeutronChain.RPCAddr,
 			RESTAddress:  cfg.NeutronChain.RESTAddr,
@@ -80,20 +72,6 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 	return subscriber, nil
 }
 
-func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry,
-	storage relay.Storage) (relay.TxSubmitChecker, error) {
-	neutronClient, err := raw.NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create NewRPCClient: %w", err)
-	}
-
-	return txsubmitchecker.NewTxSubmitChecker(
-		storage,
-		neutronClient,
-		logRegistry.Get(TxSubmitCheckerContext),
-	), nil
-}
-
 // NewDefaultRelayer returns a relayer built with cfg.
 func NewDefaultRelayer(
 	cfg config.NeutronQueryRelayerConfig,
@@ -102,12 +80,9 @@ func NewDefaultRelayer(
 	deps *DependencyContainer,
 ) (*relay.Relayer, error) {
 	var (
-		txProcessor = txprocessor.NewTxProcessor(
-			deps.GetTrustedHeaderFetcher(), storage, deps.GetProofSubmitter(), logRegistry.Get(TxProcessorContext), cfg.CheckSubmittedTxStatusDelay, cfg.IgnoreErrorsRegex)
 		kvProcessor = kvprocessor.NewKVProcessor(
 			deps.GetTrustedHeaderFetcher(),
 			deps.GetTargetQuerier(),
-			cfg.MinKvUpdatePeriod,
 			logRegistry.Get(KVProcessorContext),
 			deps.GetProofSubmitter(),
 			storage,
@@ -116,15 +91,33 @@ func NewDefaultRelayer(
 		)
 		relayer = relay.NewRelayer(
 			cfg,
-			deps.GetTxQuerier(),
 			storage,
-			txProcessor,
 			kvProcessor,
 			deps.GetTargetChain(),
 			logRegistry.Get(RelayerContext),
 		)
 	)
 	return relayer, nil
+}
+
+// NewDefaultRelayer returns a relayer built with cfg.
+func NewDefaultKVProcessor(
+	logRegistry *nlogger.Registry,
+	storage relay.Storage,
+	deps *DependencyContainer,
+) (*kvprocessor.KVProcessor, error) {
+	var (
+		kvProcessor = kvprocessor.NewKVProcessor(
+			deps.GetTrustedHeaderFetcher(),
+			deps.GetTargetQuerier(),
+			logRegistry.Get(KVProcessorContext),
+			deps.GetProofSubmitter(),
+			storage,
+			deps.GetTargetChain(),
+			deps.GetNeutronChain(),
+		)
+	)
+	return kvProcessor, nil
 }
 
 func NewDefaultStorage(cfg config.NeutronQueryRelayerConfig, logger *zap.Logger) (relay.Storage, error) {

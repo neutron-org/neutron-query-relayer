@@ -16,7 +16,6 @@ type NeutronQueryRelayerConfig struct {
 	Registry                    *registry.RegistryConfig `split_words:"true"`
 	AllowTxQueries              bool                     `required:"true" split_words:"true"`
 	AllowKVCallbacks            bool                     `required:"true" split_words:"true"`
-	MinKvUpdatePeriod           uint64                   `split_words:"true" default:"0"`
 	StoragePath                 string                   `required:"true" split_words:"true"`
 	CheckSubmittedTxStatusDelay time.Duration            `split_words:"true" default:"10s"`
 	QueriesTaskQueueCapacity    int                      `split_words:"true" default:"10000"`

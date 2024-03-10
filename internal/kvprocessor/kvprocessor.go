@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/avast/retry-go/v4"
 	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
-	"time"
-
-	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer"
@@ -26,7 +24,6 @@ import (
 type KVProcessor struct {
 	trustedHeaderFetcher relay.TrustedHeaderFetcher
 	querier              *tmquerier.Querier
-	minKVUpdatePeriod    uint64
 	logger               *zap.Logger
 	submitter            relay.Submitter
 	storage              relay.Storage
@@ -37,7 +34,6 @@ type KVProcessor struct {
 func NewKVProcessor(
 	trustedHeaderFetcher relay.TrustedHeaderFetcher,
 	querier *tmquerier.Querier,
-	minKVUpdatePeriod uint64,
 	logger *zap.Logger,
 	submitter relay.Submitter,
 	storage relay.Storage,
@@ -46,7 +42,6 @@ func NewKVProcessor(
 	return &KVProcessor{
 		trustedHeaderFetcher: trustedHeaderFetcher,
 		querier:              querier,
-		minKVUpdatePeriod:    minKVUpdatePeriod,
 		logger:               logger,
 		submitter:            submitter,
 		storage:              storage,
@@ -60,11 +55,6 @@ func (p *KVProcessor) ProcessAndSubmit(ctx context.Context, m *relay.MessageKV) 
 	latestHeight, err := p.targetChain.ChainProvider.QueryLatestHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get header for src chain: %w", err)
-	}
-
-	ok, err := p.isQueryOnTime(m.QueryId, uint64(latestHeight))
-	if err != nil || !ok {
-		return fmt.Errorf("error on checking previous query update with query_id=%d: %w", m.QueryId, err)
 	}
 
 	proofs, height, err := p.getStorageValues(ctx, uint64(latestHeight), m.KVKeys)
@@ -91,30 +81,6 @@ func (p *KVProcessor) getStorageValues(ctx context.Context, inputHeight uint64, 
 	return stValues, height, nil
 }
 
-// isQueryOnTime checks if query satisfies update period condition which is set by RELAYER_KV_UPDATE_PERIOD env, also modifies storage w last block
-func (p *KVProcessor) isQueryOnTime(queryID uint64, currentBlock uint64) (bool, error) {
-	// if it wasn't set in config
-	if p.minKVUpdatePeriod == 0 {
-		return true, nil
-	}
-
-	previous, _, err := p.storage.GetLastQueryHeight(queryID)
-	if err != nil {
-		return false, err
-	}
-
-	if previous+p.minKVUpdatePeriod <= currentBlock {
-		err := p.storage.SetLastQueryHeight(queryID, currentBlock)
-		if err != nil {
-			return false, err
-		}
-
-		return true, nil
-	}
-
-	return false, fmt.Errorf("attempted to update query results too soon: last update was on block=%d, current block=%d, maximum update period=%d", previous, currentBlock, p.minKVUpdatePeriod)
-}
-
 // submitKVWithProof submits the proof for the given query on the given height and tracks the result.
 func (p *KVProcessor) submitKVWithProof(
 	ctx context.Context,
@@ -132,7 +98,6 @@ func (p *KVProcessor) submitKVWithProof(
 		return fmt.Errorf("failed to getUpdateClientMsg: %w", err)
 	}
 
-	st := time.Now()
 	if err = p.submitter.SubmitKVProof(
 		ctx,
 		uint64(height-1),
@@ -141,16 +106,13 @@ func (p *KVProcessor) submitKVWithProof(
 		proof,
 		updateClientMsg,
 	); err != nil {
-		neutronmetrics.AddFailedProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(st).Seconds())
 		return fmt.Errorf("could not submit proof: %w", err)
 	}
-	neutronmetrics.AddSuccessProof(string(neutrontypes.InterchainQueryTypeKV), time.Since(st).Seconds())
 	p.logger.Info("proof for query_id submitted successfully", zap.Uint64("query_id", queryID), zap.Uint64("remote_height", uint64(height-1)), zap.Uint64("trusted_header_height", srcHeader.GetHeight().GetRevisionHeight()))
 	return nil
 }
 
 func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (*tmclient.Header, error) {
-	start := time.Now()
 	var srcHeader *tmclient.Header
 	if err := retry.Do(func() error {
 		var err error
@@ -160,15 +122,12 @@ func (p *KVProcessor) getSrcChainHeader(ctx context.Context, height int64) (*tmc
 		p.logger.Info(
 			"failed to GetIBCUpdateHeader", zap.Error(err))
 	})); err != nil {
-		neutronmetrics.RecordActionDuration("GetIBCUpdateHeader", time.Since(start).Seconds())
 		return nil, err
 	}
-	neutronmetrics.RecordActionDuration("GetIBCUpdateHeader", time.Since(start).Seconds())
 	return srcHeader, nil
 }
 
 func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader *tmclient.Header) (sdk.Msg, error) {
-	start := time.Now()
 	// Construct UpdateClient msg
 	var updateMsgRelayer provider.RelayerMessage
 	if err := retry.Do(func() error {
@@ -186,6 +145,5 @@ func (p *KVProcessor) getUpdateClientMsg(ctx context.Context, srcHeader *tmclien
 	if !ok {
 		return nil, errors.New("failed to cast provider.RelayerMessage to cosmos.CosmosMessage")
 	}
-	neutronmetrics.RecordActionDuration("GetUpdateClientMsg", time.Since(start).Seconds())
 	return updateMsgUnpacked.Msg, nil
 }
