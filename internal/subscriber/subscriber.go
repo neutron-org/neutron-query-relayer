@@ -197,7 +197,8 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 		// Load all information about the neutronQuery directly from Neutron.
 		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
-			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
+			s.logger.Debug("Skipping query (could not find by id, probably removed)", zap.String("queryId", queryID))
+			continue
 		}
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
