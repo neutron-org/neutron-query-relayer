@@ -62,7 +62,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
 	}
 
-	subscriber, err := relaysubscriber.NewSubscriber(
+	sub, err := relaysubscriber.NewSubscriber(
 		&subscriber.SubscriberConfig{
 			RPCAddress:   cfg.NeutronChain.RPCAddr,
 			RESTAddress:  cfg.NeutronChain.RESTAddr,
@@ -77,7 +77,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 		return nil, fmt.Errorf("failed to create a NewSubscriber: %s", err)
 	}
 
-	return subscriber, nil
+	return sub, nil
 }
 
 func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry,
