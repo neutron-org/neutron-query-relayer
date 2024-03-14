@@ -32,7 +32,9 @@ type SubscriberConfig struct {
 	// ConnectionID is the Neutron's side connection ID used to filter out queries.
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
-	WatchedTypes    []neutrontypes.InterchainQueryType
+	WatchedTypes []neutrontypes.InterchainQueryType
+	// WatchedQueryIDs is the list of query IDs to be observed and handled:
+	// empty for all, or specific IDs only
 	WatchedQueryIDs []uint64
 	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
 	// works with interchain queries and events that are under these addresses' ownership.
@@ -65,6 +67,7 @@ func NewSubscriber(
 		watchedTypesMap[queryType] = struct{}{}
 	}
 
+	// Contains the query IDs of queries that we are ready to serve (KV / TX).
 	watchedQueryIDsMap := make(map[uint64]struct{})
 	for _, queryID := range cfg.WatchedQueryIDs {
 		watchedQueryIDsMap[queryID] = struct{}{}

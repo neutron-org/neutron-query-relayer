@@ -171,9 +171,10 @@ func (s *Subscriber) isWatchedMsgType(msgType string) bool {
 	return ex
 }
 
-// isWatchedQueryID returns true if the given message type was added to the subscriber's watched
-// ActiveQuery IDs list.
+// isWatchedQueryID returns true if the given query ID was added to the subscriber's watched
+// Query IDs list.
 func (s *Subscriber) isWatchedQueryID(queryID uint64) bool {
+	// Empty list represents that all query IDs will be processed.
 	if len(s.watchedQueryIDs) == 0 {
 		return true
 	}
