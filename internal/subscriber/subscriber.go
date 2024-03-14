@@ -3,17 +3,21 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	nlogger "github.com/neutron-org/neutron-logger"
+	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"sync"
 	"time"
 
+	"github.com/neutron-org/neutron-query-relayer/internal/registry"
+
 	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
-	"github.com/cometbft/cometbft/rpc/client/http"
 	tmtypes "github.com/cometbft/cometbft/rpc/core/types"
 	"go.uber.org/zap"
 
 	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"
-	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
@@ -21,14 +25,14 @@ var (
 	unsubscribeTimeout = time.Second * 5
 )
 
-// SubscriberConfig contains configurable fields for the Subscriber.
-type SubscriberConfig struct {
-	// RPCAddress represents the address for RPC calls to the chain.
-	RPCAddress string
-	// RESTAddress represents the address for REST calls to the chain.
-	RESTAddress string
-	// Timeout defines time limit for requests executed by the Subscriber.
-	Timeout time.Duration
+// Config contains configurable fields for the Subscriber.
+type Config struct {
+	//// RPCAddress represents the address for RPC calls to the chain.
+	//RPCAddress string
+	//// RESTAddress represents the address for REST calls to the chain.
+	//RESTAddress string
+	//// Timeout defines time limit for requests executed by the Subscriber.
+	//Timeout time.Duration
 	// ConnectionID is the Neutron's side connection ID used to filter out queries.
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
@@ -38,24 +42,53 @@ type SubscriberConfig struct {
 	Registry *rg.Registry
 }
 
-// NewSubscriber creates a new Subscriber instance ready to subscribe to Neutron events.
-func NewSubscriber(
-	cfg *SubscriberConfig,
-	logger *zap.Logger,
-) (*Subscriber, error) {
-	// rpcClient is used to subscribe to Neutron events.
-	rpcClient, err := newRPCClient(cfg.RPCAddress, cfg.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("could not create new tendermint rpcClient: %w", err)
+func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (relay.Subscriber, error) {
+	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
+	if cfg.AllowTxQueries {
+		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
 	}
-	if err = rpcClient.Start(); err != nil {
-		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
+
+	// rpcClient is used to subscribe to Neutron events.
+	rpcClient, err := NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("could not create new tendermint rpcClient for Subscriber: %w", err)
 	}
 
 	// restClient is used to retrieve registered queries from Neutron.
-	restClient, err := newRESTClient(cfg.RESTAddress, cfg.Timeout)
+	restClient, err := NewRESTClient(cfg.NeutronChain.RESTAddr, cfg.NeutronChain.Timeout)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
+		return nil, fmt.Errorf("failed to get NewRESTClient for Subscriber: %w", err)
+	}
+
+	sub, err := NewSubscriber(
+		&Config{
+			//RPCAddress:   cfg.NeutronChain.RPCAddr,
+			//RESTAddress:  cfg.NeutronChain.RESTAddr,
+			//Timeout:      cfg.NeutronChain.Timeout,
+			ConnectionID: cfg.NeutronChain.ConnectionID,
+			WatchedTypes: watchedMsgTypes,
+			Registry:     registry.New(cfg.Registry),
+		},
+		rpcClient,
+		restClient.Query,
+		logRegistry.Get(app.SubscriberContext),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a NewSubscriber: %s", err)
+	}
+
+	return sub, nil
+}
+
+// NewSubscriber creates a new Subscriber instance ready to subscribe to Neutron events.
+func NewSubscriber(
+	cfg *Config,
+	rpcClient RpcHttpClient,
+	restClient RestHttpQuery,
+	logger *zap.Logger,
+) (*Subscriber, error) {
+	if err := rpcClient.Start(); err != nil {
+		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
 	}
 
 	// Contains the types of queries that we are ready to serve (KV / TX).
@@ -65,8 +98,8 @@ func NewSubscriber(
 	}
 
 	return &Subscriber{
-		rpcClient:  rpcClient,
-		restClient: restClient,
+		rpcClient:       rpcClient,
+		restClientQuery: restClient,
 
 		connectionID: cfg.ConnectionID,
 		registry:     cfg.Registry,
@@ -81,13 +114,12 @@ func NewSubscriber(
 // filters them in accordance with the Registry configuration and watchedTypes, and provides a
 // stream of split to KV and TX messages.
 type Subscriber struct {
-	rpcClient  *http.HTTP                 // Used to subscribe to events
-	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
-
-	connectionID string
-	registry     *rg.Registry
-	logger       *zap.Logger
-	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
+	rpcClient       RpcHttpClient // Used to subscribe to events
+	restClientQuery RestHttpQuery // Used to run Neutron-specific queries using the REST
+	connectionID    string
+	registry        *rg.Registry
+	logger          *zap.Logger
+	watchedTypes    map[neutrontypes.InterchainQueryType]struct{}
 
 	activeQueries map[string]*neutrontypes.RegisteredQuery
 }

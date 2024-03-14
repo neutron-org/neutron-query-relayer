@@ -20,13 +20,9 @@ import (
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/raw"
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
-	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	"github.com/neutron-org/neutron-query-relayer/internal/txsubmitchecker"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
 )
 
 var (
@@ -55,30 +51,6 @@ var (
 	rtyDel = retry.Delay(time.Second * 10)
 	rtyErr = retry.LastErrorOnly(true)
 )
-
-func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (relay.Subscriber, error) {
-	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
-	if cfg.AllowTxQueries {
-		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
-	}
-
-	sub, err := relaysubscriber.NewSubscriber(
-		&subscriber.SubscriberConfig{
-			RPCAddress:   cfg.NeutronChain.RPCAddr,
-			RESTAddress:  cfg.NeutronChain.RESTAddr,
-			Timeout:      cfg.NeutronChain.Timeout,
-			ConnectionID: cfg.NeutronChain.ConnectionID,
-			WatchedTypes: watchedMsgTypes,
-			Registry:     registry.New(cfg.Registry),
-		},
-		logRegistry.Get(SubscriberContext),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a NewSubscriber: %s", err)
-	}
-
-	return sub, nil
-}
 
 func NewDefaultTxSubmitChecker(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry,
 	storage relay.Storage) (relay.TxSubmitChecker, error) {

@@ -25,18 +25,19 @@ var (
 	rpcWSEndpoint      = "/websocket"
 )
 
-// newRPCClient creates a new tendermint RPC client with timeout.
-func newRPCClient(rpcAddr string, timeout time.Duration) (*tmhttp.HTTP, error) {
+// NewRPCClient creates a new tendermint RPC client with timeout.
+func NewRPCClient(rpcAddr string, timeout time.Duration) (RpcHttpClient, error) {
 	httpClient, err := jsonrpcclient.DefaultHTTPClient(rpcAddr)
 	if err != nil {
 		return nil, err
 	}
 	httpClient.Timeout = timeout
-	return tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+	client, err := tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+	return *client, err
 }
 
-// newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
-func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIConsole, error) {
+// NewRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
+func NewRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIConsole, error) {
 	url, err := url.Parse(restAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
@@ -51,7 +52,7 @@ func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIC
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
-	res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQuery(
+	res, err := s.restClientQuery.NeutronInterchainQueriesRegisteredQuery(
 		&query.NeutronInterchainQueriesRegisteredQueryParams{
 			QueryID: &queryId,
 			Context: ctx,
@@ -72,7 +73,7 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 	var out = map[string]*neutrontypes.RegisteredQuery{}
 	var pageKey *strfmt.Base64
 	for {
-		res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQueries(
+		res, err := s.restClientQuery.NeutronInterchainQueriesRegisteredQueries(
 			&query.NeutronInterchainQueriesRegisteredQueriesParams{
 				Owners:        s.registry.GetAddresses(),
 				ConnectionID:  &s.connectionID,
