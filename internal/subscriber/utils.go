@@ -114,16 +114,16 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
 	events := event.Events
 
-	icqEventsCount := len(events[connectionIdAttr])
+	icqEventsCount := len(events[ConnectionIdAttr])
 	if icqEventsCount == 0 {
 		s.logger.Debug("no connection id attributes received", zap.Any("events", events))
 		return false, nil
 	}
 
-	if len(events[kvKeyAttr]) != icqEventsCount ||
-		len(events[transactionsFilterAttr]) != icqEventsCount ||
-		len(events[queryIdAttr]) != icqEventsCount ||
-		len(events[typeAttr]) != icqEventsCount {
+	if len(events[KvKeyAttr]) != icqEventsCount ||
+		len(events[TransactionsFilterAttr]) != icqEventsCount ||
+		len(events[QueryIdAttr]) != icqEventsCount ||
+		len(events[TypeAttr]) != icqEventsCount {
 		return false, fmt.Errorf("events attributes length does not match for events=%v", events)
 	}
 
@@ -140,7 +140,7 @@ func (s *Subscriber) subscriberName() string {
 // getQueryUpdatedSubscription returns a Query to filter out interchain "query_updated" events.
 func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.connectionID,
+		ConnectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryUpdated,
 	)
@@ -149,7 +149,7 @@ func (s *Subscriber) getQueryUpdatedSubscription() string {
 // getQueryRemovedSubscription returns a Query to filter out interchain "query_removed" events.
 func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.connectionID,
+		ConnectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryRemoved,
 	)

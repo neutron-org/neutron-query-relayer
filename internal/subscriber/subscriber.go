@@ -27,12 +27,6 @@ var (
 
 // Config contains configurable fields for the Subscriber.
 type Config struct {
-	//// RPCAddress represents the address for RPC calls to the chain.
-	//RPCAddress string
-	//// RESTAddress represents the address for REST calls to the chain.
-	//RESTAddress string
-	//// Timeout defines time limit for requests executed by the Subscriber.
-	//Timeout time.Duration
 	// ConnectionID is the Neutron's side connection ID used to filter out queries.
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
@@ -62,9 +56,6 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 
 	sub, err := NewSubscriber(
 		&Config{
-			//RPCAddress:   cfg.NeutronChain.RPCAddr,
-			//RESTAddress:  cfg.NeutronChain.RESTAddr,
-			//Timeout:      cfg.NeutronChain.Timeout,
 			ConnectionID: cfg.NeutronChain.ConnectionID,
 			WatchedTypes: watchedMsgTypes,
 			Registry:     registry.New(cfg.Registry),
@@ -215,10 +206,10 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 	// There can be multiple events of the same type associated with our connection id in a
 	// single tmtypes.ResultEvent value. We need to process all of them.
 	var events = event.Events
-	for idx := range events[connectionIdAttr] {
+	for idx := range events[ConnectionIdAttr] {
 		var (
-			owner   = events[ownerAttr][idx]
-			queryID = events[queryIdAttr][idx]
+			owner   = events[OwnerAttr][idx]
+			queryID = events[QueryIdAttr][idx]
 		)
 		if !s.isWatchedAddress(owner) {
 			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
@@ -261,9 +252,9 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 	// There can be multiple events of the same type associated with our connection id in a
 	// single tmtypes.ResultEvent value. We need to process all of them.
 	var events = event.Events
-	for idx := range events[connectionIdAttr] {
+	for idx := range events[ConnectionIdAttr] {
 		var (
-			queryID = events[queryIdAttr][idx]
+			queryID = events[QueryIdAttr][idx]
 		)
 
 		// Delete the query from the active queries list.
