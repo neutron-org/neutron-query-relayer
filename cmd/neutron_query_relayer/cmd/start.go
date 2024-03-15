@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"log"
 	"os"
 	"os/signal"
@@ -92,7 +93,7 @@ func startRelayer() {
 		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
 	)
 
-	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
+	subscriber, err := relaysubscriber.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
 	}

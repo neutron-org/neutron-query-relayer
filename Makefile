@@ -26,3 +26,7 @@ generate-openapi:
 
 install:
 	go install -ldflags '$(ldflags)' -a ./cmd/neutron_query_relayer
+
+mocks:
+	@echo "Regenerate mocks..."
+	go generate ./...
