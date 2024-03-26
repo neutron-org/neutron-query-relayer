@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -33,8 +34,8 @@ type SubscriberConfig struct {
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
 	WatchedTypes []neutrontypes.InterchainQueryType
-	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
-	// works with interchain queries and events that are under these addresses' ownership.
+	// Registry is a watch list registry. It contains a list of addresses and a list of queryIDs, and the Subscriber only
+	// works with interchain queries and events that are under ownership of these addresses and match the queryIDs.
 	Registry *rg.Registry
 }
 
@@ -190,6 +191,16 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 		)
 		if !s.isWatchedAddress(owner) {
 			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
+			continue
+		}
+		queryIDNumber, err := strconv.ParseUint(queryID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse queryID: %w", err)
+		}
+
+		if !s.isWatchedQueryID(queryIDNumber) {
+			s.logger.Debug("Skipping query (wrong queryID)", zap.String("owner", owner),
 				zap.String("query_id", queryID))
 			continue
 		}
