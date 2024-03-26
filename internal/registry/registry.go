@@ -21,8 +21,8 @@ func New(cfg *RegistryConfig) *Registry {
 	return r
 }
 
-// Registry is the relayer's watch list registry. It contains a list of addresses, and the relayer
-// only works with interchain queries that are under these addresses' ownership.
+// Registry is the relayer's watch list registry. It contains a list of addresses and a list of queryIDs,
+// and the relayer only works with interchain queries that are under these addresses' ownership and match the queryIDs.
 type Registry struct {
 	addresses map[string]struct{}
 	queryIDs  map[uint64]struct{}
@@ -38,13 +38,13 @@ func (r *Registry) IsQueryIDsEmpty() bool {
 	return len(r.queryIDs) == 0
 }
 
-// Contains returns true if the addr is in the registry.
+// ContainsAddress returns true if the addr is in the registry.
 func (r *Registry) ContainsAddress(addr string) bool {
 	_, ex := r.addresses[addr]
 	return ex
 }
 
-// Contains returns true if the queryID is in the registry.
+// ContainsQueryID returns true if the queryID is in the registry.
 func (r *Registry) ContainsQueryID(queryID uint64) bool {
 	_, ex := r.queryIDs[queryID]
 	return ex

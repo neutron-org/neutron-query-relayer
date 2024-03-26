@@ -34,8 +34,8 @@ type SubscriberConfig struct {
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
 	WatchedTypes []neutrontypes.InterchainQueryType
-	// Registry is a watch list registry. It contains a list of addresses and queryIDs, and the Subscriber only
-	// works with interchain queries and events that are under ownership of these addresses and queryIDs.
+	// Registry is a watch list registry. It contains a list of addresses and a list of queryIDs, and the Subscriber only
+	// works with interchain queries and events that are under ownership of these addresses and match the queryIDs.
 	Registry *rg.Registry
 }
 
