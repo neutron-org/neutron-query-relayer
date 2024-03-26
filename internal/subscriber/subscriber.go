@@ -200,7 +200,7 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 		}
 
 		if !s.isWatchedQueryID(queryIDNumber) {
-			s.logger.Debug("Skipping query (wrong ID)", zap.String("owner", owner),
+			s.logger.Debug("Skipping query (wrong queryID)", zap.String("owner", owner),
 				zap.String("query_id", queryID))
 			continue
 		}
