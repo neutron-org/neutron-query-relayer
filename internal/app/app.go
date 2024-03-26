@@ -64,13 +64,12 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 
 	subscriber, err := relaysubscriber.NewSubscriber(
 		&subscriber.SubscriberConfig{
-			RPCAddress:      cfg.NeutronChain.RPCAddr,
-			RESTAddress:     cfg.NeutronChain.RESTAddr,
-			Timeout:         cfg.NeutronChain.Timeout,
-			ConnectionID:    cfg.NeutronChain.ConnectionID,
-			WatchedTypes:    watchedMsgTypes,
-			WatchedQueryIDs: cfg.Registry.QueryIDS,
-			Registry:        registry.New(cfg.Registry),
+			RPCAddress:   cfg.NeutronChain.RPCAddr,
+			RESTAddress:  cfg.NeutronChain.RESTAddr,
+			Timeout:      cfg.NeutronChain.Timeout,
+			ConnectionID: cfg.NeutronChain.ConnectionID,
+			WatchedTypes: watchedMsgTypes,
+			Registry:     registry.New(cfg.Registry),
 		},
 		logRegistry.Get(SubscriberContext),
 	)

@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -33,11 +34,8 @@ type SubscriberConfig struct {
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
 	WatchedTypes []neutrontypes.InterchainQueryType
-	// WatchedQueryIDs is the list of query IDs to be observed and handled:
-	// empty for all, or specific IDs only
-	WatchedQueryIDs []uint64
-	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
-	// works with interchain queries and events that are under these addresses' ownership.
+	// Registry is a watch list registry. It contains a list of addresses and queryIDs, and the Subscriber only
+	// works with interchain queries and events that are under ownership of these addresses and queryIDs.
 	Registry *rg.Registry
 }
 
@@ -67,21 +65,14 @@ func NewSubscriber(
 		watchedTypesMap[queryType] = struct{}{}
 	}
 
-	// Contains the query IDs of queries that we are ready to serve (KV / TX).
-	watchedQueryIDsMap := make(map[uint64]struct{})
-	for _, queryID := range cfg.WatchedQueryIDs {
-		watchedQueryIDsMap[queryID] = struct{}{}
-	}
-
 	return &Subscriber{
 		rpcClient:  rpcClient,
 		restClient: restClient,
 
-		connectionID:    cfg.ConnectionID,
-		registry:        cfg.Registry,
-		logger:          logger,
-		watchedTypes:    watchedTypesMap,
-		watchedQueryIDs: watchedQueryIDsMap,
+		connectionID: cfg.ConnectionID,
+		registry:     cfg.Registry,
+		logger:       logger,
+		watchedTypes: watchedTypesMap,
 
 		activeQueries: map[string]*neutrontypes.RegisteredQuery{},
 	}, nil
@@ -94,11 +85,10 @@ type Subscriber struct {
 	rpcClient  *http.HTTP                 // Used to subscribe to events
 	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
 
-	connectionID    string
-	registry        *rg.Registry
-	logger          *zap.Logger
-	watchedTypes    map[neutrontypes.InterchainQueryType]struct{}
-	watchedQueryIDs map[uint64]struct{}
+	connectionID string
+	registry     *rg.Registry
+	logger       *zap.Logger
+	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
 
 	activeQueries map[string]*neutrontypes.RegisteredQuery
 }
@@ -204,6 +194,16 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 				zap.String("query_id", queryID))
 			continue
 		}
+		queryIDNumber, err := strconv.ParseUint(queryID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse queryID: %w", err)
+		}
+
+		if !s.isWatchedQueryID(queryIDNumber) {
+			s.logger.Debug("Skipping query (wrong ID)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
+			continue
+		}
 
 		// Load all information about the neutronQuery directly from Neutron.
 		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
@@ -213,11 +213,6 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
 			s.logger.Debug("Skipping query (wrong type)", zap.String("owner", owner),
-				zap.String("query_id", queryID))
-			continue
-		}
-		if !s.isWatchedQueryID(neutronQuery.Id) {
-			s.logger.Debug("Skipping query (wrong ID)", zap.String("owner", owner),
 				zap.String("query_id", queryID))
 			continue
 		}
