@@ -3,19 +3,19 @@ package registry
 // RegistryConfig represents the config structure for the Registry.
 type RegistryConfig struct {
 	Addresses []string
-	QueryIDS  []uint64
+	QueryIDs  []uint64 `envconfig:"QUERY_IDS"`
 }
 
 // New instantiates a new *Registry based on the cfg.
 func New(cfg *RegistryConfig) *Registry {
 	r := &Registry{
 		addresses: make(map[string]struct{}, len(cfg.Addresses)),
-		queryIDs:  make(map[uint64]struct{}, len(cfg.QueryIDS)),
+		queryIDs:  make(map[uint64]struct{}, len(cfg.QueryIDs)),
 	}
 	for _, addr := range cfg.Addresses {
 		r.addresses[addr] = struct{}{}
 	}
-	for _, queryID := range cfg.QueryIDS {
+	for _, queryID := range cfg.QueryIDs {
 		r.queryIDs[queryID] = struct{}{}
 	}
 	return r
