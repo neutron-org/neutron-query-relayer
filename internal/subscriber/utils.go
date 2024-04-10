@@ -33,6 +33,9 @@ func NewRPCClient(rpcAddr string, timeout time.Duration) (RpcHttpClient, error) 
 	}
 	httpClient.Timeout = timeout
 	client, err := tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tendermint rpc client: %w", err)
+	}
 	return *client, err
 }
 
