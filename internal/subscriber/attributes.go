@@ -16,22 +16,22 @@ const (
 	// eventAttr is the key of the tendermint's event attribute that contains the kind of event.
 	eventAttr = "tm.event"
 
-	// connectionIdAttr is the key of the Neutron's custom message event's attribute that contains the
+	// ConnectionIdAttr is the key of the Neutron's custom message event's attribute that contains the
 	// connectionID of the event's ActiveQuery.
-	connectionIdAttr = eventTypePrefix + "." + types.AttributeKeyConnectionID
-	// queryIdAttr is the key of the Neutron's custom message event's attribute that contains the
+	ConnectionIdAttr = eventTypePrefix + "." + types.AttributeKeyConnectionID
+	// QueryIdAttr is the key of the Neutron's custom message event's attribute that contains the
 	// incoming ICQ ID.
-	queryIdAttr = eventTypePrefix + "." + types.AttributeKeyQueryID
-	// kvKeyAttr is the key of the Neutron's custom message event's attribute that contains the KV
+	QueryIdAttr = eventTypePrefix + "." + types.AttributeKeyQueryID
+	// KvKeyAttr is the key of the Neutron's custom message event's attribute that contains the KV
 	// values for the incoming KV ICQ.
-	kvKeyAttr = eventTypePrefix + "." + types.AttributeKeyKVQuery
-	// transactionsFilterAttr is the key of the Neutron's custom message event's attribute that
+	KvKeyAttr = eventTypePrefix + "." + types.AttributeKeyKVQuery
+	// TransactionsFilterAttr is the key of the Neutron's custom message event's attribute that
 	// contains the transaction filter value for the incoming TX ICQ.
-	transactionsFilterAttr = eventTypePrefix + "." + types.AttributeTransactionsFilterQuery
-	// typeAttr is the key of the Neutron's custom message event's attribute that contains the type
+	TransactionsFilterAttr = eventTypePrefix + "." + types.AttributeTransactionsFilterQuery
+	// TypeAttr is the key of the Neutron's custom message event's attribute that contains the type
 	// of the incoming ICQ.
-	typeAttr = eventTypePrefix + "." + types.AttributeKeyQueryType
-	// ownerAttr is the key of the Neutron's custom message event's attribute that contains the
+	TypeAttr = eventTypePrefix + "." + types.AttributeKeyQueryType
+	// OwnerAttr is the key of the Neutron's custom message event's attribute that contains the
 	// address of the ICQ owner.
-	ownerAttr = eventTypePrefix + "." + types.AttributeKeyOwner
+	OwnerAttr = eventTypePrefix + "." + types.AttributeKeyOwner
 )
