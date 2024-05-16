@@ -3,8 +3,8 @@ package relay
 import (
 	"context"
 
-	"github.com/neutron-org/neutron/x/interchainqueries/types"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	"github.com/neutron-org/neutron/v4/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 // Subscriber is an interface that subscribes to Neutron and provides chain data in real time.

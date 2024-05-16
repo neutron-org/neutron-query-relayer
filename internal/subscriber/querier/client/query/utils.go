@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	ibcclienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	ibcclienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 func (o *NeutronInterchainQueriesRegisteredQueriesOKBodyRegisteredQueriesItems0) ToNeutronRegisteredQuery() (*neutrontypes.RegisteredQuery, error) {

@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"context"
-	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	neutronapp "github.com/neutron-org/neutron/app"
+	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
+
+	neutronappconfig "github.com/neutron-org/neutron/v4/app/config"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
@@ -21,7 +22,7 @@ import (
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 const (
@@ -43,7 +44,7 @@ func init() {
 
 func startRelayer() {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
-	globalCfg := neutronapp.GetDefaultConfig()
+	globalCfg := neutronappconfig.GetDefaultConfig()
 	globalCfg.Seal()
 
 	logRegistry, err := nlogger.NewRegistry(

@@ -3,18 +3,19 @@ package trusted_headers
 import (
 	"context"
 	"fmt"
-	"github.com/avast/retry-go/v4"
-	ibcexported "github.com/cosmos/ibc-go/v7/modules/core/exported"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"time"
+
+	"github.com/avast/retry-go/v4"
+	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	"github.com/cosmos/cosmos-sdk/types/query"
-	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
-	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
+	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
+	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	"github.com/cosmos/relayer/v2/relayer"
 	"go.uber.org/zap"
 )

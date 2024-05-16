@@ -17,7 +17,7 @@ import (
 
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 var (

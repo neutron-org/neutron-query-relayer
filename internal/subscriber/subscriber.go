@@ -3,12 +3,13 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	"sync"
-	"time"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 
@@ -18,7 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 var (

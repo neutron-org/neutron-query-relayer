@@ -3,18 +3,20 @@ package subscriber_test
 import (
 	"context"
 	"fmt"
+
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
 	mock_subscriber "github.com/neutron-org/neutron-query-relayer/testutil/mocks/subscriber"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"testing"
 )
 
 func TestDoneShouldEndSubscribe(t *testing.T) {

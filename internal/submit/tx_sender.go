@@ -140,7 +140,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 		WithGas(gasNeeded).
 		WithGasPrices(txs.gasPrices)
 
-	bz, err := txs.signAndBuildTxBz(txf, msgs)
+	bz, err := txs.signAndBuildTxBz(ctx, txf, msgs)
 	if err != nil {
 		return "", fmt.Errorf("could not sign and build tx bz: %w", err)
 	}
@@ -213,13 +213,13 @@ func (txs *TxSender) queryAccount(ctx context.Context, address string) (*authtyp
 	return &account, nil
 }
 
-func (txs *TxSender) signAndBuildTxBz(txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
+func (txs *TxSender) signAndBuildTxBz(ctx context.Context, txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
 	txBuilder, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build transaction builder: %w", err)
 	}
 
-	err = tx.Sign(txf, txs.signKeyName, txBuilder, false)
+	err = tx.Sign(ctx, txf, txs.signKeyName, txBuilder, false)
 
 	if err != nil {
 		return nil, fmt.Errorf("error signing transaction: %w", err)

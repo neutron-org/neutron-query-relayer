@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutronapp "github.com/neutron-org/neutron/app"
+	neutronappconfig "github.com/neutron-org/neutron/v4/app/config"
 )
 
 func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID string) (*relayer.Chain, error) {
@@ -16,7 +16,7 @@ func GetNeutronChain(logger *zap.Logger, cfg *config.NeutronChainConfig, chainID
 		Key:            cfg.SignKeyName,
 		ChainID:        chainID,
 		RPCAddr:        cfg.RPCAddr,
-		AccountPrefix:  neutronapp.Bech32MainPrefix,
+		AccountPrefix:  neutronappconfig.Bech32MainPrefix,
 		KeyringBackend: cfg.KeyringBackend,
 		GasAdjustment:  cfg.GasAdjustment,
 		GasPrices:      cfg.GasPrices,
