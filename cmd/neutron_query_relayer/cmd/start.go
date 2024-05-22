@@ -45,7 +45,6 @@ func init() {
 func startRelayer() {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
 	globalCfg := neutronappconfig.GetDefaultConfig()
-	globalCfg.Seal()
 
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
@@ -113,6 +112,8 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
 	}
+
+	globalCfg.Seal()
 
 	wg.Add(1)
 	go func() {
