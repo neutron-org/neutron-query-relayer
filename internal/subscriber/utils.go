@@ -71,7 +71,7 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	return neutronQuery, nil
 }
 
-// getNeutronRegisteredQueries retrieves the list of registered queries filtered by owner, connection, and query type.
+// getNeutronRegisteredQueries retrieves the list of registered queries filtered by owner, connection, query type, and queryID.
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
 	var out = map[string]*neutrontypes.RegisteredQuery{}
 	var pageKey *strfmt.Base64
@@ -97,6 +97,9 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 			}
 
 			if !s.isWatchedMsgType(neutronQuery.QueryType) {
+				continue
+			}
+			if !s.isWatchedQueryID(neutronQuery.Id) {
 				continue
 			}
 			out[restQuery.ID] = neutronQuery
@@ -172,8 +175,14 @@ func (s *Subscriber) isWatchedMsgType(msgType string) bool {
 	return ex
 }
 
+// isWatchedQueryID returns true if the queryID is within the registry watched queryIDs or there
+// are no registry watched queryIDs configured for the subscriber meaning all queryIDs are watched.
+func (s *Subscriber) isWatchedQueryID(queryID uint64) bool {
+	return s.registry.IsQueryIDsEmpty() || s.registry.ContainsQueryID(queryID)
+}
+
 // isWatchedAddress returns true if the address is within the registry watched addresses or there
 // are no registry watched addresses configured for the subscriber meaning all addresses are watched.
 func (s *Subscriber) isWatchedAddress(address string) bool {
-	return s.registry.IsEmpty() || s.registry.Contains(address)
+	return s.registry.IsAddressesEmpty() || s.registry.ContainsAddress(address)
 }
