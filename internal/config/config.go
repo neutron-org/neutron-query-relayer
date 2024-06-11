@@ -41,6 +41,7 @@ type NeutronChainConfig struct {
 	KeyringBackend string        `required:"true" split_words:"true"`
 	OutputFormat   string        `split_words:"true" default:"json"`
 	SignModeStr    string        `split_words:"true" default:"direct"`
+	Denom          string        `split_words:"true" default:"denom"`
 }
 
 type TargetChainConfig struct {

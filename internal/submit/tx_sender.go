@@ -22,6 +22,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	feemarkettypes "github.com/skip-mev/feemarket/x/feemarket/types"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 )
@@ -29,6 +30,7 @@ import (
 const (
 	accountQueryPath             = "/cosmos.auth.v1beta1.Query/Account"
 	simulateQueryPath            = "/cosmos.tx.v1beta1.Service/Simulate"
+	getPricesQueryPath           = "/feemarket.feemarket.v1.Quuery/GasPrice"
 	IncorrectAccountSequenceCode = 32
 )
 
@@ -45,6 +47,7 @@ type TxSender struct {
 	gasPrices     string
 	gasLimit      uint64
 	logger        *zap.Logger
+	denom         string
 }
 
 func TestKeybase(chainID string, keyringRootDir string, cdc codec.Codec) (keyring.Keyring, error) {
@@ -85,6 +88,7 @@ func NewTxSender(
 		gasPrices:   cfg.GasPrices,
 		gasLimit:    cfg.GasLimit,
 		logger:      logger,
+		denom:       cfg.Denom,
 	}
 	err := txs.refreshAccountInfo(ctx)
 	if err != nil {
@@ -114,9 +118,15 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 	txs.lock.Lock()
 	defer txs.lock.Unlock()
 
+	gasPrice, err := txs.getGasPrice(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error requesting feemarket gas price: %w", err)
+	}
+
 	txf := txs.baseTxf.
 		WithAccountNumber(txs.accountNumber).
-		WithSequence(txs.sequence)
+		WithSequence(txs.sequence).
+		WithGasPrices(gasPrice)
 
 	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
 	if err != nil {
@@ -211,6 +221,45 @@ func (txs *TxSender) queryAccount(ctx context.Context, address string) (*authtyp
 	}
 
 	return &account, nil
+}
+
+func (txs *TxSender) queryDynamicPrice(ctx context.Context) (string, error) {
+	request := feemarkettypes.GasPriceRequest{Denom: txs.denom}
+	req, err := request.Marshal()
+	if err != nil {
+		return "", fmt.Errorf("error marshalling query gas prices request for denom=%s: %w", txs.denom, err)
+	}
+	simQuery := abci.RequestQuery{
+		Path: getPricesQueryPath,
+		Data: req,
+	}
+	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return "", fmt.Errorf("error making abci query: %w", err)
+	}
+
+	if res.Response.Code != 0 {
+		return "", fmt.Errorf("error fetching feemarket gas price for denom=%s log=%s", txs.denom, res.Response.Log)
+	}
+
+	var response feemarkettypes.GasPriceResponse
+	if err := response.Unmarshal(res.Response.Value); err != nil {
+		return "", fmt.Errorf("error unmarshalling GasPriceResponse for denom=%s: %w", txs.denom, err)
+	}
+
+	gasPrice := response.Price.Amount.String() + txs.denom
+
+	return gasPrice, nil
+}
+
+// getGasPrice tries to query dynamic price for denom provided in config. if query fails for some reason,
+// func returns default gas price[s] from config as well
+func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
+	gasPrice, err := txs.queryDynamicPrice(ctx)
+	if err != nil {
+		return txs.gasPrices, err
+	}
+	return gasPrice, nil
 }
 
 func (txs *TxSender) signAndBuildTxBz(ctx context.Context, txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
