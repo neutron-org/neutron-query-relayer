@@ -1366,8 +1366,8 @@ github.com/mtibben/percent v0.2.1/go.mod h1:KG9uO+SZkUp+VkRHsCdYQV3XSZrrSpR3O9ib
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f h1:KUppIJq7/+SVif2QVs3tOP0zanoHgBEVAwHxUSIzRqU=
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mwitkow/grpc-proxy v0.0.0-20181017164139-0f1106ef9c76/go.mod h1:x5OoJHDHqxHS801UIuhqGl6QdSAEJvtausosHSdazIo=
-github.com/neutron-org/cosmos-sdk v0.50.0-beta.0.0.20240226131019-8efae68de5cc h1:8Ci9jiKFhKQ1WdiMcwD/+Egygu+hr2XgzDA0Ngb4vnw=
-github.com/neutron-org/cosmos-sdk v0.50.0-beta.0.0.20240226131019-8efae68de5cc/go.mod h1:UbShFs6P8Ly29xxJvkNGaNaL/UGj5a686NRtb1Cqra0=
+github.com/neutron-org/cosmos-sdk v0.50.7-neutron h1:L1TrOAySPz2xJSm9avp84u9HVkVH3oKZ2uVN5N6q4UI=
+github.com/neutron-org/cosmos-sdk v0.50.7-neutron/go.mod h1:84xDDJEHttRT7NDGwBaUOLVOMN0JNE9x7NbsYIxXs1s=
 github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73 h1:E1+ittfo/+u2/TgPzOzjjGXCmP3k2+L38+woz6RJvbk=
 github.com/neutron-org/neutron-logger v0.0.0-20221027125151-535167f2dd73/go.mod h1:SKEYJmWa+uOI1RBStwCpET0dLn6SNJOkyjE2UXHTvtM=
 github.com/neutron-org/neutron/v4 v4.0.0-rc1 h1:ywYw3Hncvk8toSNpd8//1poBzQCGWN+HPafvrx8l2MU=
