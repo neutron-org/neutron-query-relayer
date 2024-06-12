@@ -260,9 +260,8 @@ replace (
 	github.com/cosmos/cosmos-sdk => github.com/neutron-org/cosmos-sdk v0.50.7-neutron
 	github.com/cosmos/gaia/v11 => github.com/cosmos/gaia/v11 v11.0.0-20230724152830-861ba391c3b4
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.0
-	github.com/prometheus/common => github.com/prometheus/common v0.47.0
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
