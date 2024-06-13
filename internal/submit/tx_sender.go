@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -48,6 +49,8 @@ type TxSender struct {
 	gasLimit      uint64
 	logger        *zap.Logger
 	denom         string
+	maxGas        float64
+	gasMultiplier float64
 }
 
 func TestKeybase(chainID string, keyringRootDir string, cdc codec.Codec) (keyring.Keyring, error) {
@@ -78,17 +81,19 @@ func NewTxSender(
 		WithGasPrices(cfg.GasPrices)
 
 	txs := &TxSender{
-		lock:        sync.Mutex{},
-		keybase:     keybase,
-		txConfig:    txConfig,
-		baseTxf:     baseTxf,
-		rpcClient:   rpcClient,
-		chainID:     neutronChainID,
-		signKeyName: cfg.SignKeyName,
-		gasPrices:   cfg.GasPrices,
-		gasLimit:    cfg.GasLimit,
-		logger:      logger,
-		denom:       cfg.Denom,
+		lock:          sync.Mutex{},
+		keybase:       keybase,
+		txConfig:      txConfig,
+		baseTxf:       baseTxf,
+		rpcClient:     rpcClient,
+		chainID:       neutronChainID,
+		signKeyName:   cfg.SignKeyName,
+		gasPrices:     cfg.GasPrices,
+		gasLimit:      cfg.GasLimit,
+		logger:        logger,
+		denom:         cfg.Denom,
+		maxGas:        cfg.MaxGas,
+		gasMultiplier: cfg.GasMultiplier,
 	}
 	err := txs.refreshAccountInfo(ctx)
 	if err != nil {
@@ -252,14 +257,38 @@ func (txs *TxSender) queryDynamicPrice(ctx context.Context) (string, error) {
 	return gasPrice, nil
 }
 
-// getGasPrice tries to query dynamic price for denom provided in config. if query fails for some reason,
+func (txs *TxSender) multiplyGas(gas string) (string, error) {
+	floatGas, err := strconv.ParseFloat(gas, 64)
+	if err != nil {
+		return "", err
+	}
+
+	multipliedGas := txs.gasMultiplier * floatGas
+	if multipliedGas > txs.maxGas {
+		multipliedGas = txs.maxGas
+	}
+
+	return strconv.FormatFloat(multipliedGas, 'g', 4, 64), nil
+}
+
+// getGasPrice tries to query dynamic price for denom provided in config.
+// If successful:
+// 1) multiply gas by gasMultiplier (tip validators)
+// 2) if result is bigger than maxGas -> return max gas
+// if query fails for some reason:
 // func returns default gas price[s] from config as well
 func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
 	gasPrice, err := txs.queryDynamicPrice(ctx)
 	if err != nil {
 		return txs.gasPrices, err
 	}
-	return gasPrice, nil
+
+	multipliedGas, err := txs.multiplyGas(gasPrice)
+	if err != nil {
+		return "", err
+	}
+
+	return multipliedGas, nil
 }
 
 func (txs *TxSender) signAndBuildTxBz(ctx context.Context, txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
