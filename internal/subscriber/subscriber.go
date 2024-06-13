@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -10,8 +11,6 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
 
 	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
@@ -32,8 +31,8 @@ type Config struct {
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
 	WatchedTypes []neutrontypes.InterchainQueryType
-	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
-	// works with interchain queries and events that are under these addresses' ownership.
+	// Registry is a watch list registry. It contains a list of addresses and a list of queryIDs, and the Subscriber only
+	// works with interchain queries and events that are under ownership of these addresses and match the queryIDs.
 	Registry *rg.Registry
 }
 
@@ -59,7 +58,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 		&Config{
 			ConnectionID: cfg.NeutronChain.ConnectionID,
 			WatchedTypes: watchedMsgTypes,
-			Registry:     registry.New(cfg.Registry),
+			Registry:     rg.New(cfg.Registry),
 		},
 		rpcClient,
 		restClient.Query,
@@ -214,6 +213,16 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 		)
 		if !s.isWatchedAddress(owner) {
 			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
+			continue
+		}
+		queryIDNumber, err := strconv.ParseUint(queryID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse queryID: %w", err)
+		}
+
+		if !s.isWatchedQueryID(queryIDNumber) {
+			s.logger.Debug("Skipping query (wrong queryID)", zap.String("owner", owner),
 				zap.String("query_id", queryID))
 			continue
 		}
