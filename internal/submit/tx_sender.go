@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	cosmossdk_io_math "cosmossdk.io/math"
 	tmtypes "github.com/cometbft/cometbft/types"
 	"go.uber.org/zap"
 
@@ -153,7 +154,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 
 	txf = txf.
 		WithGas(gasNeeded).
-		WithGasPrices(txs.gasPrices)
+		WithGasPrices(gasPrice)
 
 	bz, err := txs.signAndBuildTxBz(ctx, txf, msgs)
 	if err != nil {
@@ -228,11 +229,11 @@ func (txs *TxSender) queryAccount(ctx context.Context, address string) (*authtyp
 	return &account, nil
 }
 
-func (txs *TxSender) queryDynamicPrice(ctx context.Context) (string, error) {
+func (txs *TxSender) queryDynamicPrice(ctx context.Context) (cosmossdk_io_math.LegacyDec, error) {
 	request := feemarkettypes.GasPriceRequest{Denom: txs.denom}
 	req, err := request.Marshal()
 	if err != nil {
-		return "", fmt.Errorf("error marshalling query gas prices request for denom=%s: %w", txs.denom, err)
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error marshalling query gas prices request for denom=%s: %w", txs.denom, err)
 	}
 	simQuery := abci.RequestQuery{
 		Path: getPricesQueryPath,
@@ -240,30 +241,33 @@ func (txs *TxSender) queryDynamicPrice(ctx context.Context) (string, error) {
 	}
 	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
-		return "", fmt.Errorf("error making abci query: %w", err)
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error making abci query: %w", err)
 	}
 
 	if res.Response.Code != 0 {
-		return "", fmt.Errorf("error fetching feemarket gas price for denom=%s log=%s", txs.denom, res.Response.Log)
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error fetching feemarket gas price for denom=%s", txs.denom)
 	}
 
 	var response feemarkettypes.GasPriceResponse
 	if err := response.Unmarshal(res.Response.Value); err != nil {
-		return "", fmt.Errorf("error unmarshalling GasPriceResponse for denom=%s: %w", txs.denom, err)
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error unmarshalling GasPriceResponse for denom=%s: %w", txs.denom, err)
 	}
 
-	gasPrice := response.Price.Amount.String() + txs.denom
+	gasPrice := response.Price.Amount
 
 	return gasPrice, nil
 }
 
-func (txs *TxSender) multiplyGas(gas string) (string, error) {
-	floatGas, err := strconv.ParseFloat(gas, 64)
+func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error) {
+	floatGas, err := gas.Float64()
 	if err != nil {
 		return "", err
 	}
 
 	multipliedGas := txs.gasMultiplier * floatGas
+	if err != nil {
+		return "", err
+	}
 	if multipliedGas > txs.maxGas {
 		multipliedGas = txs.maxGas
 	}
@@ -280,7 +284,7 @@ func (txs *TxSender) multiplyGas(gas string) (string, error) {
 func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
 	gasPrice, err := txs.queryDynamicPrice(ctx)
 	if err != nil {
-		return txs.gasPrices, err
+		return txs.gasPrices, nil
 	}
 
 	multipliedGas, err := txs.multiplyGas(gasPrice)
@@ -288,7 +292,7 @@ func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return multipliedGas, nil
+	return multipliedGas + txs.denom, nil
 }
 
 func (txs *TxSender) signAndBuildTxBz(ctx context.Context, txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
