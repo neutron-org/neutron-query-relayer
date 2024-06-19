@@ -21,13 +21,13 @@ func setupTest(t *testing.T, gasMultiplier float64, maxGas float64, gasPrices st
 	logger, _ := zap.NewDevelopment()
 	txConfig := authtxtypes.NewTxConfig(codec.NewProtoCodec(nil), authtxtypes.DefaultSignModes)
 	return &TxSender{
-		rpcClient:     mockClient,
-		txConfig:      txConfig,
-		logger:        logger,
-		denom:         "testdenom",
-		gasMultiplier: gasMultiplier,
-		maxGas:        maxGas,
-		gasPrices:     gasPrices,
+		rpcClient:          mockClient,
+		txConfig:           txConfig,
+		logger:             logger,
+		denom:              "testdenom",
+		gasPriceMultiplier: gasMultiplier,
+		maxGasPrice:        maxGas,
+		gasPrices:          gasPrices,
 	}
 }
 
@@ -99,7 +99,7 @@ func TestQueryDynamicPrice(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name:          "MaxGas",
+			name:          "MaxGasPrice",
 			gasMultiplier: 1.5,
 			maxGas:        111.1,
 			gasPrices:     "99.0testdenom",

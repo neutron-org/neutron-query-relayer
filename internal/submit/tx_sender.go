@@ -37,21 +37,21 @@ const (
 )
 
 type TxSender struct {
-	lock          sync.Mutex
-	sequence      uint64
-	accountNumber uint64
-	keybase       keyring.Keyring
-	baseTxf       tx.Factory
-	txConfig      client.TxConfig
-	rpcClient     rpcclient.Client
-	chainID       string
-	signKeyName   string
-	gasPrices     string
-	gasLimit      uint64
-	logger        *zap.Logger
-	denom         string
-	maxGas        float64
-	gasMultiplier float64
+	lock               sync.Mutex
+	sequence           uint64
+	accountNumber      uint64
+	keybase            keyring.Keyring
+	baseTxf            tx.Factory
+	txConfig           client.TxConfig
+	rpcClient          rpcclient.Client
+	chainID            string
+	signKeyName        string
+	gasPrices          string
+	gasLimit           uint64
+	logger             *zap.Logger
+	denom              string
+	maxGasPrice        float64
+	gasPriceMultiplier float64
 }
 
 func TestKeybase(chainID string, keyringRootDir string, cdc codec.Codec) (keyring.Keyring, error) {
@@ -82,19 +82,19 @@ func NewTxSender(
 		WithGasPrices(cfg.GasPrices)
 
 	txs := &TxSender{
-		lock:          sync.Mutex{},
-		keybase:       keybase,
-		txConfig:      txConfig,
-		baseTxf:       baseTxf,
-		rpcClient:     rpcClient,
-		chainID:       neutronChainID,
-		signKeyName:   cfg.SignKeyName,
-		gasPrices:     cfg.GasPrices,
-		gasLimit:      cfg.GasLimit,
-		logger:        logger,
-		denom:         cfg.Denom,
-		maxGas:        cfg.MaxGas,
-		gasMultiplier: cfg.GasMultiplier,
+		lock:               sync.Mutex{},
+		keybase:            keybase,
+		txConfig:           txConfig,
+		baseTxf:            baseTxf,
+		rpcClient:          rpcClient,
+		chainID:            neutronChainID,
+		signKeyName:        cfg.SignKeyName,
+		gasPrices:          cfg.GasPrices,
+		gasLimit:           cfg.GasLimit,
+		logger:             logger,
+		denom:              cfg.Denom,
+		maxGasPrice:        cfg.MaxGasPrice,
+		gasPriceMultiplier: cfg.GasPriceMultiplier,
 	}
 	err := txs.refreshAccountInfo(ctx)
 	if err != nil {
@@ -264,12 +264,12 @@ func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error
 		return "", err
 	}
 
-	multipliedGas := txs.gasMultiplier * floatGas
+	multipliedGas := txs.gasPriceMultiplier * floatGas
 	if err != nil {
 		return "", err
 	}
-	if multipliedGas > txs.maxGas {
-		multipliedGas = txs.maxGas
+	if multipliedGas > txs.maxGasPrice {
+		multipliedGas = txs.maxGasPrice
 	}
 
 	return strconv.FormatFloat(multipliedGas, 'g', 4, 64), nil
@@ -277,8 +277,8 @@ func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error
 
 // getGasPrice tries to query dynamic price for denom provided in config.
 // If successful:
-// 1) multiply gas by gasMultiplier (tip validators)
-// 2) if result is bigger than maxGas -> return max gas
+// 1) multiply gas by gasPriceMultiplier (tip validators)
+// 2) if result is bigger than maxGasPrice -> return max gas
 // if query fails for some reason:
 // func returns default gas price[s] from config as well
 func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
