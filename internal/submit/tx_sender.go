@@ -32,7 +32,7 @@ import (
 const (
 	accountQueryPath             = "/cosmos.auth.v1beta1.Query/Account"
 	simulateQueryPath            = "/cosmos.tx.v1beta1.Service/Simulate"
-	getPricesQueryPath           = "/feemarket.feemarket.v1.Quuery/GasPrice"
+	getPricesQueryPath           = "/feemarket.feemarket.v1.Query/GasPrice"
 	IncorrectAccountSequenceCode = 32
 )
 
@@ -265,9 +265,6 @@ func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error
 	}
 
 	multipliedGas := txs.gasPriceMultiplier * floatGas
-	if err != nil {
-		return "", err
-	}
 	if multipliedGas > txs.maxGasPrice {
 		multipliedGas = txs.maxGasPrice
 	}
@@ -284,6 +281,7 @@ func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error
 func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
 	gasPrice, err := txs.queryDynamicPrice(ctx)
 	if err != nil {
+		txs.logger.Error("error querying feemarket price", zap.Error(err))
 		return txs.gasPrices, nil
 	}
 
