@@ -153,8 +153,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 	}
 
 	txf = txf.
-		WithGas(gasNeeded).
-		WithGasPrices(gasPrice)
+		WithGas(gasNeeded)
 
 	bz, err := txs.signAndBuildTxBz(ctx, txf, msgs)
 	if err != nil {
@@ -262,6 +261,10 @@ func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error
 
 	multipliedGas := txs.gasPriceMultiplier * floatGas
 	if multipliedGas > txs.maxGasPrice {
+		txs.logger.Info("calculating gas price: gas multiplication exceeds max gas price",
+			zap.String("gas_before_multiplication", gas.String()),
+			zap.Float64("multiplier", txs.gasPriceMultiplier),
+			zap.Float64("max_gas_price", txs.maxGasPrice))
 		multipliedGas = txs.maxGasPrice
 	}
 
