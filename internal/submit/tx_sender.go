@@ -235,11 +235,7 @@ func (txs *TxSender) queryDynamicPrice(ctx context.Context) (cosmossdk_io_math.L
 	if err != nil {
 		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error marshalling query gas prices request for denom=%s: %w", txs.denom, err)
 	}
-	simQuery := abci.RequestQuery{
-		Path: getPricesQueryPath,
-		Data: req,
-	}
-	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, simQuery.Path, simQuery.Data, rpcclient.DefaultABCIQueryOptions)
+	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, getPricesQueryPath, req, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error making abci query: %w", err)
 	}
