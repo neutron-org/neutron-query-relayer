@@ -2,8 +2,6 @@ module github.com/neutron-org/neutron-query-relayer
 
 go 1.22.3
 
-toolchain go1.22.4
-
 require (
 	cosmossdk.io/api v0.7.5
 	cosmossdk.io/math v1.3.0
@@ -201,6 +199,7 @@ require (
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
+	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -261,7 +260,8 @@ replace (
 	github.com/cosmos/gaia/v11 => github.com/cosmos/gaia/v11 v11.0.0-20230724152830-861ba391c3b4
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
-	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.0
+	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.1
+	github.com/prometheus/common => github.com/prometheus/common v0.52.2
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
