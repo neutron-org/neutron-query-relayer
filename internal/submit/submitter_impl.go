@@ -6,7 +6,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 // SubmitterImpl can submit proofs using `sender` as the transaction transport mechanism
@@ -62,7 +62,7 @@ func (si *SubmitterImpl) buildProofMsg(height, revision, queryId uint64, allowKV
 
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: si.clientID}
 
-	err = msg.ValidateBasic()
+	err = msg.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid proof message for query=%d: %w", queryId, err)
 	}
@@ -83,7 +83,7 @@ func (si *SubmitterImpl) buildTxProofMsg(queryId uint64, proof *neutrontypes.Blo
 	}
 	msg := neutrontypes.MsgSubmitQueryResult{QueryId: queryId, Sender: senderAddr, Result: &queryResult, ClientId: si.clientID}
 
-	err = msg.ValidateBasic()
+	err = msg.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid tx proof message: %w", err)
 	}

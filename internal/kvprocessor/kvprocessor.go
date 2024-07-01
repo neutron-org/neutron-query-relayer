@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go/v4"
-	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 	"time"
+
+	"github.com/avast/retry-go/v4"
+	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 
 	neutronmetrics "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
@@ -18,7 +19,7 @@ import (
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 	"github.com/neutron-org/neutron-query-relayer/internal/tmquerier"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 // KVProcessor is implementation of relay.KVProcessor that processes event query KV type.

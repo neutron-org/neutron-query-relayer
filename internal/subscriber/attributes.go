@@ -1,7 +1,7 @@
 package subscriber
 
 import (
-	"github.com/neutron-org/neutron/x/interchainqueries/types"
+	"github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 const eventTypePrefix = types.EventTypeNeutronMessage

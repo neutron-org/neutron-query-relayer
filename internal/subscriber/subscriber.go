@@ -12,15 +12,13 @@ import (
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
-	"github.com/neutron-org/neutron-query-relayer/internal/registry"
-
 	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
 	tmtypes "github.com/cometbft/cometbft/rpc/core/types"
 	"go.uber.org/zap"
 
 	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 var (
@@ -60,7 +58,7 @@ func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlo
 		&Config{
 			ConnectionID: cfg.NeutronChain.ConnectionID,
 			WatchedTypes: watchedMsgTypes,
-			Registry:     registry.New(cfg.Registry),
+			Registry:     rg.New(cfg.Registry),
 		},
 		rpcClient,
 		restClient.Query,
