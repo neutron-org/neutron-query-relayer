@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
+	cosmossdk_io_math "cosmossdk.io/math"
 	tmtypes "github.com/cometbft/cometbft/types"
 	"go.uber.org/zap"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtxtypes "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	feemarkettypes "github.com/skip-mev/feemarket/x/feemarket/types"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
 )
@@ -29,22 +32,26 @@ import (
 const (
 	accountQueryPath             = "/cosmos.auth.v1beta1.Query/Account"
 	simulateQueryPath            = "/cosmos.tx.v1beta1.Service/Simulate"
+	getPricesQueryPath           = "/feemarket.feemarket.v1.Query/GasPrice"
 	IncorrectAccountSequenceCode = 32
 )
 
 type TxSender struct {
-	lock          sync.Mutex
-	sequence      uint64
-	accountNumber uint64
-	keybase       keyring.Keyring
-	baseTxf       tx.Factory
-	txConfig      client.TxConfig
-	rpcClient     rpcclient.Client
-	chainID       string
-	signKeyName   string
-	gasPrices     string
-	gasLimit      uint64
-	logger        *zap.Logger
+	lock               sync.Mutex
+	sequence           uint64
+	accountNumber      uint64
+	keybase            keyring.Keyring
+	baseTxf            tx.Factory
+	txConfig           client.TxConfig
+	rpcClient          rpcclient.Client
+	chainID            string
+	signKeyName        string
+	gasPrices          string
+	gasLimit           uint64
+	logger             *zap.Logger
+	denom              string
+	maxGasPrice        float64
+	gasPriceMultiplier float64
 }
 
 func TestKeybase(chainID string, keyringRootDir string, cdc codec.Codec) (keyring.Keyring, error) {
@@ -75,16 +82,19 @@ func NewTxSender(
 		WithGasPrices(cfg.GasPrices)
 
 	txs := &TxSender{
-		lock:        sync.Mutex{},
-		keybase:     keybase,
-		txConfig:    txConfig,
-		baseTxf:     baseTxf,
-		rpcClient:   rpcClient,
-		chainID:     neutronChainID,
-		signKeyName: cfg.SignKeyName,
-		gasPrices:   cfg.GasPrices,
-		gasLimit:    cfg.GasLimit,
-		logger:      logger,
+		lock:               sync.Mutex{},
+		keybase:            keybase,
+		txConfig:           txConfig,
+		baseTxf:            baseTxf,
+		rpcClient:          rpcClient,
+		chainID:            neutronChainID,
+		signKeyName:        cfg.SignKeyName,
+		gasPrices:          cfg.GasPrices,
+		gasLimit:           cfg.GasLimit,
+		logger:             logger,
+		denom:              cfg.Denom,
+		maxGasPrice:        cfg.MaxGasPrice,
+		gasPriceMultiplier: cfg.GasPriceMultiplier,
 	}
 	err := txs.refreshAccountInfo(ctx)
 	if err != nil {
@@ -114,9 +124,15 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 	txs.lock.Lock()
 	defer txs.lock.Unlock()
 
+	gasPrice, err := txs.getGasPrice(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error requesting feemarket gas price: %w", err)
+	}
+
 	txf := txs.baseTxf.
 		WithAccountNumber(txs.accountNumber).
-		WithSequence(txs.sequence)
+		WithSequence(txs.sequence).
+		WithGasPrices(gasPrice)
 
 	gasNeeded, err := txs.calculateGas(ctx, txf, msgs...)
 	if err != nil {
@@ -137,8 +153,7 @@ func (txs *TxSender) Send(ctx context.Context, msgs []sdk.Msg) (string, error) {
 	}
 
 	txf = txf.
-		WithGas(gasNeeded).
-		WithGasPrices(txs.gasPrices)
+		WithGas(gasNeeded)
 
 	bz, err := txs.signAndBuildTxBz(ctx, txf, msgs)
 	if err != nil {
@@ -211,6 +226,70 @@ func (txs *TxSender) queryAccount(ctx context.Context, address string) (*authtyp
 	}
 
 	return &account, nil
+}
+
+func (txs *TxSender) queryDynamicPrice(ctx context.Context) (cosmossdk_io_math.LegacyDec, error) {
+	request := feemarkettypes.GasPriceRequest{Denom: txs.denom}
+	req, err := request.Marshal()
+	if err != nil {
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error marshalling query gas prices request for denom=%s: %w", txs.denom, err)
+	}
+	res, err := txs.rpcClient.ABCIQueryWithOptions(ctx, getPricesQueryPath, req, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error making abci query: %w", err)
+	}
+
+	if res.Response.Code != 0 {
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error fetching feemarket gas price for denom=%s", txs.denom)
+	}
+
+	var response feemarkettypes.GasPriceResponse
+	if err := response.Unmarshal(res.Response.Value); err != nil {
+		return cosmossdk_io_math.LegacyZeroDec(), fmt.Errorf("error unmarshalling GasPriceResponse for denom=%s: %w", txs.denom, err)
+	}
+
+	gasPrice := response.Price.Amount
+
+	return gasPrice, nil
+}
+
+func (txs *TxSender) multiplyGas(gas cosmossdk_io_math.LegacyDec) (string, error) {
+	floatGas, err := gas.Float64()
+	if err != nil {
+		return "", err
+	}
+
+	multipliedGas := txs.gasPriceMultiplier * floatGas
+	if multipliedGas > txs.maxGasPrice {
+		txs.logger.Info("calculating gas price: gas multiplication exceeds max gas price",
+			zap.String("gas_before_multiplication", gas.String()),
+			zap.Float64("multiplier", txs.gasPriceMultiplier),
+			zap.Float64("max_gas_price", txs.maxGasPrice))
+		multipliedGas = txs.maxGasPrice
+	}
+
+	return strconv.FormatFloat(multipliedGas, 'g', 4, 64), nil
+}
+
+// getGasPrice tries to query dynamic price for denom provided in config.
+// If successful:
+// 1) multiply gas by gasPriceMultiplier (tip validators)
+// 2) if result is bigger than maxGasPrice -> return max gas
+// if query fails for some reason:
+// func returns default gas price[s] from config as well
+func (txs *TxSender) getGasPrice(ctx context.Context) (string, error) {
+	gasPrice, err := txs.queryDynamicPrice(ctx)
+	if err != nil {
+		txs.logger.Error("error querying feemarket price", zap.Error(err))
+		return txs.gasPrices, nil
+	}
+
+	multipliedGas, err := txs.multiplyGas(gasPrice)
+	if err != nil {
+		return "", err
+	}
+
+	return multipliedGas + txs.denom, nil
 }
 
 func (txs *TxSender) signAndBuildTxBz(ctx context.Context, txf tx.Factory, msgs []sdk.Msg) ([]byte, error) {
