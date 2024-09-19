@@ -177,7 +177,7 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutronty
 
 	for _, activeQuery := range s.activeQueries {
 		// Skip the ActiveQuery if we didn't reach the update time.
-		if currentHeight < (activeQuery.LastSubmittedResultLocalHeight + activeQuery.UpdatePeriod) {
+		if activeQuery.LastSubmittedResultLocalHeight != 0 && currentHeight < (activeQuery.LastSubmittedResultLocalHeight+activeQuery.UpdatePeriod) {
 			continue
 		}
 
