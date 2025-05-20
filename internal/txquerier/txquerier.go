@@ -10,7 +10,7 @@ import (
 	"github.com/cometbft/cometbft/types"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 var TxsChanSize = 100
@@ -83,7 +83,7 @@ func (t *TXQuerierSrv) SearchTransactions(ctx context.Context, query string) (<-
 }
 
 // proofDelivery returns (deliveryProof, deliveryResult, error) for transaction in block 'blockHeight' with index 'txIndexInBlock'
-func (t *TXQuerierSrv) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*crypto.Proof, *abci.ResponseDeliverTx, error) {
+func (t *TXQuerierSrv) proofDelivery(ctx context.Context, blockHeight int64, txIndexInBlock uint32) (*crypto.Proof, *abci.ExecTxResult, error) {
 	results, err := t.chainClient.BlockResults(ctx, &blockHeight)
 
 	if err != nil {

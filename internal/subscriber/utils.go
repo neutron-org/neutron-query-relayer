@@ -17,7 +17,7 @@ import (
 
 	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
 	"github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client/query"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 var (
@@ -25,18 +25,22 @@ var (
 	rpcWSEndpoint      = "/websocket"
 )
 
-// newRPCClient creates a new tendermint RPC client with timeout.
-func newRPCClient(rpcAddr string, timeout time.Duration) (*tmhttp.HTTP, error) {
+// NewRPCClient creates a new tendermint RPC client with timeout.
+func NewRPCClient(rpcAddr string, timeout time.Duration) (RpcHttpClient, error) {
 	httpClient, err := jsonrpcclient.DefaultHTTPClient(rpcAddr)
 	if err != nil {
 		return nil, err
 	}
 	httpClient.Timeout = timeout
-	return tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+	client, err := tmhttp.NewWithClient(rpcAddr, rpcWSEndpoint, httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tendermint rpc client: %w", err)
+	}
+	return *client, err
 }
 
-// newRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
-func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIConsole, error) {
+// NewRESTClient makes sure that the restAddr is formed correctly and returns a REST query.
+func NewRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIConsole, error) {
 	url, err := url.Parse(restAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse restAddr: %w", err)
@@ -51,7 +55,7 @@ func newRESTClient(restAddr string, timeout time.Duration) (*restclient.HTTPAPIC
 
 // getNeutronRegisteredQuery retrieves a registered query from Neutron.
 func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId string) (*neutrontypes.RegisteredQuery, error) {
-	res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQuery(
+	res, err := s.restClientQuery.NeutronInterchainQueriesRegisteredQuery(
 		&query.NeutronInterchainQueriesRegisteredQueryParams{
 			QueryID: &queryId,
 			Context: ctx,
@@ -67,12 +71,12 @@ func (s *Subscriber) getNeutronRegisteredQuery(ctx context.Context, queryId stri
 	return neutronQuery, nil
 }
 
-// getNeutronRegisteredQueries retrieves the list of registered queries filtered by owner, connection, and query type.
+// getNeutronRegisteredQueries retrieves the list of registered queries filtered by owner, connection, query type, and queryID.
 func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[string]*neutrontypes.RegisteredQuery, error) {
 	var out = map[string]*neutrontypes.RegisteredQuery{}
 	var pageKey *strfmt.Base64
 	for {
-		res, err := s.restClient.Query.NeutronInterchainQueriesRegisteredQueries(
+		res, err := s.restClientQuery.NeutronInterchainQueriesRegisteredQueries(
 			&query.NeutronInterchainQueriesRegisteredQueriesParams{
 				Owners:        s.registry.GetAddresses(),
 				ConnectionID:  &s.connectionID,
@@ -95,6 +99,9 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 			if !s.isWatchedMsgType(neutronQuery.QueryType) {
 				continue
 			}
+			if !s.isWatchedQueryID(neutronQuery.Id) {
+				continue
+			}
 			out[restQuery.ID] = neutronQuery
 		}
 		if payload.Pagination != nil && payload.Pagination.NextKey.String() != "" {
@@ -113,16 +120,16 @@ func (s *Subscriber) getNeutronRegisteredQueries(ctx context.Context) (map[strin
 func (s *Subscriber) checkEvents(event tmtypes.ResultEvent) (bool, error) {
 	events := event.Events
 
-	icqEventsCount := len(events[connectionIdAttr])
+	icqEventsCount := len(events[ConnectionIdAttr])
 	if icqEventsCount == 0 {
 		s.logger.Debug("no connection id attributes received", zap.Any("events", events))
 		return false, nil
 	}
 
-	if len(events[kvKeyAttr]) != icqEventsCount ||
-		len(events[transactionsFilterAttr]) != icqEventsCount ||
-		len(events[queryIdAttr]) != icqEventsCount ||
-		len(events[typeAttr]) != icqEventsCount {
+	if len(events[KvKeyAttr]) != icqEventsCount ||
+		len(events[TransactionsFilterAttr]) != icqEventsCount ||
+		len(events[QueryIdAttr]) != icqEventsCount ||
+		len(events[TypeAttr]) != icqEventsCount {
 		return false, fmt.Errorf("events attributes length does not match for events=%v", events)
 	}
 
@@ -139,7 +146,7 @@ func (s *Subscriber) subscriberName() string {
 // getQueryUpdatedSubscription returns a Query to filter out interchain "query_updated" events.
 func (s *Subscriber) getQueryUpdatedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.connectionID,
+		ConnectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryUpdated,
 	)
@@ -148,7 +155,7 @@ func (s *Subscriber) getQueryUpdatedSubscription() string {
 // getQueryRemovedSubscription returns a Query to filter out interchain "query_removed" events.
 func (s *Subscriber) getQueryRemovedSubscription() string {
 	return fmt.Sprintf("%s='%s' AND %s='%s' AND %s='%s'",
-		connectionIdAttr, s.connectionID,
+		ConnectionIdAttr, s.connectionID,
 		moduleAttr, neutrontypes.ModuleName,
 		actionAttr, neutrontypes.AttributeValueQueryRemoved,
 	)
@@ -168,8 +175,14 @@ func (s *Subscriber) isWatchedMsgType(msgType string) bool {
 	return ex
 }
 
+// isWatchedQueryID returns true if the queryID is within the registry watched queryIDs or there
+// are no registry watched queryIDs configured for the subscriber meaning all queryIDs are watched.
+func (s *Subscriber) isWatchedQueryID(queryID uint64) bool {
+	return s.registry.IsQueryIDsEmpty() || s.registry.ContainsQueryID(queryID)
+}
+
 // isWatchedAddress returns true if the address is within the registry watched addresses or there
 // are no registry watched addresses configured for the subscriber meaning all addresses are watched.
 func (s *Subscriber) isWatchedAddress(address string) bool {
-	return s.registry.IsEmpty() || s.registry.Contains(address)
+	return s.registry.IsAddressesEmpty() || s.registry.ContainsAddress(address)
 }

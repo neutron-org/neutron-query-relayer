@@ -5,7 +5,7 @@ import (
 
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 // Transaction represents single searched tx with height

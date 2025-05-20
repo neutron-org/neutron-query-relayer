@@ -8,7 +8,9 @@ import (
 	"sync"
 	"syscall"
 
-	neutronapp "github.com/neutron-org/neutron/app"
+	relaysubscriber "github.com/neutron-org/neutron-query-relayer/internal/subscriber"
+
+	neutronappconfig "github.com/neutron-org/neutron/v4/app/config"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
 
@@ -20,7 +22,7 @@ import (
 	nlogger "github.com/neutron-org/neutron-logger"
 	"github.com/neutron-org/neutron-query-relayer/internal/app"
 	"github.com/neutron-org/neutron-query-relayer/internal/config"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 const (
@@ -42,8 +44,7 @@ func init() {
 
 func startRelayer() {
 	// set global values for prefixes for cosmos-sdk when parsing addresses and so on
-	globalCfg := neutronapp.GetDefaultConfig()
-	globalCfg.Seal()
+	globalCfg := neutronappconfig.GetDefaultConfig()
 
 	logRegistry, err := nlogger.NewRegistry(
 		mainContext,
@@ -92,7 +93,7 @@ func startRelayer() {
 		submittedTxsTasksQueue = make(chan relay.PendingSubmittedTxInfo)
 	)
 
-	subscriber, err := app.NewDefaultSubscriber(cfg, logRegistry)
+	subscriber, err := relaysubscriber.NewDefaultSubscriber(cfg, logRegistry)
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultSubscriber", zap.Error(err))
 	}
@@ -111,6 +112,8 @@ func startRelayer() {
 	if err != nil {
 		logger.Fatal("Failed to get NewDefaultTxSubmitChecker", zap.Error(err))
 	}
+
+	globalCfg.Seal()
 
 	wg.Add(1)
 	go func() {

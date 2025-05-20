@@ -13,10 +13,10 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"go.uber.org/zap"
 
-	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 
 	"github.com/neutron-org/neutron-query-relayer/internal/relay"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 type TXProcessor struct {

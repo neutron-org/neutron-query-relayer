@@ -2,7 +2,8 @@ package relay
 
 import (
 	"context"
-	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
+
+	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 )
 
 // TrustedHeaderFetcher able to get trusted headers for a given height

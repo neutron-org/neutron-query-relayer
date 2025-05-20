@@ -3,59 +3,83 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
+	nlogger "github.com/neutron-org/neutron-logger"
+	"github.com/neutron-org/neutron-query-relayer/internal/app"
+	"github.com/neutron-org/neutron-query-relayer/internal/config"
+	"github.com/neutron-org/neutron-query-relayer/internal/relay"
+
 	instrumenters "github.com/neutron-org/neutron-query-relayer/internal/metrics"
 
-	"github.com/cometbft/cometbft/rpc/client/http"
 	tmtypes "github.com/cometbft/cometbft/rpc/core/types"
 	"go.uber.org/zap"
 
 	rg "github.com/neutron-org/neutron-query-relayer/internal/registry"
-	restclient "github.com/neutron-org/neutron-query-relayer/internal/subscriber/querier/client"
-	neutrontypes "github.com/neutron-org/neutron/x/interchainqueries/types"
+	neutrontypes "github.com/neutron-org/neutron/v4/x/interchainqueries/types"
 )
 
 var (
 	unsubscribeTimeout = time.Second * 5
 )
 
-// SubscriberConfig contains configurable fields for the Subscriber.
-type SubscriberConfig struct {
-	// RPCAddress represents the address for RPC calls to the chain.
-	RPCAddress string
-	// RESTAddress represents the address for REST calls to the chain.
-	RESTAddress string
-	// Timeout defines time limit for requests executed by the Subscriber.
-	Timeout time.Duration
+// Config contains configurable fields for the Subscriber.
+type Config struct {
 	// ConnectionID is the Neutron's side connection ID used to filter out queries.
 	ConnectionID string
 	// WatchedTypes is the list of query types to be observed and handled.
 	WatchedTypes []neutrontypes.InterchainQueryType
-	// Registry is a watch list registry. It contains a list of addresses, and the Subscriber only
-	// works with interchain queries and events that are under these addresses' ownership.
+	// Registry is a watch list registry. It contains a list of addresses and a list of queryIDs, and the Subscriber only
+	// works with interchain queries and events that are under ownership of these addresses and match the queryIDs.
 	Registry *rg.Registry
+}
+
+func NewDefaultSubscriber(cfg config.NeutronQueryRelayerConfig, logRegistry *nlogger.Registry) (relay.Subscriber, error) {
+	watchedMsgTypes := []neutrontypes.InterchainQueryType{neutrontypes.InterchainQueryTypeKV}
+	if cfg.AllowTxQueries {
+		watchedMsgTypes = append(watchedMsgTypes, neutrontypes.InterchainQueryTypeTX)
+	}
+
+	// rpcClient is used to subscribe to Neutron events.
+	rpcClient, err := NewRPCClient(cfg.NeutronChain.RPCAddr, cfg.NeutronChain.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("could not create new tendermint rpcClient for Subscriber: %w", err)
+	}
+
+	// restClient is used to retrieve registered queries from Neutron.
+	restClient, err := NewRESTClient(cfg.NeutronChain.RESTAddr, cfg.NeutronChain.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get NewRESTClient for Subscriber: %w", err)
+	}
+
+	sub, err := NewSubscriber(
+		&Config{
+			ConnectionID: cfg.NeutronChain.ConnectionID,
+			WatchedTypes: watchedMsgTypes,
+			Registry:     rg.New(cfg.Registry),
+		},
+		rpcClient,
+		restClient.Query,
+		logRegistry.Get(app.SubscriberContext),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a NewSubscriber: %s", err)
+	}
+
+	return sub, nil
 }
 
 // NewSubscriber creates a new Subscriber instance ready to subscribe to Neutron events.
 func NewSubscriber(
-	cfg *SubscriberConfig,
+	cfg *Config,
+	rpcClient RpcHttpClient,
+	restClient RestHttpQuery,
 	logger *zap.Logger,
 ) (*Subscriber, error) {
-	// rpcClient is used to subscribe to Neutron events.
-	rpcClient, err := newRPCClient(cfg.RPCAddress, cfg.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("could not create new tendermint rpcClient: %w", err)
-	}
-	if err = rpcClient.Start(); err != nil {
+	if err := rpcClient.Start(); err != nil {
 		return nil, fmt.Errorf("could not start tendermint rpcClient: %w", err)
-	}
-
-	// restClient is used to retrieve registered queries from Neutron.
-	restClient, err := newRESTClient(cfg.RESTAddress, cfg.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get newRESTClient: %w", err)
 	}
 
 	// Contains the types of queries that we are ready to serve (KV / TX).
@@ -65,8 +89,8 @@ func NewSubscriber(
 	}
 
 	return &Subscriber{
-		rpcClient:  rpcClient,
-		restClient: restClient,
+		rpcClient:       rpcClient,
+		restClientQuery: restClient,
 
 		connectionID: cfg.ConnectionID,
 		registry:     cfg.Registry,
@@ -81,13 +105,12 @@ func NewSubscriber(
 // filters them in accordance with the Registry configuration and watchedTypes, and provides a
 // stream of split to KV and TX messages.
 type Subscriber struct {
-	rpcClient  *http.HTTP                 // Used to subscribe to events
-	restClient *restclient.HTTPAPIConsole // Used to run Neutron-specific queries using the REST
-
-	connectionID string
-	registry     *rg.Registry
-	logger       *zap.Logger
-	watchedTypes map[neutrontypes.InterchainQueryType]struct{}
+	rpcClient       RpcHttpClient // Used to subscribe to events
+	restClientQuery RestHttpQuery // Used to run Neutron-specific queries using the REST
+	connectionID    string
+	registry        *rg.Registry
+	logger          *zap.Logger
+	watchedTypes    map[neutrontypes.InterchainQueryType]struct{}
 
 	activeQueries map[string]*neutrontypes.RegisteredQuery
 }
@@ -154,7 +177,7 @@ func (s *Subscriber) processBlockEvent(ctx context.Context, tasks chan neutronty
 
 	for _, activeQuery := range s.activeQueries {
 		// Skip the ActiveQuery if we didn't reach the update time.
-		if currentHeight < (activeQuery.LastSubmittedResultLocalHeight + activeQuery.UpdatePeriod) {
+		if activeQuery.LastSubmittedResultLocalHeight != 0 && currentHeight < (activeQuery.LastSubmittedResultLocalHeight+activeQuery.UpdatePeriod) {
 			continue
 		}
 
@@ -183,13 +206,23 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 	// There can be multiple events of the same type associated with our connection id in a
 	// single tmtypes.ResultEvent value. We need to process all of them.
 	var events = event.Events
-	for idx := range events[connectionIdAttr] {
+	for idx := range events[ConnectionIdAttr] {
 		var (
-			owner   = events[ownerAttr][idx]
-			queryID = events[queryIdAttr][idx]
+			owner   = events[OwnerAttr][idx]
+			queryID = events[QueryIdAttr][idx]
 		)
 		if !s.isWatchedAddress(owner) {
 			s.logger.Debug("Skipping query (wrong owner)", zap.String("owner", owner),
+				zap.String("query_id", queryID))
+			continue
+		}
+		queryIDNumber, err := strconv.ParseUint(queryID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse queryID: %w", err)
+		}
+
+		if !s.isWatchedQueryID(queryIDNumber) {
+			s.logger.Debug("Skipping query (wrong queryID)", zap.String("owner", owner),
 				zap.String("query_id", queryID))
 			continue
 		}
@@ -197,7 +230,8 @@ func (s *Subscriber) processUpdateEvent(ctx context.Context, event tmtypes.Resul
 		// Load all information about the neutronQuery directly from Neutron.
 		neutronQuery, err := s.getNeutronRegisteredQuery(ctx, queryID)
 		if err != nil {
-			return fmt.Errorf("failed to getNeutronRegisteredQuery: %w", err)
+			s.logger.Debug("Skipping query (could not find by id, probably removed)", zap.String("queryId", queryID))
+			continue
 		}
 
 		if !s.isWatchedMsgType(neutronQuery.QueryType) {
@@ -228,9 +262,9 @@ func (s *Subscriber) processRemoveEvent(event tmtypes.ResultEvent) error {
 	// There can be multiple events of the same type associated with our connection id in a
 	// single tmtypes.ResultEvent value. We need to process all of them.
 	var events = event.Events
-	for idx := range events[connectionIdAttr] {
+	for idx := range events[ConnectionIdAttr] {
 		var (
-			queryID = events[queryIdAttr][idx]
+			queryID = events[QueryIdAttr][idx]
 		)
 
 		// Delete the query from the active queries list.
